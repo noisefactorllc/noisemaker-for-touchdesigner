@@ -43,16 +43,12 @@ class NMRenderer:
         return self._build(load_graph_str(text))
 
     def set_dsl(self, src):
-        """Phase 6: compile the Polymorphic DSL live in-engine to a normalized graph, then build.
-        Until the Python frontend (compiler/, ports of reference/01–03) lands, use the offline
-        golden producer (`tools/export-graph.mjs`) + set_graph()."""
-        try:
-            from ..compiler import compile_graph  # noqa: F401 — Phase 6
-        except Exception:
-            raise NotImplementedError(
-                'Live DSL compile is Phase 6. For now: '
-                'node tools/export-graph.mjs --file prog.dsl out.graph.json  →  nm.set_graph(out)')
-        return self._build(compile_graph(src))
+        """Compile the Polymorphic DSL live in-engine to a normalized graph, then build the
+        network. The compiler (`compiler/`, ports of reference/01–04) is graph-parity-clean vs
+        the offline `tools/export-graph.mjs` oracle (parity/compiler/check_graph.py), so this
+        live path produces the same network the offline set_graph path renders 72/72."""
+        from ..compiler import compile_dsl
+        return self.set_graph_dict(compile_dsl(src))
 
     # -- host controls -----------------------------------------------------
     def resize(self, width, height):

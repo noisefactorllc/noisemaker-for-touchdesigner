@@ -27,6 +27,21 @@ class CompileError(Exception):
         self.expand_errors = expand_errors
 
 
+_CACHED_REG = None
+
+
+def compile_dsl(src, reg=None):
+    """Convenience entry point: compile DSL source with a module-cached EffectRegistry (loaded
+    once from td/noisemaker/effects). Used by the live runtime path (nm_renderer.set_dsl)."""
+    global _CACHED_REG
+    if reg is None:
+        if _CACHED_REG is None:
+            from .lang.effect_registry import EffectRegistry
+            _CACHED_REG = EffectRegistry.load_from_directory()
+        reg = _CACHED_REG
+    return compile_graph(src, reg)
+
+
 def compile_graph(dsl, reg):
     """Compile DSL source into a normalized Render Graph dict."""
     tokens = lex(dsl)

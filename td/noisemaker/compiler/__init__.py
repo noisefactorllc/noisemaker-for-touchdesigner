@@ -9,3 +9,7 @@ itself a 1:1 port of the reference JS engine (`../noisemaker/shaders/src`). The 
 The emitted graph JSON is byte-identical (modulo `id`) to `tools/export-graph.mjs` — the
 same parity contract hlsl's C# compiler is held to. Full DSL spec: ../noisemaker/docs/shaders.
 """
+from .dsl_compiler import compile_graph, compile_dsl, CompileError  # noqa: F401
+from .lang.effect_registry import EffectRegistry  # noqa: F401
+
+__all__ = ['compile_graph', 'compile_dsl', 'CompileError', 'EffectRegistry']
