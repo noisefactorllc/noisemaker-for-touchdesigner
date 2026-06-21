@@ -110,6 +110,7 @@ class TDBackend:
         if not _in_td():
             raise RuntimeError('TDBackend.build() must run inside TouchDesigner (no op API found).')
         self._detect_feedback(graph)
+        self._cap_volume_size(graph)
         for p in graph.passes:
             if p.is_blit:
                 self._build_blit(p, graph)
@@ -214,6 +215,27 @@ class TDBackend:
                 pass
         self.ops = []
         self.tex_top = {}
+
+    def _cap_volume_size(self, graph):
+        """Clamp the 3D-volume atlas size to fit TD's cook-resolution limit.
+
+        synth3d volumes are 2D atlases of `volumeSize x volumeSize^2` (default 64 -> 64x4096). The TD
+        Non-Commercial license caps cook resolution at 1280, which silently downscales a 64x4096 TOP
+        to 20x1280 and breaks `atlasTexel` indexing. Clamp every `volumeSize*` uniform to
+        NM_MAX_VOLUME_SIZE (default 32 -> a 32x1024 atlas, under the cap) so the texture size AND the
+        shaders' `volumeSize` stay consistent. Platform adaptation only (NOT a compiler change): the
+        render differs from the volumeSize-64 reference, but the 3D raymarch runs correctly within the
+        license. Raise NM_MAX_VOLUME_SIZE on a Commercial/Educational license (which has no 1280 cap)."""
+        cap = _MAX_VOLUME_SIZE
+        capped = False
+        for p in graph.passes:
+            for k, v in list(p.uniforms.items()):
+                if 'volumeSize' in k and isinstance(v, (int, float)) and not isinstance(v, bool) and v > cap:
+                    p.uniforms[k] = cap
+                    capped = True
+        if capped:
+            self._warn('3D volume atlas clamped to volumeSize<=%d (TD cook-resolution cap; raise '
+                       'NM_MAX_VOLUME_SIZE on a Commercial license)' % cap)
 
     # -- effect pass -------------------------------------------------------
     def _build_effect(self, p, graph):
@@ -577,13 +599,23 @@ def _glsl_lit(v):
     return str(v)
 
 
+# 3D volume atlas size cap (see TDBackend._cap_volume_size). Default 32 (a 32x1024 atlas) fits TD's
+# Non-Commercial 1280 cook-resolution cap; raise on a Commercial/Educational license.
+_MAX_VOLUME_SIZE = int(os.environ.get('NM_MAX_VOLUME_SIZE', '32'))
+
 _BOOL_DEFINE_RE = re.compile(r'#define\s+(\w+)\s+(?:true|false)\b')
+# A define used as a BARE boolean condition — `if (NAME)` / `if (!NAME)` — is a GLSL bool even when
+# the shader carries no `#define NAME true|false` fallback (the reference's render3d/synth3d shaders
+# rely on the expander always injecting it; WebGL2/ANGLE accepts `if (0)`, strict #version 460 does
+# NOT). `if (FILTERING == 1)` is NOT matched (the `== 1` keeps FILTERING an int).
+_BOOL_IF_RE = re.compile(r'\bif\s*\(\s*!?\s*([A-Za-z_]\w*)\s*\)')
 
 
 def _bool_define_keys(frag_text):
-    """Keys whose in-shader `#ifndef`/`#define K true|false` fallback declares a GLSL bool. These
-    must be injected as true/false (not 1/0) so a strict-core `if (K)` condition stays a bool."""
-    return set(_BOOL_DEFINE_RE.findall(frag_text))
+    """Keys that are GLSL bools — declared via an in-shader `#define K true|false` fallback OR used
+    as a bare `if (K)` / `if (!K)` condition. These must be injected as true/false (not 1/0) so a
+    strict-core boolean condition stays a bool (else TD rejects `if (0)`)."""
+    return set(_BOOL_DEFINE_RE.findall(frag_text)) | set(_BOOL_IF_RE.findall(frag_text))
 
 
 def _truthy(v):

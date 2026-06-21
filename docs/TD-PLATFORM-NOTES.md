@@ -110,38 +110,39 @@ on their predicted pixels with exact colors + additive sum):
   macOS). It is fully scriptable but **not** a true headless daemon/cron without a real-or-dummy display +
   auto-login. This port's `parity/run.sh` launches TD display-bound, scripted, auto-quit.
 
-## 3D volume raymarch (render3d / renderLit3d) — BLOCKED by two TD platform limits
+## 3D volume raymarch (render3d / renderLit3d) — WORKS, with two TD adaptations
 
-The synth3d generators (`shape3d`, `noise3d`, `fractal3d`, …) precompute a 3D volume as a **2D atlas**
-(`atlasTexel(x,y,z) = (x, y + z·volSize)`, default volumeSize 64 → a **64×4096** rgba16f texture); a
-`precompute` pass (often MRT: `fragColor`=volume + `geoOut`=normals) fills it, then `render3d`
-raymarches it (also MRT: color + screen-geo). The compiler emits the correct graph (byte-identical to
-the three/babylon ports) and the shaders are complete & faithful — but the raymarch renders garbage on
-this TD build. **Two independent, well-isolated platform causes** (the port logic is correct):
+The synth3d generators (`shape3d`, `noise3d`, `fractal3d`, `cell3d`) precompute a 3D volume as a **2D
+atlas** (`atlasTexel(x,y,z) = (x, y + z·volSize)`, default volumeSize 64 → a **64×4096** rgba16f
+texture); `render3d` / `renderLit3d` then raymarch it. Two TD-specific fixes (both in
+`runtime/td_backend.py`) make the whole synth3d-volume → render path render at **ssim ~1.0**
+(noise3d/fractal3d/cell3d/shape3d → render3d **and** renderLit3d all pass, max-diff 1):
 
-1. **Non-Commercial license 1280×1280 resolution cap.** A `glslTOP` whose params are set to 64×4096
-   (verified at build: `outputresolution='custom'`, `resolutionw=64`, `resolutionh=4096`) **cooks at
-   20×1280** — exactly 0.3125× (= 1280/4096) on both axes, with NO limiting param on the TOP. This is
-   the Non-Commercial license's 1280-pixel cap downscaling the tall atlas. `atlasTexel` then indexes a
-   mis-scaled texture → out-of-bounds/wrong texels. (Square ≤1280 textures are fine: the agent state
-   cooks at a full 1024×1024.) Workaround: a Commercial/Educational license, or `volumeSize:x32`
-   (32×1024, under the cap) — but x32 is a different render than the x64 golden, and it STILL fails
-   because of cause #2.
+1. **Bare `if (NAME)` bool defines — the real cause of the "magenta" 3D render (a COMPILE ERROR, not
+   an MRT/channel/license issue).** `render3d.frag` steers the invert branch with `if (INVERT)`, and
+   `INVERT` is injected as the int `0`. WebGL2/ANGLE accepts `if (0)`, but TD's strict `#version 460
+   core` **rejects a non-bool `if` condition**, so the GLSL TOP fails to compile and TD shows its
+   **magenta error texture** (which earlier looked like an "MRT G-channel drop" — it was the error
+   texture all along; the readback-grayscale-vs-sample-magenta split was reading the producer vs the
+   failed consumer). Fix: `_bool_define_keys` now treats a define used as a bare `if (NAME)` /
+   `if (!NAME)` as a GLSL bool (injects `true`/`false`), not only those with a `#define K true|false`
+   fallback. `if (FILTERING == 1)` stays an int. (Only one 2D effect, curl/`RIDGES`, hit the bare-if
+   pattern and it already had a fallback — so zero 2D regression.)
 
-2. **MRT buffer → GLSL TOP sampler drops the G channel.** With volumeSize ≤ 32 the volume cooks at the
-   correct size and a **direct numpyArray readback of the volume Render Select is grayscale (R=G=B)** —
-   but a *GLSL TOP sampling that same buffer* (`texture()` / `texelFetch`) reads **R,B only, G = 0**.
-   So `sampleVolume().g == 0`, the `colorVariance<0.01` grayscale branch in `render3d.frag` is skipped,
-   and `baseColor=(R,0,B)` leaks → a magenta render that misses the isosurface. The input IS correctly
-   wired (`render3d.volumeCache → <pass>_b0` Render Select); inserting a Null TOP between them does NOT
-   fix it. NB the agent deposit reads MRT Render Select buffers via a GLSL **MAT** sampler fine, so this
-   is specific to the GLSL **TOP** sampler path (or this buffer/format) — mechanism not yet pinned;
-   would need Derivative-level MRT-sampler debugging.
+2. **Non-Commercial license 1280 cook-resolution cap.** A 64×4096 atlas `glslTOP` (params verified at
+   build: custom 64×4096) **cooks at 20×1280** (0.3125× = 1280/4096) under the license cap, breaking
+   `atlasTexel`. (Square ≤1280 textures are fine — the agent state cooks at a full 1024×1024.)
+   `_cap_volume_size` clamps every `volumeSize*` uniform to **NM_MAX_VOLUME_SIZE (default 32 → a
+   32×1024 atlas, under the cap)** so the texture size and the shader `volumeSize` stay consistent. The
+   render then differs from the volumeSize-64 reference (lower 3D resolution) but is **correct** —
+   validated apples-to-apples against volumeSize-32 reference goldens (max-diff 1, ssim ~1.0). Raise
+   `NM_MAX_VOLUME_SIZE` on a Commercial/Educational license (which has no 1280 cap).
 
-Isolation harness: `parity/evolve.sh <prog>` with `NM_DUMP_PROG=precompute` (dump the volume producer)
-and `NM_DUMP_TEXID=node_0_volumeCache` (dump the Render Select) shows the size cap (#1) and the
-grayscale-when-dumped vs G=0-when-sampled split (#2). The classicNoisedeck `noise3d`/`shapes3d` (2D,
-`search classicNoisedeck`) are unrelated and DO render at parity — they are not the synth3d volume path.
+Isolation harness: `parity/evolve.sh <prog>` with `NM_DUMP_PROG=<prog>` and `NM_DUMP_TEXID=<texId>`.
+**Still TODO** (more complex, not the core render path): `filter3d` **flow3d** (a stateful 3D
+agent-flow filter — MRT, multi-pass), **palette3d** (no transpiled frag yet), and **renderCubemap3d**
+(6-face). The classicNoisedeck `noise3d`/`shapes3d` are 2D effects (`search classicNoisedeck`), not
+the synth3d volume path.
 
 ## Sources
 
