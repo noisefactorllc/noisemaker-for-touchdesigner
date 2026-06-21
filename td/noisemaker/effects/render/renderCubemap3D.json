@@ -1,7 +1,7 @@
 {
   "name": "RenderCubemap3D",
   "namespace": "render",
-  "func": "renderCubemap3D",
+  "func": "renderCubemap3d",
   "starter": false,
   "tags": [
     "3d"
@@ -76,7 +76,7 @@
   "passes": [
     {
       "name": "render",
-      "program": "renderCubemap3D",
+      "program": "renderCubemap3d",
       "inputs": {
         "volumeCache": "inputTex3d",
         "analyticalGeo": "inputGeo"

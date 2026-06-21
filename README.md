@@ -126,11 +126,14 @@ no further manual steps.
 | **total** | **182** | **247 programs — 226 auto-transpiled, 21 MRT flagged** |
 
 Status: scaffold + tooling + runtime + generated assets complete; **72/72 gateable effects
-pixel-parity-validated** in TouchDesigner (every single-pass `synth`/`filter`/`mixer`/
-`classicNoisedeck` effect the sibling ports cover + `channelCombine` + single-step `feedback`).
-Deferred: 3 multi-frame-accumulation effects (Feedback-TOP wiring done; needs an async engine
-frame loop) and the 21 MRT/points/3D programs (transpiled; need a working golden source). Then the
-**live Python DSL compiler** (Phase 6). See `docs/IMPLEMENTATION-PLAN.md` §5.5.
+pixel-parity-validated** in TouchDesigner; **Polymorphic DSL compiler ported to Python**
+(`td/noisemaker/compiler/`, Phase 6 — mirrors `noisemaker-hlsl` `Compiler/` file-for-file) and
+**graph-parity-validated 94/95** against the `export-graph.mjs` oracle across the **blaster corpus**
++ all programs (`parity/compiler/check_{lex,parse,validate,graph}.py` — lexer/parser/validator
+95/95 byte-exact, graph 94/95 byte-clean; the 1 skip uses a nonexistent effect the reference also
+rejects). Deferred: 3 multi-frame-accumulation effects + 21 MRT/points/3D programs (need golden
+source). NEXT: wire `compile_graph` into `nm_renderer.set_dsl` + render real blaster comps in TD.
+See `docs/IMPLEMENTATION-PLAN.md` Phase 6.
 
 ## License
 

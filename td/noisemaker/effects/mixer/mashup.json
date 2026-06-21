@@ -1,0 +1,94 @@
+{
+  "name": "Mashup",
+  "namespace": "mixer",
+  "func": "mashup",
+  "starter": true,
+  "tags": [
+    "blend"
+  ],
+  "description": "Posterize a control input by luminance and route each band to a different surface",
+  "paramAliases": {},
+  "globals": {
+    "source": {
+      "type": "surface",
+      "default": "none"
+    },
+    "layers": {
+      "type": "int",
+      "default": 4,
+      "uniform": "layers",
+      "min": 2,
+      "max": 8
+    },
+    "smoothness": {
+      "type": "float",
+      "default": 0.1,
+      "uniform": "smoothness",
+      "min": 0,
+      "max": 0.5,
+      "zero": 0
+    },
+    "layer0_tex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "layer0_active"
+    },
+    "layer1_tex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "layer1_active"
+    },
+    "layer2_tex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "layer2_active"
+    },
+    "layer3_tex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "layer3_active"
+    },
+    "layer4_tex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "layer4_active"
+    },
+    "layer5_tex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "layer5_active"
+    },
+    "layer6_tex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "layer6_active"
+    },
+    "layer7_tex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "layer7_active"
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "mashup",
+      "inputs": {
+        "source": "source",
+        "layer0_tex": "layer0_tex",
+        "layer1_tex": "layer1_tex",
+        "layer2_tex": "layer2_tex",
+        "layer3_tex": "layer3_tex",
+        "layer4_tex": "layer4_tex",
+        "layer5_tex": "layer5_tex",
+        "layer6_tex": "layer6_tex",
+        "layer7_tex": "layer7_tex"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {},
+  "defaultProgram": "search mixer, synth\n\nnoise(\n  type: constant,\n  octaves: 4,\n  ridges: true,\n  loopScale: 100,\n  speed: 100\n)\n  .write(o0)\n\nsolid(color: #006d4c)\n  .write(o1)\n\nperlin(ridges: true)\n  .write(o2)\n\ngradient(\n  type: noiseGradient,\n  color1: #ffffffff,\n  color2: #a9a9a9ff,\n  color3: #515151ff,\n  color4: #000000ff,\n  colorCount: 3\n)\n  .write(o3)\n\nmashup(\n  source: read(o3),\n  layers: 3,\n  smoothness: 0.22,\n  layer0_tex: read(o0),\n  layer1_tex: read(o1),\n  layer2_tex: read(o2)\n)\n  .write(o4)"
+}

@@ -45,7 +45,10 @@ const EFFECTS_DIR = join(REFERENCE_ROOT, 'shaders', 'effects')
 // the validator/expander accept, and registerOp so the parser recognises the op.
 // (See shaders/tests/test_canvas_apply_step_params.js loadEffect helper.)
 // ---------------------------------------------------------------------------
-async function bootstrapReference () {
+// Exported so the validated-plan dumper (tools/dump-validated.mjs) can reuse the EXACT same
+// reference bootstrap (registers effects/ops/enums/starters into the shared global registries
+// the reference compile()/validate() reads). Additive — does not change golden-graph output.
+export async function bootstrapReference () {
   const mod = await import(pathToFileURL(SRC_INDEX).href)
   const {
     compileGraph, registerEffect, registerOp, registerStarterOps,

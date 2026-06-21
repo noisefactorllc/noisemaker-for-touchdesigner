@@ -50,7 +50,7 @@
       "default": 0,
       "uniform": "zone0_count",
       "min": 0,
-      "max": 16
+      "max": 64
     },
     "zone0_alpha": {
       "type": "float",
@@ -139,6 +139,246 @@
       ],
       "uniform": "zone0_v7"
     },
+    "zone0_v8": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v8"
+    },
+    "zone0_v9": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v9"
+    },
+    "zone0_v10": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v10"
+    },
+    "zone0_v11": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v11"
+    },
+    "zone0_v12": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v12"
+    },
+    "zone0_v13": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v13"
+    },
+    "zone0_v14": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v14"
+    },
+    "zone0_v15": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v15"
+    },
+    "zone0_v16": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v16"
+    },
+    "zone0_v17": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v17"
+    },
+    "zone0_v18": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v18"
+    },
+    "zone0_v19": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v19"
+    },
+    "zone0_v20": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v20"
+    },
+    "zone0_v21": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v21"
+    },
+    "zone0_v22": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v22"
+    },
+    "zone0_v23": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v23"
+    },
+    "zone0_v24": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v24"
+    },
+    "zone0_v25": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v25"
+    },
+    "zone0_v26": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v26"
+    },
+    "zone0_v27": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v27"
+    },
+    "zone0_v28": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v28"
+    },
+    "zone0_v29": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v29"
+    },
+    "zone0_v30": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v30"
+    },
+    "zone0_v31": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone0_v31"
+    },
     "zone1_tex": {
       "type": "surface",
       "default": "none",
@@ -149,7 +389,7 @@
       "default": 0,
       "uniform": "zone1_count",
       "min": 0,
-      "max": 16
+      "max": 64
     },
     "zone1_alpha": {
       "type": "float",
@@ -238,6 +478,246 @@
       ],
       "uniform": "zone1_v7"
     },
+    "zone1_v8": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v8"
+    },
+    "zone1_v9": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v9"
+    },
+    "zone1_v10": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v10"
+    },
+    "zone1_v11": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v11"
+    },
+    "zone1_v12": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v12"
+    },
+    "zone1_v13": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v13"
+    },
+    "zone1_v14": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v14"
+    },
+    "zone1_v15": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v15"
+    },
+    "zone1_v16": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v16"
+    },
+    "zone1_v17": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v17"
+    },
+    "zone1_v18": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v18"
+    },
+    "zone1_v19": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v19"
+    },
+    "zone1_v20": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v20"
+    },
+    "zone1_v21": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v21"
+    },
+    "zone1_v22": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v22"
+    },
+    "zone1_v23": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v23"
+    },
+    "zone1_v24": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v24"
+    },
+    "zone1_v25": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v25"
+    },
+    "zone1_v26": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v26"
+    },
+    "zone1_v27": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v27"
+    },
+    "zone1_v28": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v28"
+    },
+    "zone1_v29": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v29"
+    },
+    "zone1_v30": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v30"
+    },
+    "zone1_v31": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone1_v31"
+    },
     "zone2_tex": {
       "type": "surface",
       "default": "none",
@@ -248,7 +728,7 @@
       "default": 0,
       "uniform": "zone2_count",
       "min": 0,
-      "max": 16
+      "max": 64
     },
     "zone2_alpha": {
       "type": "float",
@@ -337,6 +817,246 @@
       ],
       "uniform": "zone2_v7"
     },
+    "zone2_v8": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v8"
+    },
+    "zone2_v9": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v9"
+    },
+    "zone2_v10": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v10"
+    },
+    "zone2_v11": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v11"
+    },
+    "zone2_v12": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v12"
+    },
+    "zone2_v13": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v13"
+    },
+    "zone2_v14": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v14"
+    },
+    "zone2_v15": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v15"
+    },
+    "zone2_v16": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v16"
+    },
+    "zone2_v17": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v17"
+    },
+    "zone2_v18": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v18"
+    },
+    "zone2_v19": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v19"
+    },
+    "zone2_v20": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v20"
+    },
+    "zone2_v21": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v21"
+    },
+    "zone2_v22": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v22"
+    },
+    "zone2_v23": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v23"
+    },
+    "zone2_v24": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v24"
+    },
+    "zone2_v25": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v25"
+    },
+    "zone2_v26": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v26"
+    },
+    "zone2_v27": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v27"
+    },
+    "zone2_v28": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v28"
+    },
+    "zone2_v29": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v29"
+    },
+    "zone2_v30": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v30"
+    },
+    "zone2_v31": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone2_v31"
+    },
     "zone3_tex": {
       "type": "surface",
       "default": "none",
@@ -347,7 +1067,7 @@
       "default": 0,
       "uniform": "zone3_count",
       "min": 0,
-      "max": 16
+      "max": 64
     },
     "zone3_alpha": {
       "type": "float",
@@ -436,6 +1156,246 @@
       ],
       "uniform": "zone3_v7"
     },
+    "zone3_v8": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v8"
+    },
+    "zone3_v9": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v9"
+    },
+    "zone3_v10": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v10"
+    },
+    "zone3_v11": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v11"
+    },
+    "zone3_v12": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v12"
+    },
+    "zone3_v13": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v13"
+    },
+    "zone3_v14": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v14"
+    },
+    "zone3_v15": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v15"
+    },
+    "zone3_v16": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v16"
+    },
+    "zone3_v17": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v17"
+    },
+    "zone3_v18": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v18"
+    },
+    "zone3_v19": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v19"
+    },
+    "zone3_v20": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v20"
+    },
+    "zone3_v21": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v21"
+    },
+    "zone3_v22": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v22"
+    },
+    "zone3_v23": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v23"
+    },
+    "zone3_v24": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v24"
+    },
+    "zone3_v25": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v25"
+    },
+    "zone3_v26": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v26"
+    },
+    "zone3_v27": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v27"
+    },
+    "zone3_v28": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v28"
+    },
+    "zone3_v29": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v29"
+    },
+    "zone3_v30": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v30"
+    },
+    "zone3_v31": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone3_v31"
+    },
     "zone4_tex": {
       "type": "surface",
       "default": "none",
@@ -446,7 +1406,7 @@
       "default": 0,
       "uniform": "zone4_count",
       "min": 0,
-      "max": 16
+      "max": 64
     },
     "zone4_alpha": {
       "type": "float",
@@ -535,6 +1495,246 @@
       ],
       "uniform": "zone4_v7"
     },
+    "zone4_v8": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v8"
+    },
+    "zone4_v9": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v9"
+    },
+    "zone4_v10": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v10"
+    },
+    "zone4_v11": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v11"
+    },
+    "zone4_v12": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v12"
+    },
+    "zone4_v13": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v13"
+    },
+    "zone4_v14": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v14"
+    },
+    "zone4_v15": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v15"
+    },
+    "zone4_v16": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v16"
+    },
+    "zone4_v17": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v17"
+    },
+    "zone4_v18": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v18"
+    },
+    "zone4_v19": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v19"
+    },
+    "zone4_v20": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v20"
+    },
+    "zone4_v21": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v21"
+    },
+    "zone4_v22": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v22"
+    },
+    "zone4_v23": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v23"
+    },
+    "zone4_v24": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v24"
+    },
+    "zone4_v25": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v25"
+    },
+    "zone4_v26": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v26"
+    },
+    "zone4_v27": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v27"
+    },
+    "zone4_v28": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v28"
+    },
+    "zone4_v29": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v29"
+    },
+    "zone4_v30": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v30"
+    },
+    "zone4_v31": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone4_v31"
+    },
     "zone5_tex": {
       "type": "surface",
       "default": "none",
@@ -545,7 +1745,7 @@
       "default": 0,
       "uniform": "zone5_count",
       "min": 0,
-      "max": 16
+      "max": 64
     },
     "zone5_alpha": {
       "type": "float",
@@ -634,6 +1834,246 @@
       ],
       "uniform": "zone5_v7"
     },
+    "zone5_v8": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v8"
+    },
+    "zone5_v9": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v9"
+    },
+    "zone5_v10": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v10"
+    },
+    "zone5_v11": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v11"
+    },
+    "zone5_v12": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v12"
+    },
+    "zone5_v13": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v13"
+    },
+    "zone5_v14": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v14"
+    },
+    "zone5_v15": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v15"
+    },
+    "zone5_v16": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v16"
+    },
+    "zone5_v17": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v17"
+    },
+    "zone5_v18": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v18"
+    },
+    "zone5_v19": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v19"
+    },
+    "zone5_v20": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v20"
+    },
+    "zone5_v21": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v21"
+    },
+    "zone5_v22": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v22"
+    },
+    "zone5_v23": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v23"
+    },
+    "zone5_v24": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v24"
+    },
+    "zone5_v25": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v25"
+    },
+    "zone5_v26": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v26"
+    },
+    "zone5_v27": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v27"
+    },
+    "zone5_v28": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v28"
+    },
+    "zone5_v29": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v29"
+    },
+    "zone5_v30": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v30"
+    },
+    "zone5_v31": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone5_v31"
+    },
     "zone6_tex": {
       "type": "surface",
       "default": "none",
@@ -644,7 +2084,7 @@
       "default": 0,
       "uniform": "zone6_count",
       "min": 0,
-      "max": 16
+      "max": 64
     },
     "zone6_alpha": {
       "type": "float",
@@ -733,6 +2173,246 @@
       ],
       "uniform": "zone6_v7"
     },
+    "zone6_v8": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v8"
+    },
+    "zone6_v9": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v9"
+    },
+    "zone6_v10": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v10"
+    },
+    "zone6_v11": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v11"
+    },
+    "zone6_v12": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v12"
+    },
+    "zone6_v13": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v13"
+    },
+    "zone6_v14": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v14"
+    },
+    "zone6_v15": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v15"
+    },
+    "zone6_v16": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v16"
+    },
+    "zone6_v17": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v17"
+    },
+    "zone6_v18": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v18"
+    },
+    "zone6_v19": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v19"
+    },
+    "zone6_v20": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v20"
+    },
+    "zone6_v21": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v21"
+    },
+    "zone6_v22": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v22"
+    },
+    "zone6_v23": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v23"
+    },
+    "zone6_v24": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v24"
+    },
+    "zone6_v25": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v25"
+    },
+    "zone6_v26": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v26"
+    },
+    "zone6_v27": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v27"
+    },
+    "zone6_v28": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v28"
+    },
+    "zone6_v29": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v29"
+    },
+    "zone6_v30": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v30"
+    },
+    "zone6_v31": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone6_v31"
+    },
     "zone7_tex": {
       "type": "surface",
       "default": "none",
@@ -743,7 +2423,7 @@
       "default": 0,
       "uniform": "zone7_count",
       "min": 0,
-      "max": 16
+      "max": 64
     },
     "zone7_alpha": {
       "type": "float",
@@ -831,6 +2511,246 @@
         0
       ],
       "uniform": "zone7_v7"
+    },
+    "zone7_v8": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v8"
+    },
+    "zone7_v9": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v9"
+    },
+    "zone7_v10": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v10"
+    },
+    "zone7_v11": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v11"
+    },
+    "zone7_v12": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v12"
+    },
+    "zone7_v13": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v13"
+    },
+    "zone7_v14": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v14"
+    },
+    "zone7_v15": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v15"
+    },
+    "zone7_v16": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v16"
+    },
+    "zone7_v17": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v17"
+    },
+    "zone7_v18": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v18"
+    },
+    "zone7_v19": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v19"
+    },
+    "zone7_v20": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v20"
+    },
+    "zone7_v21": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v21"
+    },
+    "zone7_v22": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v22"
+    },
+    "zone7_v23": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v23"
+    },
+    "zone7_v24": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v24"
+    },
+    "zone7_v25": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v25"
+    },
+    "zone7_v26": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v26"
+    },
+    "zone7_v27": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v27"
+    },
+    "zone7_v28": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v28"
+    },
+    "zone7_v29": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v29"
+    },
+    "zone7_v30": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v30"
+    },
+    "zone7_v31": {
+      "type": "vec4",
+      "default": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "uniform": "zone7_v31"
     }
   },
   "passes": [

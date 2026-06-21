@@ -127,13 +127,26 @@ byte-identical goldens); `parity/sweep.sh` renders all in TD and grades with a p
       3D volume atlas + raymarch + geoOut) is ready to do, but gating needs a working golden source.
 - [x] Coverage tracked in README; per-effect tolerances + rationale live in `parity/sweep.sh`.
 
-## Phase 6 — Live TD-Python DSL compiler (staged)  ⛔ gated on Phase 4
+## Phase 6 — Live TD-Python DSL compiler  ✅ DONE — 94/95 corpus byte-clean graph-parity
 
-Only after the golden-JSON path is proven. Port `reference/01–03` to Python under
-`td/noisemaker/compiler/` (lexer→parser→validator→expander→resources), emitting the same
-normalized graph JSON. Validate by diffing against `export-graph.mjs` output for
-`parity/programs/*` (byte-identical modulo `id`). Constant-fold in Python `float` (IEEE double =
-JS Number). Wire into `nm_renderer.set_dsl(src)`.
+Ported `reference/01–03` (+ expander/resources/04) to Python under `td/noisemaker/compiler/`,
+**mirroring `noisemaker-hlsl/unity/com.noisemaker.hlsl/Compiler/` file-for-file** (~6.7k C# LOC):
+`lang/{token,lexer,ast,parser,enums,enum_paths,effect_registry,diagnostics,validator,expander,
+palette_expansion}` + `graph/{dim,resources}` + `dsl_compiler` (orchestrator). The C# typed model
+(`UniformValue`/`ArgValue`/`Dim`/`OrderedMap`/`JsonValue`) collapses to native Python values + dicts;
+AST nodes are plain dicts matching the reference JS objects; clone = `copy.deepcopy`.
+- [x] **4 staged parity gates** vs the reference (`parity/compiler/check_{lex,parse,validate,graph}.py`
+      + `tools/dump-{tokens,ast,validated}.mjs`): **lexer / parser / validator 95/95 byte-exact** vs
+      reference `lex`/`parse`/`compile`; **graph 94/95 byte-clean** vs the `export-graph.mjs` oracle
+      (the 1 skip `B5oBsA` references a nonexistent effect — the reference rejects it too).
+- [x] Corpus = the **blaster** compositions (`parity/corpus/`, from `noisemaker-hlsl/parity/corpus`)
+      + the 73 `parity/programs/`. Points/agent comps compile clean (WebGL2 graph = `drawMode:"points"`
+      render passes — no compute/MRT fields trigger the staged path).
+- [x] Two parity fixes beyond hlsl: define-suffix order keys off the **sorted global key** (not the
+      define name — hlsl's re-sort is a latent bug its 12-prog corpus never hit); osc **object
+      uniforms serialized** (hlsl stages them null).
+- [ ] **NEXT:** wire `compile_graph(dsl, reg)` into `nm_renderer.set_dsl(src)` (live TD rendering from
+      DSL source) + render real blaster comps in TD for renderer/shader-library parity.
 
 ---
 

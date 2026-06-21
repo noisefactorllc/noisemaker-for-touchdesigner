@@ -1,0 +1,96 @@
+{
+  "name": "Palette3D",
+  "namespace": "filter3d",
+  "func": "palette3d",
+  "starter": false,
+  "tags": [
+    "3d",
+    "color",
+    "palette"
+  ],
+  "description": "Apply cosine color palettes to a 3D volume based on luminance",
+  "paramAliases": {
+    "paletteIndex": "index",
+    "paletteOffset": "offset",
+    "paletteRepeat": "repeat",
+    "paletteRotation": "rotation"
+  },
+  "globals": {
+    "volumeSize": {
+      "type": "int",
+      "default": 64,
+      "uniform": "volumeSize",
+      "choices": {
+        "x16": 16,
+        "x32": 32,
+        "x64": 64,
+        "x128": 128
+      }
+    },
+    "index": {
+      "type": "member",
+      "default": "palette.brushedMetal",
+      "uniform": "paletteIndex",
+      "enum": "palette"
+    },
+    "rotation": {
+      "type": "float",
+      "default": 0,
+      "uniform": "rotation",
+      "choices": {
+        "none": 0,
+        "fwd": 1,
+        "back": -1
+      }
+    },
+    "offset": {
+      "type": "float",
+      "default": 0,
+      "uniform": "offset",
+      "min": 0,
+      "max": 100
+    },
+    "repeat": {
+      "type": "int",
+      "default": 1,
+      "uniform": "repeat",
+      "min": 1,
+      "max": 10
+    },
+    "alpha": {
+      "type": "float",
+      "default": 1,
+      "uniform": "alpha",
+      "min": 0,
+      "max": 1
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "palette3d",
+      "inputs": {
+        "inputTex3d": "inputTex3d"
+      },
+      "outputs": {
+        "fragColor": "volumeCache"
+      }
+    }
+  ],
+  "textures": {
+    "volumeCache": {
+      "width": {
+        "param": "volumeSize",
+        "default": 64
+      },
+      "height": {
+        "param": "volumeSize",
+        "power": 2,
+        "default": 4096
+      },
+      "format": "rgba16f"
+    }
+  },
+  "outputTex3d": "volumeCache",
+  "outputGeo": "inputGeo"
+}
