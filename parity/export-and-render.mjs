@@ -241,6 +241,8 @@ async function main () {
     // Poll until the presented o0 surface texture is stably at the requested size.
     // This drains any pending layout `resize` event and re-asserts the pipeline
     // size, guaranteeing the readback below sees a `size`x`size` surface.
+    // NOTE: Playwright's signature is waitForFunction(fn, arg, options) — the
+    // single page-function ARG comes BEFORE the options object.
     await page.waitForFunction((size) => {
       const p = window.__noisemakerRenderingPipeline
       if (!p || typeof p.resize !== 'function') return false
@@ -253,7 +255,7 @@ async function main () {
         return false
       }
       return true
-    }, { timeout: STATUS_TIMEOUT }, opts.size)
+    }, opts.size, { timeout: STATUS_TIMEOUT })
 
     // Pin the normalized frame time, then render deterministic frames by driving the
     // PIPELINE directly (the CanvasRenderer re-syncs canvas size per frame and can
