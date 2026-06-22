@@ -37,9 +37,11 @@ FRAGS = os.path.join(REPO, 'td', 'noisemaker', 'shaders', 'effects')
 EXPORT = os.path.join(REPO, 'tools', 'export-graph.mjs')
 BATCH = os.path.join(REPO, 'parity', 'batch-golden.mjs')
 
-# Multi-frame feedback-accumulation effects — driven + graded by parity/accumulate.sh (the single-
-# frame sweep can't accumulate their feedback). Reported here, not rendered as single-frame goldens.
-ACCUM_EFFECTS = {'cellularAutomata', 'reactionDiffusion', 'motionBlur'}
+# Multi-frame feedback-accumulation effects — driven by the evolve harness (the single-frame sweep
+# can't accumulate their feedback). Reported here, not rendered as single-frame goldens.
+# convolutionFeedback is the same class (a `feedbackTex` temporal blend); evolve-validated at f8
+# ssim 0.99483 (8-bit-feedback drift, like motionBlur — Metal vs ANGLE convolution over frames).
+ACCUM_EFFECTS = {'cellularAutomata', 'reactionDiffusion', 'motionBlur', 'convolutionFeedback'}
 
 
 def reference_root():
