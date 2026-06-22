@@ -487,12 +487,15 @@ class _Validator:
                 self._push_diag("S005", original)
 
             args = {}
-            self._resolve_args(chain, spec, call, op_name, original, args, write_name)
+            arg_sources = self._resolve_args(chain, spec, call, op_name, original, args, write_name)
 
             idx = self._temp_index
             self._temp_index += 1
-            chain.append(self._step(op_name, args, from_input, idx,
-                                    comments=original.get('leadingComments')))
+            step = self._step(op_name, args, from_input, idx,
+                              comments=original.get('leadingComments'))
+            if arg_sources is not None:
+                step['argSources'] = arg_sources
+            chain.append(step)
             current = idx
         return current
 
@@ -513,6 +516,11 @@ class _Validator:
                 self._push_diag("S007", call, w)
         seen = set()
         spec_args = spec.args
+        # Sidecar map remembering the source form of each arg (e.g. 'array' when the source was a
+        # literal `[…]`). Stays None until something sets a form, so existing programs add no new
+        # step keys (reference/02 §6; validator.js argSources). The reference unparser uses it to
+        # round-trip `[…]` literals.
+        arg_sources = None
 
         i = 0
         while i < len(spec_args):
@@ -549,6 +557,9 @@ class _Validator:
                                         + "' in " + call['name'] + "()")
                         value.append(0)
                 args[arg_key] = value
+                if arg_sources is None:
+                    arg_sources = {}
+                arg_sources[arg_key] = 'array'
                 i += 1
                 continue
 
@@ -585,6 +596,7 @@ class _Validator:
             for key in kw:
                 if key not in seen:
                     self._push_diag("S001", kw[key], "Unknown argument '" + key + "' for " + call['name'] + "()")
+        return arg_sources
 
     # 6.1 surface
     def _resolve_surface_arg(self, chain, d, node, call, args, arg_key, write_name):
