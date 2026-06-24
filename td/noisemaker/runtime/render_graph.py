@@ -51,9 +51,11 @@ class Pass:
     blend: Any = None
     repeat: Any = None                       # int | uniform-name
     clear: Any = None
-    # Per-pass runIf/skipIf gating (reference Pipeline.shouldSkipPass). NOT present in the
-    # serialized graph (the reference expander drops it); the TD backend loads it from the
-    # effect JSON and attaches it before building. {runIf|skipIf: [{uniform, equals}]}.
+    # Per-pass runIf/skipIf gating as declared on the effect DEFINITION. NOT present in the
+    # serialized graph (the reference expander omits it when building passes), and the TD backend
+    # does NOT act on it: like the reference, every pass always runs (Pipeline.shouldSkipPass is a
+    # no-op because pass.conditions is undefined). Parsed here only so a stray `conditions` key in
+    # a graph JSON loads harmlessly; nothing gates on it. {runIf|skipIf: [{uniform, equals}]}.
     conditions: Optional[dict] = None
     # metadata
     effect_key: Optional[str] = None

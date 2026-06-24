@@ -110,7 +110,6 @@ class TDBackend:
         self._effect_uniforms = []                 # [(glslTOP, {declared uniform: value})] for set_time
         self._effect_arrays = []                   # [(glslTOP, layout, merged, {arr: info})] for set_time
         self._layout_cache = {}                    # (namespace, func) -> std140 uniformLayout | None
-        self._conditions_cache = {}                # (namespace, func) -> [per-pass conditions | None]
         self._prog_tops = {}                       # progName -> [TOPs] (debug: dump a specific pass)
         self._mrt_diag_done = False                 # one-time Render Select param introspection log
         self._tex_res = {}                          # texId -> (w,h) resolved (for feedback sizing)
@@ -125,11 +124,13 @@ class TDBackend:
         self._detect_feedback(graph)
         self._cap_volume_size(graph)
         for p in graph.passes:
-            # runIf/skipIf pass gating (reference Pipeline.shouldSkipPass): both deposit passes of
-            # pointsBillboardRender live in the graph but only the one matching blendMode builds.
-            if self._should_skip_pass(p):
-                self._warn('pass %s skipped by conditions (blendMode gating)' % p.id)
-                continue
+            # NO runIf/skipIf pass gating. The reference attaches `conditions` only on the effect
+            # DEFINITION, but its expander (shaders/src/runtime/expander.js) builds graph passes from
+            # an explicit field list that OMITS `conditions`, so `pass.conditions` is undefined at
+            # runtime and Pipeline.shouldSkipPass always returns false. Both deposit passes of
+            # pointsBillboardRender (`deposit` additive ONE/ONE + `deposit_alpha` ONE/ONE_MINUS_SRC_ALPHA)
+            # therefore ALWAYS run, regardless of blendMode. We mirror that: build every pass. The
+            # `conditions` field may still ride along in the effect JSON (harmless metadata).
             if p.is_blit:
                 self._build_blit(p, graph)
             elif p.is_scatter:
@@ -254,60 +255,11 @@ class TDBackend:
                 self._layout_cache[key] = None
         return self._layout_cache[key]
 
-    def _pass_conditions(self, p):
-        """The pass's runIf/skipIf conditions, read from the effect JSON.
-
-        The reference attaches `conditions` to the pass at pipeline build, evaluating it per-frame
-        in Pipeline.shouldSkipPass. The reference normalized GRAPH never serializes it (parity), so
-        like uniformLayout we read it straight from td/noisemaker/effects/<ns>/<func>.json. The
-        serialized pass id is `<nodeId>_pass_<i>` where <i> indexes the effect's passes array; we
-        map back through that index. Returns the conditions dict or None."""
-        if p.conditions is not None:        # already attached (defensive; serialized graph lacks it)
-            return p.conditions
-        ns, func, pid = p.namespace, p.func, p.id
-        if not ns or not func or not pid:
-            return None
-        m = re.search(r'_pass_(\d+)$', pid)
-        if not m:
-            return None
-        idx = int(m.group(1))
-        key = (ns, func)
-        if key not in self._conditions_cache:
-            import json
-            path = os.path.join(os.path.dirname(__file__), '..', 'effects', ns, func + '.json')
-            try:
-                with open(path) as fh:
-                    passes = json.load(fh).get('passes', [])
-                self._conditions_cache[key] = [pd.get('conditions') for pd in passes]
-            except Exception:
-                self._conditions_cache[key] = []
-        conds = self._conditions_cache[key]
-        return conds[idx] if 0 <= idx < len(conds) else None
-
-    def _should_skip_pass(self, p):
-        """Mirror reference Pipeline.shouldSkipPass against this pass's resolved uniforms.
-
-        We resolve the graph statically (TD cooks the built network itself), so gating is decided
-        once at build time from the pass's own uniform values (which already hold the DSL arg /
-        default for the gating uniform, e.g. blendMode). Build-time gating keeps graph parity intact
-        because `conditions` is not part of the serialized render-graph diff."""
-        conditions = self._pass_conditions(p)
-        if not conditions:
-            return False
-        uniforms = p.uniforms or {}
-        skip_if = conditions.get('skipIf')
-        run_if = conditions.get('runIf')
-        # skipIf: skip if ANY condition matches.
-        if skip_if:
-            for c in skip_if:
-                if uniforms.get(c.get('uniform')) == c.get('equals'):
-                    return True
-        # runIf: skip if ANY condition does NOT match.
-        if run_if:
-            for c in run_if:
-                if uniforms.get(c.get('uniform')) != c.get('equals'):
-                    return True
-        return False
+    # NOTE: there is deliberately NO _should_skip_pass / _pass_conditions here. The reference does
+    # NOT gate passes on `conditions` at runtime — its expander omits the field when building graph
+    # passes, so Pipeline.shouldSkipPass always returns false and BOTH pointsBillboardRender deposit
+    # passes run every frame (see the comment in build()). Reintroducing gating would skip one
+    # deposit and diverge from the reference, so we intentionally build every pass unconditionally.
 
     def _cap_volume_size(self, graph):
         """Clamp the 3D-volume atlas size to fit TD's cook-resolution limit.
