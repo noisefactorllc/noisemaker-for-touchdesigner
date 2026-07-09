@@ -1,0 +1,76 @@
+{
+  "name": "Stipple",
+  "namespace": "filter",
+  "func": "stipple",
+  "starter": false,
+  "tags": [
+    "pixel",
+    "noise"
+  ],
+  "description": "Discrete random marks reproducing image tone: pointillize dots, mezzotint dots/lines/strokes, or reticulation (Photoshop Pointillize, Mezzotint, Reticulation)",
+  "paramAliases": {},
+  "globals": {
+    "mode": {
+      "type": "int",
+      "default": 0,
+      "uniform": "mode",
+      "choices": {
+        "pointillize": 0,
+        "mezzoDots": 1,
+        "mezzoLines": 2,
+        "mezzoStrokes": 3,
+        "reticulation": 4
+      }
+    },
+    "cellSize": {
+      "type": "float",
+      "default": 8,
+      "uniform": "cellSize",
+      "min": 3,
+      "max": 64
+    },
+    "grainSize": {
+      "type": "float",
+      "default": 2,
+      "uniform": "grainSize",
+      "min": 0.5,
+      "max": 16
+    },
+    "density": {
+      "type": "float",
+      "default": 50,
+      "uniform": "density",
+      "min": 0,
+      "max": 100
+    },
+    "paperColor": {
+      "type": "color",
+      "default": [
+        0.98,
+        0.96,
+        0.9
+      ],
+      "uniform": "paperColor"
+    },
+    "seed": {
+      "type": "int",
+      "default": 1,
+      "uniform": "seed",
+      "min": 1,
+      "max": 100
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "stipple",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {}
+}
