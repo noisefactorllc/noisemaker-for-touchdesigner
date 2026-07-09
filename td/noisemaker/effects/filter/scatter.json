@@ -1,0 +1,75 @@
+{
+  "name": "Scatter",
+  "namespace": "filter",
+  "func": "scatter",
+  "starter": false,
+  "tags": [
+    "noise"
+  ],
+  "description": "Random per-pixel scatter with darken/lighten/anisotropic/clumped modes (Photoshop Diffuse, Spatter)",
+  "paramAliases": {},
+  "globals": {
+    "radius": {
+      "type": "float",
+      "default": 5,
+      "uniform": "radius",
+      "min": 1,
+      "max": 25
+    },
+    "mode": {
+      "type": "int",
+      "default": 0,
+      "uniform": "mode",
+      "choices": {
+        "normal": 0,
+        "darkenOnly": 1,
+        "lightenOnly": 2,
+        "anisotropic": 3,
+        "clumped": 4
+      }
+    },
+    "smoothness": {
+      "type": "float",
+      "default": 0,
+      "uniform": "smoothness",
+      "min": 0,
+      "max": 100
+    },
+    "seed": {
+      "type": "int",
+      "default": 1,
+      "uniform": "seed",
+      "min": 1,
+      "max": 100
+    }
+  },
+  "passes": [
+    {
+      "name": "scatterJitter",
+      "program": "scatterJitter",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "_scatterTmp"
+      }
+    },
+    {
+      "name": "scatterSmooth",
+      "program": "scatterSmooth",
+      "inputs": {
+        "inputTex": "_scatterTmp"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {
+    "_scatterTmp": {
+      "width": "input",
+      "height": "input",
+      "format": "rgba8unorm"
+    }
+  }
+}
