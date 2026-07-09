@@ -15,8 +15,16 @@
       "uniform": "kernel",
       "choices": {
         "fine": 0,
-        "bold": 1
+        "bold": 1,
+        "contour": 2
       }
+    },
+    "level": {
+      "type": "float",
+      "default": 50,
+      "uniform": "level",
+      "min": 0,
+      "max": 100
     },
     "size": {
       "type": "int",
