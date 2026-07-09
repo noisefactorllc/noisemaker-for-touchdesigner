@@ -1,0 +1,70 @@
+{
+  "name": "High Pass",
+  "namespace": "filter",
+  "func": "highPass",
+  "starter": false,
+  "tags": [
+    "edges"
+  ],
+  "description": "High-pass filter isolating edge detail as a flat mid-gray field",
+  "paramAliases": {},
+  "globals": {
+    "radius": {
+      "type": "float",
+      "default": 10,
+      "uniform": "radius",
+      "min": 0.5,
+      "max": 100
+    },
+    "mono": {
+      "type": "boolean",
+      "default": false,
+      "uniform": "mono"
+    }
+  },
+  "passes": [
+    {
+      "name": "blurH",
+      "program": "hpBlurH",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "_hpBlurH"
+      }
+    },
+    {
+      "name": "blurV",
+      "program": "hpBlurV",
+      "inputs": {
+        "inputTex": "_hpBlurH"
+      },
+      "outputs": {
+        "fragColor": "_hpBlur"
+      }
+    },
+    {
+      "name": "combine",
+      "program": "hpCombine",
+      "inputs": {
+        "inputTex": "inputTex",
+        "blurTex": "_hpBlur"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {
+    "_hpBlurH": {
+      "width": "input",
+      "height": "input",
+      "format": "rgba8unorm"
+    },
+    "_hpBlur": {
+      "width": "input",
+      "height": "input",
+      "format": "rgba8unorm"
+    }
+  }
+}
