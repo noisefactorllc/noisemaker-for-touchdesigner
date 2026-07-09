@@ -1,0 +1,59 @@
+{
+  "name": "Wind",
+  "namespace": "filter",
+  "func": "wind",
+  "starter": false,
+  "tags": [
+    "distort"
+  ],
+  "description": "Directional wind-blown streaks off bright edges, wind/blast/stagger methods (Photoshop Wind)",
+  "paramAliases": {},
+  "globals": {
+    "method": {
+      "type": "int",
+      "default": 0,
+      "uniform": "method",
+      "choices": {
+        "wind": 0,
+        "blast": 1,
+        "stagger": 2
+      }
+    },
+    "direction": {
+      "type": "int",
+      "default": 0,
+      "uniform": "direction",
+      "choices": {
+        "fromLeft": 0,
+        "fromRight": 1
+      }
+    },
+    "strength": {
+      "type": "float",
+      "default": 50,
+      "uniform": "strength",
+      "min": 0,
+      "max": 100
+    },
+    "threshold": {
+      "type": "float",
+      "default": 25,
+      "uniform": "threshold",
+      "min": 0,
+      "max": 100
+    }
+  },
+  "passes": [
+    {
+      "name": "wind",
+      "program": "wind",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {}
+}
