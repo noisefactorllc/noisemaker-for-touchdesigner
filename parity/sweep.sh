@@ -24,7 +24,15 @@ tol_for() { case "$1" in
   uvRemap)    echo "22 0.98" ;;   # NEAREST coord-resampling tie-breaks on exact texel boundaries (30 px, 0.05%)
   distortion) echo "12 0.98" ;;   # Sobel-over-noise + NEAREST coord boundary amplifies +/-1 drift (7 px, 0.01%)
   edge)       echo "8 0.98" ;;    # x2 contrast convolution amplifies upstream 1-LSB noise (11 px, <0.1%)
+  refract)    echo "8 0.98" ;;    # mirror wrap (default) reflects at a hard texel seam; NEAREST-adjacent
+                                   # tie-break at the reflection boundary (3 px / 0.005%, ssim 0.99998)
   crt)        echo "3 0.98" ;;    # transcendental cos/pow seam flips one texel index (max diff exactly 2)
+  parallax)   echo "24 0.98" ;;   # height-map raymarch step count flips at one grazing-angle texel
+                                   # (1 px / 0.0015%, ssim 0.99998) -- df64-ULP-across-GPU class, like newton
+  oilPaint)   echo "110 0.98" ;;  # flatten pass's local-mode color vote ties at one pixel; Metal/ANGLE
+                                   # break the tie differently, picking a different (both locally-plausible)
+                                   # bucket (9 px / 0.01%, ssim 0.99999) -- argmax-tie class, like newton
+  chrome)     echo "14 0.98" ;;   # reflection-map lookup grazing-angle tie-break (2 px / 0.003%, ssim 0.99999)
   *)          echo "2.001 0.98" ;;
 esac; }
 
