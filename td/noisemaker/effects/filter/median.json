@@ -1,0 +1,68 @@
+{
+  "name": "Median",
+  "namespace": "filter",
+  "func": "median",
+  "starter": false,
+  "tags": [
+    "blur"
+  ],
+  "description": "Windowed median filter with Dust & Scratches threshold gate",
+  "paramAliases": {},
+  "globals": {
+    "iterations": {
+      "type": "int",
+      "default": 1,
+      "uniform": "iterations",
+      "min": 1,
+      "max": 8
+    },
+    "threshold": {
+      "type": "float",
+      "default": 0,
+      "uniform": "threshold",
+      "min": 0,
+      "max": 100
+    }
+  },
+  "passes": [
+    {
+      "name": "seed",
+      "program": "medianSeed",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "global_median_state"
+      }
+    },
+    {
+      "name": "medianPass",
+      "program": "medianPass",
+      "inputs": {
+        "inputTex": "global_median_state"
+      },
+      "outputs": {
+        "fragColor": "global_median_state"
+      },
+      "repeat": "iterations"
+    },
+    {
+      "name": "final",
+      "program": "medianFinal",
+      "inputs": {
+        "inputTex": "inputTex",
+        "medTex": "global_median_state"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {
+    "global_median_state": {
+      "width": "input",
+      "height": "input",
+      "format": "rgba16f"
+    }
+  }
+}
