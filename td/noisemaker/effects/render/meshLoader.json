@@ -6,8 +6,7 @@
   "tags": [
     "mesh",
     "geometry",
-    "3D",
-    "OBJ"
+    "3d"
   ],
   "description": "Load mesh data from OBJ files into GPU textures.",
   "paramAliases": {},
