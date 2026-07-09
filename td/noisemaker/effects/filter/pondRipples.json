@@ -1,0 +1,66 @@
+{
+  "name": "Pond Ripples",
+  "namespace": "filter",
+  "func": "pondRipples",
+  "starter": false,
+  "tags": [
+    "distort"
+  ],
+  "description": "Concentric ripple distortion around the image center (Photoshop ZigZag)",
+  "paramAliases": {},
+  "globals": {
+    "amount": {
+      "type": "float",
+      "default": 30,
+      "uniform": "amount",
+      "min": -100,
+      "max": 100,
+      "zero": 0
+    },
+    "ridges": {
+      "type": "int",
+      "default": 8,
+      "uniform": "ridges",
+      "min": 1,
+      "max": 20
+    },
+    "style": {
+      "type": "int",
+      "default": 2,
+      "uniform": "style",
+      "choices": {
+        "aroundCenter": 0,
+        "outFromCenter": 1,
+        "pondRipples": 2
+      }
+    },
+    "wrap": {
+      "type": "int",
+      "default": 0,
+      "uniform": "wrap",
+      "choices": {
+        "mirror": 0,
+        "repeat": 1,
+        "clamp": 2
+      }
+    },
+    "antialias": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "antialias"
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "pondRipples",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {}
+}
