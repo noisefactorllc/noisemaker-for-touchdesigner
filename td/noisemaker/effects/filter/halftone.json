@@ -1,0 +1,85 @@
+{
+  "name": "Halftone",
+  "namespace": "filter",
+  "func": "halftone",
+  "starter": false,
+  "tags": [
+    "color",
+    "pixel"
+  ],
+  "description": "Rotated-screen halftone reproduction: per-channel color rosettes or mono dot/line/circle screens (Photoshop Color Halftone, Halftone Pattern)",
+  "paramAliases": {},
+  "globals": {
+    "mode": {
+      "type": "int",
+      "default": 0,
+      "uniform": "mode",
+      "choices": {
+        "color": 0,
+        "mono": 1
+      }
+    },
+    "pattern": {
+      "type": "int",
+      "default": 0,
+      "uniform": "pattern",
+      "choices": {
+        "dot": 0,
+        "line": 1,
+        "circle": 2
+      }
+    },
+    "frequency": {
+      "type": "float",
+      "default": 24,
+      "uniform": "frequency",
+      "min": 4,
+      "max": 128
+    },
+    "angle": {
+      "type": "float",
+      "default": 45,
+      "uniform": "angle",
+      "min": -180,
+      "max": 180
+    },
+    "sharpness": {
+      "type": "float",
+      "default": 80,
+      "uniform": "sharpness",
+      "min": 0,
+      "max": 100
+    },
+    "inkColor": {
+      "type": "color",
+      "default": [
+        0.05,
+        0.05,
+        0.05
+      ],
+      "uniform": "inkColor"
+    },
+    "paperColor": {
+      "type": "color",
+      "default": [
+        0.98,
+        0.96,
+        0.9
+      ],
+      "uniform": "paperColor"
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "halftone",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {}
+}
