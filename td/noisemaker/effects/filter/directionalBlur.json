@@ -1,0 +1,40 @@
+{
+  "name": "Directional Blur",
+  "namespace": "filter",
+  "func": "directionalBlur",
+  "starter": false,
+  "tags": [
+    "blur"
+  ],
+  "description": "Linear motion blur along a single direction (Photoshop Motion Blur)",
+  "paramAliases": {},
+  "globals": {
+    "angle": {
+      "type": "float",
+      "default": 0,
+      "uniform": "angle",
+      "min": -180,
+      "max": 180
+    },
+    "distance": {
+      "type": "float",
+      "default": 20,
+      "uniform": "blurDistance",
+      "min": 1,
+      "max": 200
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "directionalBlur",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {}
+}
