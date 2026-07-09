@@ -1,0 +1,122 @@
+{
+  "name": "Relief",
+  "namespace": "filter",
+  "func": "relief",
+  "starter": false,
+  "tags": [
+    "blur",
+    "edges"
+  ],
+  "description": "Two-tone ink/paper relief carving: Bas Relief, Plaster, and Note Paper sketch renderings",
+  "paramAliases": {},
+  "globals": {
+    "mode": {
+      "type": "int",
+      "default": 0,
+      "uniform": "mode",
+      "choices": {
+        "basRelief": 0,
+        "plaster": 1,
+        "notePaper": 2
+      }
+    },
+    "smoothness": {
+      "type": "float",
+      "default": 30,
+      "uniform": "smoothness",
+      "min": 0,
+      "max": 100
+    },
+    "detail": {
+      "type": "float",
+      "default": 50,
+      "uniform": "detail",
+      "min": 0,
+      "max": 100
+    },
+    "lightAngle": {
+      "type": "float",
+      "default": 135,
+      "uniform": "lightAngle",
+      "min": -180,
+      "max": 180
+    },
+    "balance": {
+      "type": "float",
+      "default": 50,
+      "uniform": "balance",
+      "min": 0,
+      "max": 100
+    },
+    "graininess": {
+      "type": "float",
+      "default": 30,
+      "uniform": "graininess",
+      "min": 0,
+      "max": 100
+    },
+    "inkColor": {
+      "type": "color",
+      "default": [
+        0.1,
+        0.1,
+        0.1
+      ],
+      "uniform": "inkColor"
+    },
+    "paperColor": {
+      "type": "color",
+      "default": [
+        0.96,
+        0.94,
+        0.88
+      ],
+      "uniform": "paperColor"
+    }
+  },
+  "passes": [
+    {
+      "name": "blurH",
+      "program": "rlBlurH",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "_rlBlurH"
+      }
+    },
+    {
+      "name": "blurV",
+      "program": "rlBlurV",
+      "inputs": {
+        "inputTex": "_rlBlurH"
+      },
+      "outputs": {
+        "fragColor": "_rlBlur"
+      }
+    },
+    {
+      "name": "shade",
+      "program": "rlShade",
+      "inputs": {
+        "inputTex": "inputTex",
+        "blurTex": "_rlBlur"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {
+    "_rlBlurH": {
+      "width": "input",
+      "height": "input",
+      "format": "rgba8unorm"
+    },
+    "_rlBlur": {
+      "width": "input",
+      "height": "input",
+      "format": "rgba8unorm"
+    }
+  }
+}
