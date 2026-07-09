@@ -1,0 +1,80 @@
+{
+  "name": "Chrome",
+  "namespace": "filter",
+  "func": "chrome",
+  "starter": false,
+  "tags": [
+    "blur",
+    "edges"
+  ],
+  "description": "Liquid-metal chrome: self-distorting oscillating tone curve over a blurred-luminance height field",
+  "paramAliases": {},
+  "globals": {
+    "detail": {
+      "type": "float",
+      "default": 40,
+      "uniform": "detail",
+      "min": 0,
+      "max": 100
+    },
+    "smoothness": {
+      "type": "float",
+      "default": 40,
+      "uniform": "smoothness",
+      "min": 0,
+      "max": 100
+    },
+    "distortion": {
+      "type": "float",
+      "default": 30,
+      "uniform": "distortion",
+      "min": 0,
+      "max": 100
+    }
+  },
+  "passes": [
+    {
+      "name": "blurH",
+      "program": "chBlurH",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "_chBlurH"
+      }
+    },
+    {
+      "name": "blurV",
+      "program": "chBlurV",
+      "inputs": {
+        "inputTex": "_chBlurH"
+      },
+      "outputs": {
+        "fragColor": "_chBlur"
+      }
+    },
+    {
+      "name": "map",
+      "program": "chMap",
+      "inputs": {
+        "inputTex": "inputTex",
+        "blurTex": "_chBlur"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {
+    "_chBlurH": {
+      "width": "input",
+      "height": "input",
+      "format": "rgba8unorm"
+    },
+    "_chBlur": {
+      "width": "input",
+      "height": "input",
+      "format": "rgba8unorm"
+    }
+  }
+}
