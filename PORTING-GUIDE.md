@@ -57,7 +57,7 @@ For each `effects/<ns>/<name>/glsl/<prog>.glsl` → `td/noisemaker/shaders/effec
    `uniformLayout`. convert-shaders flags this as `UNIFORM_ARRAY` — the one **non-MRT** flagged
    program — because the Arrays-page wiring lives in `td_backend`, not in the `.frag`.
 
-Result: **227 of 249 programs** convert cleanly. The **22 flagged = 21 MRT** (below) **+ 1 std140-UBO**
+Result: **269 of 291 programs** convert cleanly. The **22 flagged = 21 MRT** (below) **+ 1 std140-UBO**
 (`remap`, step 7).
 
 ## Y-origin

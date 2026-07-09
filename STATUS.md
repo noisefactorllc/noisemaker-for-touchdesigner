@@ -1,35 +1,56 @@
 # noisemaker-td — status & parity
 
-*Last verified 2026-06-24 on Apple Silicon / Metal. The sources of truth are `parity/sweep.sh`,
-`parity/corpus_sweep.sh`, and `parity/compiler/check_*.py`.*
+*Last verified 2026-07-09 on Apple Silicon / Metal, synced through upstream Noisemaker commit
+`b7c1bc36`. The sources of truth are `parity/sweep.sh`, `parity/corpus_sweep.sh`, and
+`parity/compiler/check_*.py`.*
 
 This file holds the detailed coverage and parity numbers. For what the project is and how to use it,
 see the [README](README.md).
 
 ## Coverage
 
-**184 effect definitions** and **249 transpiled programs** across 8 namespaces (227 auto-transpiled,
+**205 effect definitions** and **291 transpiled programs** across 8 namespaces (269 auto-transpiled,
 22 hand-flagged: 21 MRT + 1 std140-UBO).
 
 | Namespace | Effects | Programs | Status |
 |---|---|---|---|
 | `synth` | 29 | auto | renders (generators, fractals, value/simplex/cell noise) |
-| `filter` | 90 | auto | renders (color ops, convolutions, warps, multi-pass, feedback) |
+| `filter` | 111 | auto | renders (color ops, convolutions, warps, multi-pass, feedback) |
 | `mixer` | 15 | auto | renders (whole namespace; `remap` via std140 UBO) |
 | `classicNoisedeck` | 20 | auto | renders (legacy generators) |
 | `points` | 10 | MRT/points (manual) | renders — agents; chaotic flows chaos-gated |
 | `render` | 11 | MRT/points (manual) | renders — agent render, 3D raymarch, cubemaps |
 | `synth3d` | 7 | MRT (manual) | renders (3D volume) |
 | `filter3d` | 2 | MRT (manual) | renders (3D volume) |
-| **total** | **184** | **249** | |
+| **total** | **205** | **291** | |
+
+`filter` grew by 21 (the b7c1bc36 sync's Photoshop-parity batch): `parallax`, `unsharpMask`,
+`highPass`, `median`, `morphology`, `directionalBlur`, `spinBlur`, `scatter`, `wind`, `pondRipples`,
+`extrude`, `halftone`, `stipple`, `oilPaint`, `watercolor`, `plasticWrap`, `relief`, `photocopy`,
+`stamp`, `chrome`, `hatch` — all auto-transpiled (no MRT/UBO flags), all at single-frame pixel parity.
+That sync also extended `lighting` (height-map input), `emboss` (angle/height + rotation-handedness
+alignment), `invert` (solarize mode), `edge` (contour tracing), and `grain` (grain types + a
+hash-coordinate cross-backend parity fix), and carried two more shader-level fixes into already-shipped
+effects: `simpleAberration` (GL2 Y-orientation) and `classicNoisedeck`'s `cellRefract`/`refract`
+(mirror wrap mode was a no-op; now reflects). All 29 are at pixel parity — see `parity/sweep.sh`'s
+`tol_for()` for the handful that needed a documented SSIM gate (`parallax`, `oilPaint`, `chrome`,
+`refract` — each a single-digit-pixel-count grazing-angle/tie-break residual, ssim ≥ 0.99998).
 
 ## Parity
 
 - **In-engine compiler:** all four compiler-parity gates are byte-exact against the reference oracle
-  over a 186-program corpus — lexer / parser / validator **186/186**, graph **185/186** (the 1 skip is
+  over a 207-program corpus — lexer / parser / validator **207/207**, graph **206/207** (the 1 skip is
   `B5oBsA`, a nonexistent effect the reference also rejects).
-  `parity/compiler/check_{lex,parse,validate,graph}.py`.
-- **2D catalog (single-frame, `parity/sweep.sh`):** ~**139 single-pass** effects at parity — byte-exact,
+  `parity/compiler/check_{lex,parse,validate,graph}.py`. (The b7c1bc36 sync's `filter/lighting` /
+  `filter/parallax` height-map-input feature — a `type:"surface"` global defaulting to
+  self-sampling the pipeline input — needed a matching expander.py fix:
+  `_map_inputs`/`_COLORMODE_SURFACE_KINDS` didn't recognize the `pipeline` surface-arg kind the
+  reference's `isTextureArg`/`TEXTURE_ARG_KINDS` (commit ad984822) introduced. Porting it also fixed
+  a latent, pre-existing graph-parity DIFF on `synth3d_cellularAutomata3d`/`synth3d_reactionDiffusion3d`
+  — `vol`/`geo` surface-arg kinds were leaking `source`/`geoSource` into `pass.uniforms` — the same
+  upstream commit's `TEXTURE_ARG_KINDS` also covers `vol`/`geo`, confirmed by A/B testing against the
+  pre-fix expander.)
+- **2D catalog (single-frame, `parity/sweep.sh`):** ~**160 single-pass** effects at parity — byte-exact,
   or SSIM-gated for cross-rasterizer discontinuities — plus multi-pass and stateful effects. Most land
   within 1/255; a few discontinuity-heavy effects are gated on structural **SSIM ≥ 0.98**.
 - **Stateful / feedback:** `cellularAutomata`, `reactionDiffusion`, `motionBlur`,
@@ -78,11 +99,17 @@ via `NM_REFERENCE_ROOT` (required; no default — point it at the upstream Noise
 containing `shaders/`, which is not included in this repo). Needs **Node 26**.
 
 ```bash
-NM_REFERENCE_ROOT=/path/to/noisemaker node tools/convert-definitions.mjs   # 184 effect JSONs
-NM_REFERENCE_ROOT=/path/to/noisemaker node tools/convert-shaders.mjs       # 249 .frag (227 auto, 22 flagged)
+NM_REFERENCE_ROOT=/path/to/noisemaker node tools/convert-definitions.mjs   # 205 effect JSONs
+NM_REFERENCE_ROOT=/path/to/noisemaker node tools/convert-shaders.mjs       # 291 .frag (269 auto, 22 flagged)
 NM_REFERENCE_ROOT=/path/to/noisemaker node tools/export-graph.mjs --file parity/programs/solid.dsl parity/out/solid.graph.json
 ```
 
 Goldens, candidate PNGs, and `.toe` files are gitignored (generated). A bare clone renders via the
 live compiler immediately; reproducing the parity *numbers* requires regenerating goldens, which needs
 the upstream engine via `NM_REFERENCE_ROOT`.
+
+Golden PNGs (`parity/export-and-render.mjs`) need `playwright` resolvable from
+`NM_REFERENCE_ROOT`'s own `node_modules` (it drives `vendor/shade-mcp`'s headless-Chromium harness
+against the upstream repo's own `demo/` viewer) — a normal `npm install` inside a full upstream
+clone provides this; it is intentionally not a noisemaker-td dependency (this repo's own tooling has
+zero npm dependencies by design — see `tools/package.json`).
