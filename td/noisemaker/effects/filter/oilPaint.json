@@ -1,0 +1,94 @@
+{
+  "name": "Oil Paint",
+  "namespace": "filter",
+  "func": "oilPaint",
+  "starter": false,
+  "tags": [
+    "blur",
+    "edges"
+  ],
+  "description": "Painterly oil-paint effect covering Facet, Paint Daubs, Dry Brush, Fresco, Palette Knife, and Sponge modes over a sector-Kuwahara flattening core",
+  "paramAliases": {},
+  "globals": {
+    "mode": {
+      "type": "int",
+      "default": 1,
+      "define": "MODE",
+      "choices": {
+        "facet": 0,
+        "daubs": 1,
+        "dryBrush": 2,
+        "fresco": 3,
+        "knife": 4,
+        "sponge": 5
+      }
+    },
+    "size": {
+      "type": "float",
+      "default": 6,
+      "uniform": "size",
+      "min": 1,
+      "max": 12
+    },
+    "detail": {
+      "type": "float",
+      "default": 50,
+      "uniform": "detail",
+      "min": 0,
+      "max": 100
+    },
+    "texture": {
+      "type": "float",
+      "default": 20,
+      "uniform": "textureAmount",
+      "min": 0,
+      "max": 100
+    },
+    "seed": {
+      "type": "int",
+      "default": 1,
+      "uniform": "seed",
+      "min": 1,
+      "max": 100
+    }
+  },
+  "passes": [
+    {
+      "name": "flatten",
+      "program": "oilFlatten",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "uniforms": {
+        "size": "size"
+      },
+      "outputs": {
+        "fragColor": "_paintTmp"
+      }
+    },
+    {
+      "name": "post",
+      "program": "oilPost",
+      "inputs": {
+        "inputTex": "inputTex",
+        "flatTex": "_paintTmp"
+      },
+      "uniforms": {
+        "size": "size",
+        "detail": "detail",
+        "textureAmount": "textureAmount",
+        "seed": "seed"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {
+    "_paintTmp": {
+      "width": "input",
+      "height": "input",
+      "format": "rgba8unorm"
+    }
+  }
+}
