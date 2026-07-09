@@ -1,0 +1,65 @@
+{
+  "name": "Extrude",
+  "namespace": "filter",
+  "func": "extrude",
+  "starter": false,
+  "tags": [
+    "distort",
+    "geometric"
+  ],
+  "description": "Break the image into 3D blocks or pyramids projecting toward the viewer (Photoshop Extrude)",
+  "paramAliases": {},
+  "globals": {
+    "type": {
+      "type": "int",
+      "default": 0,
+      "uniform": "extrudeType",
+      "choices": {
+        "blocks": 0,
+        "pyramids": 1
+      }
+    },
+    "size": {
+      "type": "float",
+      "default": 24,
+      "uniform": "size",
+      "min": 4,
+      "max": 128
+    },
+    "depth": {
+      "type": "float",
+      "default": 30,
+      "uniform": "depth",
+      "min": 0,
+      "max": 100,
+      "zero": 0
+    },
+    "depthSource": {
+      "type": "int",
+      "default": 0,
+      "uniform": "depthSource",
+      "choices": {
+        "luminance": 0,
+        "random": 1
+      }
+    },
+    "solidFront": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "solidFront"
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "extrude",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {}
+}
