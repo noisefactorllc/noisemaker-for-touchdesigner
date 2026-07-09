@@ -1,0 +1,98 @@
+{
+  "name": "Hatch",
+  "namespace": "filter",
+  "func": "hatch",
+  "starter": false,
+  "tags": [
+    "noise",
+    "edges"
+  ],
+  "description": "Hand-drawn sketch engine covering Photoshop's Graphic Pen, Charcoal, Chalk & Charcoal, Conte Crayon, Crosshatch, and Colored Pencil filters",
+  "paramAliases": {},
+  "globals": {
+    "mode": {
+      "type": "int",
+      "default": 0,
+      "define": "MODE",
+      "choices": {
+        "pen": 0,
+        "charcoal": 1,
+        "chalkCharcoal": 2,
+        "conte": 3,
+        "crosshatch": 4,
+        "coloredPencil": 5
+      }
+    },
+    "strokeLength": {
+      "type": "float",
+      "default": 50,
+      "uniform": "strokeLength",
+      "min": 0,
+      "max": 100
+    },
+    "direction": {
+      "type": "int",
+      "default": 0,
+      "uniform": "direction",
+      "choices": {
+        "rightDiag": 0,
+        "horizontal": 1,
+        "leftDiag": 2,
+        "vertical": 3
+      }
+    },
+    "balance": {
+      "type": "float",
+      "default": 50,
+      "uniform": "balance",
+      "min": 0,
+      "max": 100
+    },
+    "pressure": {
+      "type": "float",
+      "default": 50,
+      "uniform": "pressure",
+      "min": 0,
+      "max": 100
+    },
+    "inkColor": {
+      "type": "color",
+      "default": [
+        0.1,
+        0.1,
+        0.1
+      ],
+      "uniform": "inkColor"
+    },
+    "paperColor": {
+      "type": "color",
+      "default": [
+        0.96,
+        0.94,
+        0.88
+      ],
+      "uniform": "paperColor"
+    }
+  },
+  "passes": [
+    {
+      "name": "hatch",
+      "program": "hatch",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "uniforms": {
+        "strokeLength": "strokeLength",
+        "direction": "direction",
+        "balance": "balance",
+        "pressure": "pressure",
+        "inkColor": "inkColor",
+        "paperColor": "paperColor"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {}
+}
