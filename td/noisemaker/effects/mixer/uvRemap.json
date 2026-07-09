@@ -5,7 +5,7 @@
   "starter": false,
   "tags": [
     "blend",
-    "distortion"
+    "distort"
   ],
   "description": "Remap UVs of one input using color channels of another",
   "paramAliases": {},
