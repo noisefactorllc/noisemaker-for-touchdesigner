@@ -1,11 +1,13 @@
-// NM_INPUTS: inputTex=0
+// NM_INPUTS: inputTex=0 heightMap=1
 // NM_OUTPUT: fragColor
 #define inputTex sTD2DInputs[0]
+#define heightMap sTD2DInputs[1]
 /*
  * 3D lighting effect for 2D textures
  * Calculates surface normals from luminosity using Sobel convolution
  * and applies diffuse, specular, and ambient lighting
  */
+
 
 
 
@@ -29,6 +31,12 @@ out vec4 fragColor;
 // Convert RGB to luminosity
 float getLuminosity(vec3 color) {
     return dot(color, vec3(0.299, 0.587, 0.114));
+}
+
+float getHeight(vec2 uv) {
+    vec2 mapSize = vec2(textureSize(heightMap, 0));
+    vec2 localUV = (uv * fullResolution - tileOffset) / mapSize;
+    return getLuminosity(texture(heightMap, localUV).rgb);
 }
 
 // Calculate surface normal from height map using Sobel convolution
@@ -63,8 +71,7 @@ vec3 calculateNormal(vec2 uv, vec2 texelSize) {
     float dy = 0.0;
     
     for (int i = 0; i < 9; i++) {
-        vec3 texSample = texture(inputTex, ((uv + offsets[i]) * fullResolution - tileOffset) / vec2(textureSize(inputTex, 0))).rgb;
-        float height = getLuminosity(texSample);
+        float height = getHeight(uv + offsets[i]);
         dx += height * sobel_x[i];
         dy += height * sobel_y[i];
     }

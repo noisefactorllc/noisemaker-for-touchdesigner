@@ -32,7 +32,7 @@ _PARTICLE_TEXES = frozenset([
     'global_xyz', 'global_vel', 'global_rgba', 'global_points_trail', 'global_life_data',
 ])
 _COLORMODE_SURFACE_KINDS = frozenset([
-    'temp', 'output', 'source', 'feedback', 'xyz', 'vel', 'rgba',
+    'temp', 'output', 'source', 'feedback', 'vol', 'geo', 'xyz', 'vel', 'rgba', 'pipeline',
 ])
 
 
@@ -82,12 +82,21 @@ def _js_number_string(v):
 
 def _arg_to_uniform(arg):
     """Native arg value -> uniform value (reference/03 ArgToUniform). Mirrors the reference
-    expander's `arg.value ?? arg`: only the COLORMODE surface kinds (temp/output/source/feedback/
-    xyz/vel/rgba — texture inputs handled via pass.inputs) are dropped; vol/geo (and mesh/pipeline/
-    state) surface-refs ARE uniforms and pass through as the {kind,name} object (e.g. a 3D
-    generator's `source`/`geoSource` globals → `{kind:'vol',name:'vol0'}`). Both call sites already
-    pre-skip the colormode kinds, so the guard here is belt-and-suspenders. Oscillator/object dicts
-    and number/bool/string/array pass through unchanged."""
+    expander's `arg.value ?? arg`: the texture-arg surface kinds (temp/output/source/feedback/
+    vol/geo/xyz/vel/rgba/pipeline — texture inputs handled via pass.inputs, not pass.uniforms) are
+    dropped; mesh/state surface-refs are the only ones that ARE uniforms and pass through as the
+    {kind,name} object unchanged. `vol`/`geo` (e.g. a 3D generator's `source`/`geoSource` globals →
+    `{kind:'vol',name:'vol0'}`) and `pipeline` were added to this drop-set together by reference
+    commit ad984822 (`isTextureArg`/TEXTURE_ARG_KINDS, superseding the older per-call-site
+    temp/output/source/feedback/xyz/vel/rgba OR-chains) — confirmed needed here too:
+    parity/compiler/check_graph.py against synth3d_cellularAutomata3d/synth3d_reactionDiffusion3d
+    DIFFed with `source`/`geoSource` leaking into `pass.uniforms` before vol/geo were added.
+    `pipeline` covers a surface global whose `default` isn't itself a resolvable surface literal
+    (e.g. filter/lighting's/filter/parallax's `heightMap: {type:'surface', default:'inputTex'}` —
+    validator._resolve_surface_arg synthesizes `{kind:'pipeline', name:'inputTex'}` when the arg is
+    omitted); handled instead in _map_inputs, same as any other texture-input surface kind. Both
+    call sites already pre-skip these kinds, so the guard here is belt-and-suspenders.
+    Oscillator/object dicts and number/bool/string/array pass through unchanged."""
     if arg is None:
         return None
     if _is_surface(arg) and _is_colormode_surface_kind(arg['kind']):
@@ -746,6 +755,14 @@ class _Expander:
                     if arg['kind'] == "temp":
                         key = "node_" + str(arg['index']) + "_out"
                         p['inputs'][uniform_name] = self._texture_map.get(key)
+                    elif arg['kind'] == "pipeline" and arg['name'] in ("inputTex", "inputColor"):
+                        # A surface global whose default isn't a resolvable surface literal (e.g.
+                        # heightMap: {type:'surface', default:'inputTex'} on filter/lighting and
+                        # filter/parallax) synthesizes {kind:'pipeline', name:'inputTex'} when the
+                        # DSL call omits it (validator._resolve_surface_arg). Self-sample the
+                        # chain's current texture, same as the unspecified-arg default path below
+                        # (reference commit ad984822 expander.js: `currentInput || arg.name`).
+                        p['inputs'][uniform_name] = cur if cur is not None else arg['name']
                     else:
                         p['inputs'][uniform_name] = "none" if arg['name'] == "none" else "global_" + arg['name']
                 elif isinstance(arg, str):
