@@ -1,0 +1,80 @@
+{
+  "name": "Unsharp Mask",
+  "namespace": "filter",
+  "func": "unsharpMask",
+  "starter": false,
+  "tags": [
+    "edges"
+  ],
+  "description": "Classic unsharp mask sharpening with radius and threshold",
+  "paramAliases": {},
+  "globals": {
+    "amount": {
+      "type": "float",
+      "default": 60,
+      "uniform": "amount",
+      "min": 0,
+      "max": 500,
+      "zero": 0
+    },
+    "radius": {
+      "type": "float",
+      "default": 4,
+      "uniform": "radius",
+      "min": 0.5,
+      "max": 50
+    },
+    "threshold": {
+      "type": "float",
+      "default": 0,
+      "uniform": "threshold",
+      "min": 0,
+      "max": 100
+    }
+  },
+  "passes": [
+    {
+      "name": "blurH",
+      "program": "usmBlurH",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "_usmBlurH"
+      }
+    },
+    {
+      "name": "blurV",
+      "program": "usmBlurV",
+      "inputs": {
+        "inputTex": "_usmBlurH"
+      },
+      "outputs": {
+        "fragColor": "_usmBlur"
+      }
+    },
+    {
+      "name": "combine",
+      "program": "usmCombine",
+      "inputs": {
+        "inputTex": "inputTex",
+        "blurTex": "_usmBlur"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {
+    "_usmBlurH": {
+      "width": "input",
+      "height": "input",
+      "format": "rgba8unorm"
+    },
+    "_usmBlur": {
+      "width": "input",
+      "height": "input",
+      "format": "rgba8unorm"
+    }
+  }
+}
