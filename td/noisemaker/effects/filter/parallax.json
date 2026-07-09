@@ -1,0 +1,48 @@
+{
+  "name": "Parallax",
+  "namespace": "filter",
+  "func": "parallax",
+  "starter": false,
+  "tags": [
+    "distort"
+  ],
+  "description": "Pseudo-3D perspective shift from a height map",
+  "paramAliases": {},
+  "globals": {
+    "heightMap": {
+      "type": "surface",
+      "default": "inputTex"
+    },
+    "direction": {
+      "type": "vec3",
+      "default": [
+        0.5,
+        0.5,
+        1
+      ],
+      "uniform": "direction"
+    },
+    "pivot": {
+      "type": "float",
+      "default": 0,
+      "uniform": "pivot",
+      "min": 0,
+      "max": 1
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "parallax",
+      "inputs": {
+        "inputTex": "inputTex",
+        "heightMap": "heightMap"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {},
+  "defaultProgram": "search filter, synth\n\nnoise(ridges: true)\n.parallax()\n.write(o0)"
+}
