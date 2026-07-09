@@ -9,6 +9,42 @@
   "description": "Film grain overlay",
   "paramAliases": {},
   "globals": {
+    "grainType": {
+      "type": "int",
+      "default": 0,
+      "define": "GRAIN_TYPE",
+      "choices": {
+        "regular": 0,
+        "soft": 1,
+        "sprinkles": 2,
+        "clumped": 3,
+        "contrasty": 4,
+        "enlarged": 5,
+        "stippled": 6,
+        "horizontal": 7,
+        "vertical": 8,
+        "speckle": 9
+      }
+    },
+    "intensity": {
+      "type": "float",
+      "default": 40,
+      "uniform": "intensity",
+      "min": 0,
+      "max": 100
+    },
+    "contrast": {
+      "type": "float",
+      "default": 50,
+      "uniform": "contrast",
+      "min": 0,
+      "max": 100
+    },
+    "mono": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "mono"
+    },
     "alpha": {
       "type": "float",
       "default": 0.25,
@@ -31,7 +67,10 @@
       },
       "uniforms": {
         "alpha": "alpha",
-        "pause": "pause"
+        "pause": "pause",
+        "intensity": "intensity",
+        "contrast": "contrast",
+        "mono": "mono"
       },
       "outputs": {
         "fragColor": "outputTex"
