@@ -1,0 +1,67 @@
+{
+  "name": "Morphology",
+  "namespace": "filter",
+  "func": "morphology",
+  "starter": false,
+  "tags": [
+    "blur"
+  ],
+  "description": "Grayscale morphology dilate/erode (Photoshop Maximum/Minimum)",
+  "paramAliases": {},
+  "globals": {
+    "mode": {
+      "type": "int",
+      "default": 0,
+      "uniform": "mode",
+      "choices": {
+        "dilate": 0,
+        "erode": 1
+      }
+    },
+    "radius": {
+      "type": "float",
+      "default": 4,
+      "uniform": "radius",
+      "min": 1,
+      "max": 32
+    },
+    "shape": {
+      "type": "int",
+      "default": 0,
+      "uniform": "shape",
+      "choices": {
+        "square": 0,
+        "round": 1
+      }
+    }
+  },
+  "passes": [
+    {
+      "name": "morphA",
+      "program": "morphA",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "_morphTmp"
+      }
+    },
+    {
+      "name": "morphB",
+      "program": "morphB",
+      "inputs": {
+        "inputTex": "_morphTmp"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {
+    "_morphTmp": {
+      "width": "input",
+      "height": "input",
+      "format": "rgba8unorm"
+    }
+  }
+}
