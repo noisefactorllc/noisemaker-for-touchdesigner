@@ -1,0 +1,67 @@
+{
+  "name": "Lens Flare",
+  "namespace": "filter",
+  "func": "lensFlare",
+  "starter": false,
+  "tags": [
+    "lens"
+  ],
+  "description": "Additive lens flare with ghost chain, halo, and four lens types (Photoshop Lens Flare)",
+  "paramAliases": {},
+  "globals": {
+    "brightness": {
+      "type": "float",
+      "default": 100,
+      "uniform": "brightness",
+      "min": 10,
+      "max": 300
+    },
+    "centerX": {
+      "type": "float",
+      "default": 0.35,
+      "uniform": "centerX",
+      "min": 0,
+      "max": 1
+    },
+    "centerY": {
+      "type": "float",
+      "default": 0.35,
+      "uniform": "centerY",
+      "min": 0,
+      "max": 1
+    },
+    "lensType": {
+      "type": "int",
+      "default": 0,
+      "uniform": "lensType",
+      "choices": {
+        "zoom50_300": 0,
+        "prime35": 1,
+        "prime105": 2,
+        "moviePrime": 3
+      }
+    },
+    "tint": {
+      "type": "color",
+      "default": [
+        1,
+        0.95,
+        0.85
+      ],
+      "uniform": "tint"
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "lensFlare",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {}
+}
