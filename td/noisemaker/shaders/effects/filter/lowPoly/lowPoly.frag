@@ -19,6 +19,8 @@ uniform vec3 edgeColor;
 uniform float speed;
 uniform float time;
 uniform float alpha;
+uniform float borderWidth;
+uniform float lightIntensity;
 
 out vec4 fragColor;
 
@@ -125,6 +127,31 @@ void nm_main() {
         float raw = clamp(selectedDist * n, 0.0, 1.0);
         float distField = pow(raw, mix(0.5, 3.0, edgeStrength));
         result = cellColor.rgb * distField;
+    }
+
+    // Thick cell borders (Stained Glass "leading"): a border band of edgeColor
+    // along cell boundaries, drawn IN ADDITION to whatever mode already produced
+    // above. Reuses the same F2-F1 (secondDist - minDist) cell-distance metric
+    // the "edges" mode uses; width is a percentage of the nominal cell radius
+    // (0.5 / n). borderWidth == 0 skips this block entirely, so it is an exact
+    // byte-for-byte no-op.
+    if (borderWidth > 0.0) {
+        float cellRadius = 0.5 / n;
+        float borderHalfWidth = (borderWidth / 100.0) * cellRadius;
+        float distToEdge = (secondDist - minDist) * 0.5;
+        float borderMask = 1.0 - smoothstep(0.0, borderHalfWidth, distToEdge);
+        result = mix(result, edgeColor, borderMask);
+    }
+
+    // Radial light from the image center (Photoshop Stained Glass "Light
+    // Intensity"). Reuses auv/aspect from the grid setup above so the light is
+    // centered on the whole image (not a tile). lightIntensity == 0 skips this
+    // block, leaving result untouched: exact no-op.
+    if (lightIntensity > 0.0) {
+        vec2 lightCenter = vec2(aspect * 0.5, 0.5);
+        float centerDist = distance(auv, lightCenter);
+        float lightFalloff = max(0.0, 1.0 - centerDist * 1.4);
+        result *= 1.0 + (lightIntensity / 100.0) * lightFalloff;
     }
 
     // Alpha blend with original
