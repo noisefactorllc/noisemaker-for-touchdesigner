@@ -46,7 +46,7 @@ no internet, no Node.js, no separate engine to install.
 2. One time only: create a **Derivative account** and **activate the license through the GUI**. A
    fresh install stops at the activation modal until you do.
 
-That is everything needed to render. The effect data (205 JSON definitions) and shaders (291
+That is everything needed to render. The effect data (210 JSON definitions) and shaders (297
 translated `.frag` files) are **committed**, and the runtime imports only Python's standard library
 and TouchDesigner's built-in `td` module. (Node and a reference-engine checkout are needed *only* to
 regenerate assets or run the parity tests — see [STATUS.md](STATUS.md).)

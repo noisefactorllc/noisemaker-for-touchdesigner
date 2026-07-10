@@ -1,7 +1,7 @@
 # noisemaker-td — status & parity
 
-*Last verified 2026-07-09 on Apple Silicon / Metal, synced through upstream Noisemaker commit
-`b7c1bc36`. The sources of truth are `parity/sweep.sh`, `parity/corpus_sweep.sh`, and
+*Last verified 2026-07-10 on Apple Silicon / Metal, synced through upstream Noisemaker commit
+`36e7f3f5`. The sources of truth are `parity/sweep.sh`, `parity/corpus_sweep.sh`, and
 `parity/compiler/check_*.py`.*
 
 This file holds the detailed coverage and parity numbers. For what the project is and how to use it,
@@ -9,20 +9,20 @@ see the [README](README.md).
 
 ## Coverage
 
-**205 effect definitions** and **291 transpiled programs** across 8 namespaces (269 auto-transpiled,
+**210 effect definitions** and **297 transpiled programs** across 8 namespaces (275 auto-transpiled,
 22 hand-flagged: 21 MRT + 1 std140-UBO).
 
 | Namespace | Effects | Programs | Status |
 |---|---|---|---|
 | `synth` | 29 | auto | renders (generators, fractals, value/simplex/cell noise) |
-| `filter` | 111 | auto | renders (color ops, convolutions, warps, multi-pass, feedback) |
+| `filter` | 116 | auto | renders (color ops, convolutions, warps, multi-pass, feedback) |
 | `mixer` | 15 | auto | renders (whole namespace; `remap` via std140 UBO) |
 | `classicNoisedeck` | 20 | auto | renders (legacy generators) |
 | `points` | 10 | MRT/points (manual) | renders — agents; chaotic flows chaos-gated |
 | `render` | 11 | MRT/points (manual) | renders — agent render, 3D raymarch, cubemaps |
 | `synth3d` | 7 | MRT (manual) | renders (3D volume) |
 | `filter3d` | 2 | MRT (manual) | renders (3D volume) |
-| **total** | **205** | **291** | |
+| **total** | **210** | **297** | |
 
 `filter` grew by 21 (the b7c1bc36 sync's Photoshop-parity batch): `parallax`, `unsharpMask`,
 `highPass`, `median`, `morphology`, `directionalBlur`, `spinBlur`, `scatter`, `wind`, `pondRipples`,
@@ -36,10 +36,27 @@ effects: `simpleAberration` (GL2 Y-orientation) and `classicNoisedeck`'s `cellRe
 `tol_for()` for the handful that needed a documented SSIM gate (`parallax`, `oilPaint`, `chrome`,
 `refract` — each a single-digit-pixel-count grazing-angle/tie-break residual, ssim ≥ 0.99998).
 
+The b7c1bc36..36e7f3f5 sync then added 5 more (`strokes`, `craquelure`, `mosaicTiles`, `patchwork`,
+`lensFlare`) and extended `lowPoly` (stained-glass `borderWidth`/`lightIntensity`, both exact
+0=off no-ops) — all auto-transpiled, all at default-tolerance pixel parity with **no new SSIM gates**
+(max-abs-diff ≤ 2/255, ssim ≥ 0.99998 across all 6). Two of the five (`craquelure`, `mosaicTiles`)
+share a bevel-polarity idiom worth noting for future ports: a carved groove/dip must feed
+`reliefShade` a **negated** height (`hC = -k`, not `+k`) or the bevel lights the wrong wall, and
+`reliefShade`'s flat-gradient baseline is `0.6` for any light angle (not the naively-assumed `0.5`) —
+`craquelure` additionally gates its bevel multiplier by a `wallMask` (the crack mask's gradient
+magnitude) since its border wobble doesn't saturate to a hard flat plateau the way `mosaicTiles`'
+grout mask does. `lensFlare` separately fixed four ghost helpers calling `smoothstep(edge0, edge1, x)`
+with `edge0 > edge1` (implementation-defined per the GLSL spec) — normalized to
+`1 - smoothstep(edge1, edge0, x)`. `strokes`' WGSL-only `textureSampleLevel` early-exit fix (WGSL
+can't `break` out of a per-pixel-bounded loop before an unconditional `textureSample` the way GLSL
+can) has no GLSL-side counterpart — the reference GLSL twin already used a plain `break`. None of
+this round's changes needed an expander.py/validator.py fix (no new surface-arg kinds, MRT, or
+compute passes — unlike b7c1bc36's `filter/lighting` height-map-input feature, below).
+
 ## Parity
 
 - **In-engine compiler:** all four compiler-parity gates are byte-exact against the reference oracle
-  over a 207-program corpus — lexer / parser / validator **207/207**, graph **206/207** (the 1 skip is
+  over a 212-program corpus — lexer / parser / validator **212/212**, graph **211/212** (the 1 skip is
   `B5oBsA`, a nonexistent effect the reference also rejects).
   `parity/compiler/check_{lex,parse,validate,graph}.py`. (The b7c1bc36 sync's `filter/lighting` /
   `filter/parallax` height-map-input feature — a `type:"surface"` global defaulting to
@@ -49,8 +66,9 @@ effects: `simpleAberration` (GL2 Y-orientation) and `classicNoisedeck`'s `cellRe
   a latent, pre-existing graph-parity DIFF on `synth3d_cellularAutomata3d`/`synth3d_reactionDiffusion3d`
   — `vol`/`geo` surface-arg kinds were leaking `source`/`geoSource` into `pass.uniforms` — the same
   upstream commit's `TEXTURE_ARG_KINDS` also covers `vol`/`geo`, confirmed by A/B testing against the
-  pre-fix expander.)
-- **2D catalog (single-frame, `parity/sweep.sh`):** ~**160 single-pass** effects at parity — byte-exact,
+  pre-fix expander. The following 36e7f3f5 sync's 5 filters + 1 extension needed no compiler-side
+  change — all plain float/int/color globals, no new surface-arg kinds.)
+- **2D catalog (single-frame, `parity/sweep.sh`):** ~**165 single-pass** effects at parity — byte-exact,
   or SSIM-gated for cross-rasterizer discontinuities — plus multi-pass and stateful effects. Most land
   within 1/255; a few discontinuity-heavy effects are gated on structural **SSIM ≥ 0.98**.
 - **Stateful / feedback:** `cellularAutomata`, `reactionDiffusion`, `motionBlur`,
@@ -99,8 +117,8 @@ via `NM_REFERENCE_ROOT` (required; no default — point it at the upstream Noise
 containing `shaders/`, which is not included in this repo). Needs **Node 26**.
 
 ```bash
-NM_REFERENCE_ROOT=/path/to/noisemaker node tools/convert-definitions.mjs   # 205 effect JSONs
-NM_REFERENCE_ROOT=/path/to/noisemaker node tools/convert-shaders.mjs       # 291 .frag (269 auto, 22 flagged)
+NM_REFERENCE_ROOT=/path/to/noisemaker node tools/convert-definitions.mjs   # 210 effect JSONs
+NM_REFERENCE_ROOT=/path/to/noisemaker node tools/convert-shaders.mjs       # 297 .frag (275 auto, 22 flagged)
 NM_REFERENCE_ROOT=/path/to/noisemaker node tools/export-graph.mjs --file parity/programs/solid.dsl parity/out/solid.graph.json
 ```
 

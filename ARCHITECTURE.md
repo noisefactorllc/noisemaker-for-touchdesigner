@@ -18,7 +18,7 @@ engine renders it" is the normalized **Render Graph JSON**
   Node tool `tools/export-graph.mjs`. Zero parity risk: it is literally the reference.
 - **Live / in-engine** — the TouchDesigner-Python DSL frontend (`td/noisemaker/compiler/`), a
   complete `lex → parse → validate → expand → resources` port of the Polymorphic DSL compiler that
-  emits byte-identical normalized JSON (graph-parity-clean **206/207** vs the `export-graph.mjs`
+  emits byte-identical normalized JSON (graph-parity-clean **211/212** vs the `export-graph.mjs`
   oracle) and is wired into `NMRenderer.set_dsl`.
 
 Both feed **one consumer**: the TouchDesigner network builder.
@@ -57,7 +57,7 @@ raster convention as the reference's WebGL2 backend.** Consequences:
 1. **Source of truth for the TD port is the upstream engine's `shaders/effects/<ns>/<name>/glsl/*.glsl`**
    (the reference's shipping WebGL2 shaders, under `NM_REFERENCE_ROOT`), cross-checked against WGSL only when a
    GLSL file is absent. These are already parity-tested against WGSL by the reference.
-2. The per-effect transform is **mechanical**, so most of the 205 effects are
+2. The per-effect transform is **mechanical**, so most of the 210 effects are
    **auto-transpiled** by `tools/convert-shaders.mjs` rather than hand-ported. The
    transform (see `PORTING-GUIDE.md`):
    - strip the `#version 300 es` / `precision` header (TD prepends its own `#version`);
@@ -81,7 +81,7 @@ Y-flip** (unlike the HLSL port, which needed a flip at `NMBlit`). Because TD 202
 on a Vulkan/MoltenVK backend, this is **verified empirically at bring-up** (Task 2.3:
 render a `vUV.t` gradient and a real `gradient` effect, compare to the golden). The
 transpiler routes all coordinate reads through `nm_FragCoord`/`nm_uv`, so if a flip is
-needed it is a **one-line change in one helper** (`NM_FLIP_Y`), not a 205-shader edit.
+needed it is a **one-line change in one helper** (`NM_FLIP_Y`), not a 210-shader edit.
 
 ## Parity strategy
 
