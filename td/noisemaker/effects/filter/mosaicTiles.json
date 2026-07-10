@@ -1,0 +1,90 @@
+{
+  "name": "Mosaic Tiles",
+  "namespace": "filter",
+  "func": "mosaicTiles",
+  "starter": false,
+  "tags": [
+    "pixel",
+    "noise"
+  ],
+  "description": "Wavy grouted ceramic tiles with beveled relief, or squares randomly offset with gap fill (Photoshop Mosaic Tiles, Tiles)",
+  "paramAliases": {},
+  "globals": {
+    "mode": {
+      "type": "int",
+      "default": 0,
+      "uniform": "mode",
+      "choices": {
+        "mosaic": 0,
+        "shifted": 1
+      }
+    },
+    "tileSize": {
+      "type": "float",
+      "default": 32,
+      "uniform": "tileSize",
+      "min": 4,
+      "max": 128
+    },
+    "groutWidth": {
+      "type": "float",
+      "default": 12,
+      "uniform": "groutWidth",
+      "min": 0,
+      "max": 100
+    },
+    "relief": {
+      "type": "float",
+      "default": 40,
+      "uniform": "relief",
+      "min": 0,
+      "max": 100
+    },
+    "maxOffset": {
+      "type": "float",
+      "default": 25,
+      "uniform": "maxOffset",
+      "min": 0,
+      "max": 100
+    },
+    "gapFill": {
+      "type": "int",
+      "default": 0,
+      "uniform": "gapFill",
+      "choices": {
+        "background": 0,
+        "inverse": 1,
+        "unaltered": 2
+      }
+    },
+    "backgroundColor": {
+      "type": "color",
+      "default": [
+        0.1,
+        0.1,
+        0.1
+      ],
+      "uniform": "backgroundColor"
+    },
+    "seed": {
+      "type": "int",
+      "default": 1,
+      "uniform": "seed",
+      "min": 1,
+      "max": 100
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "mosaicTiles",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {}
+}
