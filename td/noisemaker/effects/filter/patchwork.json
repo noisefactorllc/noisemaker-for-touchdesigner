@@ -1,0 +1,48 @@
+{
+  "name": "Patchwork",
+  "namespace": "filter",
+  "func": "patchwork",
+  "starter": false,
+  "tags": [
+    "pixel",
+    "edges"
+  ],
+  "description": "Needlepoint grid of solid-color squares raised by luminance with lit bevel edges (Photoshop Patchwork)",
+  "paramAliases": {},
+  "globals": {
+    "squareSize": {
+      "type": "float",
+      "default": 16,
+      "uniform": "squareSize",
+      "min": 4,
+      "max": 64
+    },
+    "relief": {
+      "type": "float",
+      "default": 50,
+      "uniform": "relief",
+      "min": 0,
+      "max": 100
+    },
+    "lightAngle": {
+      "type": "float",
+      "default": 135,
+      "uniform": "lightAngle",
+      "min": -180,
+      "max": 180
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "patchwork",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {}
+}
