@@ -5,9 +5,10 @@
   "starter": false,
   "tags": [
     "blur",
-    "edges"
+    "edges",
+    "artist"
   ],
-  "description": "Directional brush-stroke smear engine covering Photoshop's Angled Strokes, Sprayed Strokes, Dark Strokes, Sumi-e, and Smudge Stick filters",
+  "description": "Directional brush-mark engine with angled, sprayed, dark, sumi-e, and smudge modes",
   "paramAliases": {},
   "globals": {
     "mode": {
