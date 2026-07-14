@@ -1,16 +1,23 @@
 # noisemaker-td — status & parity
 
-*Last verified 2026-07-10 on Apple Silicon / Metal, synced through upstream Noisemaker commit
-`36e7f3f5`. The sources of truth are `parity/sweep.sh`, `parity/corpus_sweep.sh`, and
-`parity/compiler/check_*.py`.*
+*Last verified 2026-07-14 on Apple Silicon / Metal. Re-crystallized (full re-verification, not an
+incremental sync) against upstream Noisemaker **content** frozen at commit `75507112`. **The SHA is
+UNSTABLE** — upstream rebases/amends the artistic-filter batch in place, so this port pins by
+reference CONTENT (tree-diffed, per-effect+mode parity-proven), never by history. The sources of
+truth are `parity/sweep.sh`, `parity/accumulate.sh`, `parity/cubemap.sh`, `parity/compiler/check_*.py`,
+and the machine-readable per-(effect,mode) ledger `parity/ledger.tsv`.*
 
 This file holds the detailed coverage and parity numbers. For what the project is and how to use it,
 see the [README](README.md).
 
 ## Coverage
 
-**210 effect definitions** and **297 transpiled programs** across 8 namespaces (275 auto-transpiled,
-22 hand-flagged: 21 MRT + 1 std140-UBO).
+**210 effect definitions** and **295 transpiled programs** across 8 namespaces (273 auto-transpiled,
+22 hand-flagged: 21 MRT + 1 std140-UBO). Two structural drifts landed in this crystallization beyond
+the tracked artistic-filter batch: `filter/median` collapsed from a 3-pass `seed`/`pass`/`final`
+chain to a **single exact-quickselect pass** (−2 programs), and `render/renderCubemap3D` was renamed
+`render/renderCubemap3d` to match the reference's lowercase-`3d` convention (a directory/func rename,
+net 0 programs).
 
 | Namespace | Effects | Programs | Status |
 |---|---|---|---|
@@ -22,42 +29,67 @@ see the [README](README.md).
 | `render` | 11 | MRT/points (manual) | renders — agent render, 3D raymarch, cubemaps |
 | `synth3d` | 7 | MRT (manual) | renders (3D volume) |
 | `filter3d` | 2 | MRT (manual) | renders (3D volume) |
-| **total** | **210** | **297** | |
+| **total** | **210** | **295** | |
 
-`filter` grew by 21 (the b7c1bc36 sync's Photoshop-parity batch): `parallax`, `unsharpMask`,
-`highPass`, `median`, `morphology`, `directionalBlur`, `spinBlur`, `scatter`, `wind`, `pondRipples`,
-`extrude`, `halftone`, `stipple`, `oilPaint`, `watercolor`, `plasticWrap`, `relief`, `photocopy`,
-`stamp`, `chrome`, `hatch` — all auto-transpiled (no MRT/UBO flags), all at single-frame pixel parity.
-That sync also extended `lighting` (height-map input), `emboss` (angle/height + rotation-handedness
-alignment), `invert` (solarize mode), `edge` (contour tracing), and `grain` (grain types + a
-hash-coordinate cross-backend parity fix), and carried two more shader-level fixes into already-shipped
-effects: `simpleAberration` (GL2 Y-orientation) and `classicNoisedeck`'s `cellRefract`/`refract`
-(mirror wrap mode was a no-op; now reflects). All 29 are at pixel parity — see `parity/sweep.sh`'s
-`tol_for()` for the handful that needed a documented SSIM gate (`parallax`, `oilPaint`, `chrome`,
-`refract` — each a single-digit-pixel-count grazing-angle/tie-break residual, ssim ≥ 0.99998).
+### Crystallization (2026-07-14) — re-verified against frozen reference content `75507112`
 
-The b7c1bc36..36e7f3f5 sync then added 5 more (`strokes`, `craquelure`, `mosaicTiles`, `patchwork`,
-`lensFlare`) and extended `lowPoly` (stained-glass `borderWidth`/`lightIntensity`, both exact
-0=off no-ops) — all auto-transpiled, all at default-tolerance pixel parity with **no new SSIM gates**
-(max-abs-diff ≤ 2/255, ssim ≥ 0.99998 across all 6). Two of the five (`craquelure`, `mosaicTiles`)
-share a bevel-polarity idiom worth noting for future ports: a carved groove/dip must feed
-`reliefShade` a **negated** height (`hC = -k`, not `+k`) or the bevel lights the wrong wall, and
-`reliefShade`'s flat-gradient baseline is `0.6` for any light angle (not the naively-assumed `0.5`) —
-`craquelure` additionally gates its bevel multiplier by a `wallMask` (the crack mask's gradient
-magnitude) since its border wobble doesn't saturate to a hard flat plateau the way `mosaicTiles`'
-grout mask does. `lensFlare` separately fixed four ghost helpers calling `smoothstep(edge0, edge1, x)`
-with `edge0 > edge1` (implementation-defined per the GLSL spec) — normalized to
-`1 - smoothstep(edge1, edge0, x)`. `strokes`' WGSL-only `textureSampleLevel` early-exit fix (WGSL
-can't `break` out of a per-pixel-bounded loop before an unconditional `textureSample` the way GLSL
-can) has no GLSL-side counterpart — the reference GLSL twin already used a plain `break`. None of
-this round's changes needed an expander.py/validator.py fix (no new surface-arg kinds, MRT, or
-compute passes — unlike b7c1bc36's `filter/lighting` height-map-input feature, below).
+Upstream squashed the artistic-filter batch into one amended-in-place commit and did a
+release-readiness pass that **changed effects already ported**. Because the batch SHA is unstable
+(rebase/amend), this round diffed reference **trees** (a `git archive` snapshot of `75507112`), not
+histories, and re-minted a golden for **every effect and every mode**. The port's codegen
+(`tools/convert-{definitions,shaders}.mjs`) is content-driven, so the re-port was mechanical: regenerate
+from the pinned snapshot, tree-diff against the committed port, and re-prove by pixel parity.
+
+**37 reference effect dirs had drifted.** All were re-crystallized to the frozen content. The
+release-pass corrections captured: `strokes` (single-pass `MODE==3`-gated Sumi-e via a locally-eroded
+`srcSample()` — the separate `stkErode` pass is gone; the whole smear was reworked to coherent
+value-noise fields); `texture` (10 material modes, smooth quintic gradient fields); `edge` (contour
+kernel `kernelType==2`, dead tile uniforms dropped); `emboss` (color/gray styles); `invert` (opt-in
+solarize); `lowPoly` (flat/edges/distance2/distance3 + border/light); `median` (exact quickselect,
+radii 1/2/3, **3→1 pass**); `oilPaint` (loop-domain→`ceil(radius)`+`texelFetch` optimization,
+byte-identical); `craquelure`/`mosaicTiles` (dead `fullResolution` removed); and the WGSL-only
+rotation/jitter fixes in `hatch`/`pondRipples`/`stipple`/`strokes`/`spinBlur` (verified N/A to this
+GLSL-sourced port — GLSL is the reference-correct side). **`grain` was reverted upstream** back to its
+pinned `alpha`/`pause`-only form (the round-1 grain-types feature is gone) — the port matches. The
+WGSL-only effects (`synth/sacredGeometry`, `synth/mandala`) and help.md-only changes
+(`mixer/channelCombine`, `filter/temporalAberration`) are byte-identical N/A (GLSL unchanged, verified).
+`Pipeline.adoptIterationBindings` is re-confirmed structurally N/A: TD unrolls `repeat:N` into N chained
+GLSL TOPs (`td_backend.build`), so there is no frame-local ping-pong to re-adopt.
+
+**Every definition now carries a `uniformLayout` block** (previously only `synth/remap`). It is inert
+on the GLSL/Vectors-page path this port mirrors: `td_backend` reads it **only** when the `.frag`
+declares a `uniform vec4 data[N]` array (still `synth/remap` alone), and the compiler propagates it
+generically — proven by graph parity holding at 312/313 across the change.
+
+**Full effect×mode ledger — all green** (`parity/ledger.tsv`): **300 graded cases, 0 FAIL** —
+**265 PASS** (strict: max-abs-diff ≤ 2/255, ssim ≥ 0.98) + **33 NEAR** (mechanism-traced, in a
+documented cross-device tolerance class — see `parity/sweep.sh`'s `tol_for()`) + **2 chaos-gated**
+(continuous Gray-Scott `reactionDiffusion` f8, reported). **101 per-mode fixtures** cover every
+compile-time-`define`-selected variant of the 33 changed filter effects (128 enum modes across 20
+effects) plus the define-gated boundary params (`median` radii, `lowPoly` border/light, `pondRipples`
+100%). The NEAR classes are all discrete-selection / grazing-angle / warp-boundary residuals where a
+1-LSB cross-device input (Metal vs ANGLE) flips a discrete decision: `median` (quickselect RANK — the
+biggest, ssim 0.995, scatter scales with window: r1 0.35 / r2 3.18 / r3 7.30 mean-diff; the base noise
+input is max-diff ≤ 1, proving the amplification), `oilPaint`+6 modes (argmax color vote, ≤ 108 px),
+`chrome` (reflection grazing tie, widened to 32 px by the release-pass stronger warp), `plasticWrap`
+(specular grazing), `dither_type_errorDiffusion` (sequential Floyd-Steinberg cascade),
+`hatch_mode_coloredPencil` (per-cell hue tie), `strokes_mode_smudge` (Sobel-gradient direction tie),
+`edge` kernels (convolution amplifies 1-LSB), and the unchanged warp/threshold set
+(`spiral`/`tunnel`/`step`/`degauss`/`unsharpMask`/`relief` plaster, 3–4 px). `convolutionFeedback` was
+re-routed to `parity/accumulate.sh` (it is a multi-frame feedback effect — f1/f2 byte-exact, f8
+SSIM-gated 0.99483 — but `sweep.sh`'s `defer_reason()` had never listed it, so the single-frame sweep
+mis-graded it; now aligned with `stage_coverage.py`'s `ACCUM_EFFECTS`).
+
+For the pre-crystallization sync narrative (the b7c1bc36 / 36e7f3f5 Photoshop-parity batches, the
+`filter/lighting` height-map-input expander fix, and the `craquelure`/`mosaicTiles` carved-relief
+idiom), see the git history of this file.
 
 ## Parity
 
 - **In-engine compiler:** all four compiler-parity gates are byte-exact against the reference oracle
-  over a 212-program corpus — lexer / parser / validator **212/212**, graph **211/212** (the 1 skip is
-  `B5oBsA`, a nonexistent effect the reference also rejects).
+  (the `75507112` snapshot) over a **313**-program corpus (the base 212 + 101 per-mode fixtures) —
+  lexer / parser / validator **313/313**, graph **312/313** (the 1 skip is `B5oBsA`, a nonexistent
+  effect the reference also rejects).
   `parity/compiler/check_{lex,parse,validate,graph}.py`. (The b7c1bc36 sync's `filter/lighting` /
   `filter/parallax` height-map-input feature — a `type:"surface"` global defaulting to
   self-sampling the pipeline input — needed a matching expander.py fix:
@@ -68,9 +100,11 @@ compute passes — unlike b7c1bc36's `filter/lighting` height-map-input feature,
   upstream commit's `TEXTURE_ARG_KINDS` also covers `vol`/`geo`, confirmed by A/B testing against the
   pre-fix expander. The following 36e7f3f5 sync's 5 filters + 1 extension needed no compiler-side
   change — all plain float/int/color globals, no new surface-arg kinds.)
-- **2D catalog (single-frame, `parity/sweep.sh`):** ~**165 single-pass** effects at parity — byte-exact,
-  or SSIM-gated for cross-rasterizer discontinuities — plus multi-pass and stateful effects. Most land
-  within 1/255; a few discontinuity-heavy effects are gated on structural **SSIM ≥ 0.98**.
+- **2D catalog + per-mode (single-frame, `parity/sweep.sh`):** **268/268 gateable programs PASS**
+  (default effects + the 101 per-mode fixtures). Across the whole ledger (`parity/ledger.tsv`, 300
+  graded cases incl. feedback + cubemap): **265 strict PASS** (byte-exact / within 1–2 LSB) + **33
+  NEAR** (SSIM-gated cross-rasterizer discontinuities, each mechanism-traced in `tol_for()`) + **2
+  chaos-gated**, **0 FAIL**. Discontinuity-heavy effects are gated on structural **SSIM ≥ 0.98**.
 - **Stateful / feedback:** `cellularAutomata`, `reactionDiffusion`, `motionBlur`,
   `convolutionFeedback`, and the two 3D variants are driven 8-frames-from-zero through the evolve
   harness (`parity/accumulate.sh`) — discrete CAs byte-exact every frame; continuous solvers bit-exact
