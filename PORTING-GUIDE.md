@@ -73,7 +73,7 @@ flip). The `--flip-y` contingency (route `gl_FragCoord` through an `nm_FragCoord
 Multi-output shaders are emitted verbatim with a `// NM_OUTPUT: MRT …` header and need hand-finishing.
 They span the agent/particle **state** passes (`points/*/agent`, `pointsEmit`/`pointsInit`, `lenia`,
 `agentField` — 3-buffer state), the 3D-volume **render** passes (`render/*/render3d`, `renderLit3d`,
-`renderCubemap3D`, `renderCubemapSurface` — e.g. `fragColor + geoOut`), the 3D **precompute** passes
+`renderCubemap3d`, `renderCubemapSurface` — e.g. `fragColor + geoOut`), the 3D **precompute** passes
 (`synth3d/*/precompute`), and the 3D-agent flow (`filter3d/flow3d/agent`). All are implemented and
 gated. The procedure:
 

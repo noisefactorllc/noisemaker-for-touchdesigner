@@ -151,7 +151,7 @@ texture); `render3d` / `renderLit3d` then raymarch it. Two TD-specific fixes (bo
 
 Isolation harness: `parity/evolve.sh <prog>` with `NM_DUMP_PROG=<prog>` and `NM_DUMP_TEXID=<texId>`.
 
-**mat3 cubeBasis — RESOLVED (renderCubemap3D + renderCubemapSurface now max-diff 1, ssim ~1.0).**
+**mat3 cubeBasis — RESOLVED (renderCubemap3d + renderCubemapSurface now max-diff 1, ssim ~1.0).**
 Both cube-face renderers steer rays with `uniform mat3 cubeBasis`, and the old
 `uniform_binder._as_components` truncated any list to 4 floats onto the GLSL TOP **Vectors** page —
 a `mat3` (9 floats) can't live there, so `cubeBasis` stayed the TD default (the **zero** matrix →
