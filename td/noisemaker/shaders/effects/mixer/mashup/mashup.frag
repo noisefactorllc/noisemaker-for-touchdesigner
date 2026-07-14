@@ -19,6 +19,7 @@
  * (layerN_active == 0) fall back to the control input.
  */
 
+
 #define MAX_LAYERS 8
 
 // Auto-filled by the runtime — output framebuffer dimensions. Needed because
@@ -26,6 +27,14 @@
 uniform vec2 resolution;
 
 // Control input: its luminance selects the band. Wire with `source: read(oN)`.
+
+
+
+
+
+
+
+
 
 
 

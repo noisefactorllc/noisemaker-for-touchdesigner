@@ -3,7 +3,7 @@
 #define inputTex sTD2DInputs[0]
 /*
  * Patchwork - needlepoint grid of solid-color squares raised by luminance
- * with lit bevel edges (Photoshop Filter Gallery > Texture > Patchwork).
+ * with lit bevel edges.
  *
  * GRID: cells are squareSize-px squares in GLOBAL (tile-aware) pixel
  * coordinates, anchored at the IMAGE CENTER
@@ -21,7 +21,7 @@
  * with a 3x3 mini-blur at the cell's own center (filter/extrude's
  * cellAvgColor3x3 precedent: 9 taps spaced at squareSize*0.25 px, so the
  * full sample footprint stays inside the cell's own bounds, never
- * leaking into a neighbor). Height h = lum(cellColor) (S2).
+ * leaking into a neighbor). Height h = lum(cellColor) (luminance).
  *
  * TOP FACE: every pixel (interior AND rim) is shaded by its OWN cell's
  * height alone: topFaceShade = 0.9 + 0.2*(h-0.5), i.e. brighter cells
@@ -38,11 +38,11 @@
  * a matching axis-aligned unit edgeNormal: left=(-1,0), right=(1,0),
  * bottom=(0,-1), top=(0,1).
  *
- * This is a DELIBERATELY DIFFERENT construction from S8's reliefShade
- * (used by filter/craquelure and filter/mosaicTiles): S8 differentiates a
+ * This is a deliberately different construction from filter/relief's reliefShade
+ * (used by filter/craquelure and filter/mosaicTiles): relief shading differentiates a
  * CONTINUOUS height field to get a local gradient/normal, but patchwork's
  * height field is a piecewise-CONSTANT step function - every within-cell
- * neighbor sample (e.g. gc+-1px, S8's usual central-difference taps)
+ * neighbor sample (e.g. gc+-1px, the usual central-difference taps)
  * returns the SAME cell's height until you cross clear into the next
  * cell, so a 1-2px finite-difference gradient is either exactly zero (not
  * at a cell boundary) or an undersized step (right at one) - it cannot
@@ -58,9 +58,9 @@
  *   bevelMul = 1 + 0.35*(relief/100) * sign(dh) * signTerm
  *
  * POLARITY DERIVATION (raised cells - opposite of craquelure's carved
- * groove; verify carefully, per the task spec): treat h as an actual
+ * groove): treat h as an actual
  * height field and use the standard height-field normal convention
- * normal = normalize(-dh/dx, -dh/dy, 1) (S8 uses this same convention).
+ * normal = normalize(-dh/dx, -dh/dy, 1) (relief shading uses this same convention).
  * A rim band physically ramps from the NEIGHBOR's height at the cell
  * border to THIS cell's own height at the rim's inner edge (where it
  * meets the flat top face). Take the left rim (edgeNormal=(-1,0),
@@ -76,8 +76,8 @@
  * dot(edgeNormal, lightDir) * sign(dh) is exactly the Lambertian-style
  * facing term for that leaning face - the formula above.
  *
- * Sanity check against the task's explicit requirement ("a raised square
- * lit from upper-left has its top/left bevel faces bright and
+ * Raised-face polarity check: a square lit from upper-left has its
+ * top/left bevel faces bright and
  * bottom/right faces dark"): at lightAngle=135, lightDir =
  * (cos135,sin135) = (-0.707,+0.707) (screen-up convention - see
  * ORIENTATION below). For a cell raised relative to ALL 4 neighbors
@@ -86,9 +86,9 @@
  * signTerm = dot((0,1),lightDir) = +0.707 -> LIT; right
  * signTerm = dot((1,0),lightDir) = -0.707 -> DARK; bottom
  * signTerm = dot((0,-1),lightDir) = -0.707 -> DARK. Top/left bright,
- * bottom/right dark - exactly as required. This is the OPPOSITE sign
+ * bottom/right dark. This is the OPPOSITE sign
  * convention from filter/craquelure's carved groove, which negates its
- * height (hC=-kC) before its own S8-routed shading specifically because
+ * height (hC=-kC) before its own relief shading-routed shading specifically because
  * a groove is a dip, not a bump; patchwork's h is fed in DIRECTLY (never
  * negated) because cells are raised, not carved - the one sign flip
  * between the two effects is entirely that h-vs-(-h) choice, not any
@@ -104,12 +104,11 @@
  *     (not +-1), so bevelMul = 1.0 EXACTLY regardless of relief or
  *     lightAngle. No extra gating mask is needed here (contrast
  *     filter/craquelure's fix, which needed a wallMask gate because ITS
- *     S8-routed flat baseline is 0.6, not 0 - patchwork's bespoke formula
+ *     relief shading-routed flat baseline is 0.6, not 0 - patchwork's bespoke formula
  *     is zero-centered by construction).
  *
  * ORIENTATION: edgeNormal/localPx/cellIdxF/imgCenter are all
- * POSITION-DERIVED (built from gl_FragCoord.xy/pos.xy) - per the
- * screen-truth doctrine (shared-context.md), these are ported with NO
+ * POSITION-DERIVED (built from gl_FragCoord.xy/pos.xy). These use NO
  * manual Y compensation; the WebGPU present-time flip cancels the raw
  * Y-convention difference automatically, exactly like filter/extrude's
  * imgCenter anchoring and filter/spinBlur/pondRipples' offsets. lightDir
@@ -118,14 +117,14 @@
  * filter/relief's rlShade.glsl precedent (independently verified on
  * screen on both backends: lightAngle=135 reads upper-left,
  * lightAngle=-45 flips it to lower-right) - the same cos/sin(lightAngle)
- * construction is reused here verbatim.
+ * construction is reused here without extra orientation compensation.
  *
  * ALPHA: sampled from the pixel's own (non-cell-averaged) position,
  * matching filter/mosaicTiles' srcHome / filter/craquelure's src
  * precedent.
  *
  * Single pass, no hash/noise anywhere - a deterministic integer grid, per
- * the task spec (no S1/S4/S5 needed).
+ * the algorithm (no hash, value noise, or Voronoi field needed).
  */
 
 

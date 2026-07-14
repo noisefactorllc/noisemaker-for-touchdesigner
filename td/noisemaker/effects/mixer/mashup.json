@@ -8,6 +8,52 @@
   ],
   "description": "Posterize a control input by luminance and route each band to a different surface",
   "paramAliases": {},
+  "uniformLayout": {
+    "layers": {
+      "slot": 0,
+      "components": "x"
+    },
+    "smoothness": {
+      "slot": 0,
+      "components": "y"
+    },
+    "resolution": {
+      "slot": 0,
+      "components": "zw"
+    },
+    "layer0_active": {
+      "slot": 1,
+      "components": "x"
+    },
+    "layer1_active": {
+      "slot": 1,
+      "components": "y"
+    },
+    "layer2_active": {
+      "slot": 1,
+      "components": "z"
+    },
+    "layer3_active": {
+      "slot": 1,
+      "components": "w"
+    },
+    "layer4_active": {
+      "slot": 2,
+      "components": "x"
+    },
+    "layer5_active": {
+      "slot": 2,
+      "components": "y"
+    },
+    "layer6_active": {
+      "slot": 2,
+      "components": "z"
+    },
+    "layer7_active": {
+      "slot": 2,
+      "components": "w"
+    }
+  },
   "globals": {
     "source": {
       "type": "surface",

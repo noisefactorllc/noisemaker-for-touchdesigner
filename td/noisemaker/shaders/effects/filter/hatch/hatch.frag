@@ -3,19 +3,17 @@
 #define inputTex sTD2DInputs[0]
 /*
  * Hatch - single-pass six-mode sketch engine. See definition.js for the
- * full per-mode description and Photoshop filter mapping. MODE is a
+ * full per-mode description and filter mapping. MODE is a
  * compile-time define injected by the runtime (globals.mode.define), same
  * mechanism as filter/oilPaint and filter/texture.
  *
  * Every mode reads the same stroke field, strokeField(gc, angleDeg,
  * stretch) = vnoise(rotate2D(gc, angleDeg) * vec2(1/stretch, 0.9)), on the
  * tile-aware integer GLOBAL pixel coordinate gc (floor(gl_FragCoord) +
- * tileOffset) so the pattern is seamless across CLI render tiles (same
- * grain-coordinate lesson as oilPaint/stamp, commit ee181726).
+ * tileOffset) so the pattern is seamless across CLI render tiles.
  *
- * rotate2D rotates gc, a fragment-position-derived vector, so per the
- * screen-truth doctrine GLSL uses the mat2(c,-s,s,c) form here (matching
- * filter/pinch's rotate2D and filter/stipple's mezzoStrokes) - no manual Y
+ * rotate2D rotates gc, a fragment-position-derived vector, with the
+ * mat2(c,-s,s,c) form shared by filter/stipple - no manual Y
  * compensation. Every noise/hash helper below is floor/fract-based (not
  * truncated) for negative inputs, so the negative positions a rotation can
  * produce need no separate floored-mod wrap (same reasoning as filter/
@@ -39,19 +37,19 @@ uniform vec3 paperColor;
 
 out vec4 fragColor;
 
-// S1 - hash / jitter.
+// hash - hash / jitter.
 float hash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
 }
 
-// S2 - luminance.
+// luminance - luminance.
 float lum(vec3 c) {
     return dot(c, vec3(0.2126, 0.7152, 0.0722));
 }
 
-// S4 - value noise + fBm.
+// value noise - value noise + fBm.
 float vnoise(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
@@ -71,7 +69,7 @@ float fbm(vec2 p) {
     return v;
 }
 
-// S6 - gradient (Sobel on luminance), used by coloredPencil to bend
+// Sobel gradient - gradient (Sobel on luminance), used by coloredPencil to bend
 // strokes along image contours.
 vec2 lumGradient(vec2 uv) {
     vec2 px = 1.0 / resolution;
@@ -87,15 +85,13 @@ vec2 lumGradient(vec2 uv) {
                 tl + 2.0 * t + tr - bl - 2.0 * b - br);
 }
 
-// S9 - ink/paper tonemap.
+// ink/paper tonemapping - ink/paper tonemap.
 vec3 tonemap2(float t, vec3 ink, vec3 paper) {
     return mix(ink, paper, clamp(t, 0.0, 1.0));
 }
 
 // Rotates a position-derived (global pixel space) vector by angleDeg.
-// GLSL uses this mat2(c,-s,s,c) form for position-derived geometry per the
-// screen-truth doctrine (see filter/pinch's rotate2D, filter/stipple's
-// mezzoStrokes rotate2D) - no manual Y compensation.
+// GLSL mat2(c,-s,s,c) rotation for the global pixel coordinate.
 vec2 rotate2D(vec2 v, float angleDeg) {
     float a = radians(angleDeg);
     float co = cos(a);
@@ -138,9 +134,9 @@ void nm_main() {
 #if MODE == 0
     // Graphic Pen: single-direction hard threshold of the stroke field
     // against tone - the starkest, most binary mode. pressure isn't given
-    // an explicit role by the brief ("ink = step(s, 1-t)" has none), so it
+    // an explicit role in the core formula ("ink = step(s, 1-t)"), so it
     // gets a small coverage nudge that is exactly zero at the default
-    // pressure=50 (reduces to the brief's literal formula there) and only
+    // pressure=50 (reduces to the core formula there) and only
     // shifts coverage as pressure moves away from center - keeps
     // `pressure` responsive at the default mode without changing the
     // documented default look.
@@ -151,9 +147,7 @@ void nm_main() {
     // octave into the primary field), ink only in the shadow region
     // (t < 0.55, softly gated), paper elsewhere. pressure scales both how
     // much of the shadow region fills with ink (coverage) and how dark
-    // that ink reads (darkness) - not spelled out as a formula by the task
-    // brief, just "scales ink darkness/coverage", so both roles are
-    // implementer judgment calls, tuned by eye.
+    // that ink reads (darkness).
     float s2 = strokeField(gc * 2.0 + 91.7, theta, stretchAmt * 0.5);
     float rough = s * 0.6 + s2 * 0.4;
     float shadow = 1.0 - smoothstep(0.15, 0.55, t);
@@ -183,13 +177,13 @@ void nm_main() {
     // midtone band is filled with fbm-textured stroke noise instead of a
     // flat gradient, so the transition between ink and paper looks
     // hand-textured rather than a smooth gradient. pressure isn't given an
-    // explicit role by the brief either, so it gets the same small,
+    // explicit role in the core formula either, so it gets the same small,
     // default-neutral nudge as pen (zero at pressure=50).
     float toneGate = smoothstep(0.3, 0.7, t);
     float texture2 = mix(s, fbm(gc / (stretchAmt * 0.6) + 41.0), 0.5);
     float level = mix(texture2, toneGate, abs(toneGate * 2.0 - 1.0));
     level = clamp(level + pb * 0.15, 0.0, 1.0);
-    outColor = tonemap2(1.0 - level, inkColor, paperColor);
+    outColor = tonemap2(level, inkColor, paperColor);
 #elif MODE == 4
     // Crosshatch: COLOR-PRESERVING. Keeps src.rgb and multiplies in up to
     // 3 stroke fields (theta, theta+45, theta-45), each gated to a
@@ -213,7 +207,7 @@ void nm_main() {
     // explicit check). COLOR-PRESERVING: image color shows through only
     // inside the stroke mask; paper shows between strokes. Mask density
     // follows tone (dark areas denser strokes) and bends to follow local
-    // contours near strong edges (S6 gradient direction, rotated
+    // contours near strong edges (Sobel gradient gradient direction, rotated
     // perpendicular to point along the contour), like pencil hatching
     // drawn along a subject's outline. pressure = coverage.
     vec2 grad = lumGradient(uv);

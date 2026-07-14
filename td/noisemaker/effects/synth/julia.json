@@ -8,6 +8,92 @@
   ],
   "description": "Julia set explorer with deep zoom",
   "paramAliases": {},
+  "uniformLayout": {
+    "resolution": {
+      "slot": 0,
+      "components": "xy"
+    },
+    "time": {
+      "slot": 0,
+      "components": "z"
+    },
+    "cReal": {
+      "slot": 1,
+      "components": "x"
+    },
+    "cImag": {
+      "slot": 1,
+      "components": "y"
+    },
+    "poi": {
+      "slot": 1,
+      "components": "z"
+    },
+    "outputMode": {
+      "slot": 1,
+      "components": "w"
+    },
+    "centerX": {
+      "slot": 2,
+      "components": "x"
+    },
+    "centerY": {
+      "slot": 2,
+      "components": "y"
+    },
+    "rotation": {
+      "slot": 2,
+      "components": "z"
+    },
+    "iterations": {
+      "slot": 3,
+      "components": "x"
+    },
+    "stripeFreq": {
+      "slot": 3,
+      "components": "y"
+    },
+    "trapShape": {
+      "slot": 3,
+      "components": "z"
+    },
+    "lightAngle": {
+      "slot": 3,
+      "components": "w"
+    },
+    "cPath": {
+      "slot": 4,
+      "components": "x"
+    },
+    "cSpeed": {
+      "slot": 4,
+      "components": "y"
+    },
+    "cRadius": {
+      "slot": 4,
+      "components": "z"
+    },
+    "invert": {
+      "slot": 4,
+      "components": "w"
+    },
+    "zoomSpeed": {
+      "slot": 5,
+      "components": "x"
+    },
+    "zoomDepth": {
+      "slot": 5,
+      "components": "y"
+    },
+    "tileOffset": {
+      "slot": 6,
+      "components": "xy"
+    },
+    "fullResolution": {
+      "slot": 6,
+      "components": "zw"
+    }
+  },
   "globals": {
     "poi": {
       "type": "int",

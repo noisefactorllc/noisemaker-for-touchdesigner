@@ -3,9 +3,9 @@
 #define inputTex sTD2DInputs[0]
 /*
  * Craquelure - cracked-plaster groove network with carved relief over the
- * image (Photoshop Filter Gallery > Texture > Craquelure).
+ * image.
  *
- * Crack field: S5's jittered-grid Voronoi cell (see voronoiCell in e.g.
+ * Crack field: Voronoi's jittered-grid Voronoi cell (see voronoiCell in e.g.
  * filter/stipple.glsl) is extended here to voronoiF1F2, which tracks the
  * nearest (F1) AND second-nearest (F2) seed distances instead of just the
  * nearest cell id. (F2 - F1) is the standard "distance to the Voronoi
@@ -16,7 +16,7 @@
  * - i.e. the crack groove cross-section. `edge = 1.5 + depth/100*2` is
  * the groove's half-width in px, so `depth` widens the crack band.
  *
- * Voronoi jitter is fixed at 1.0 (the maximum value S5's 3x3-neighbor
+ * Voronoi jitter is fixed at 1.0 (the maximum value Voronoi's 3x3-neighbor
  * search window supports - see voronoiF1F2's docstring: the search is
  * exact for F1 at this jitter, with F2 only rarely under-counted near a
  * cell's corner) for maximally irregular, organic plate shapes, matching
@@ -34,11 +34,11 @@
  *
  * Wall shading: the crack mask k is re-evaluated at 4 neighboring
  * (gc +/- 1px on each axis) positions to build a true central-difference
- * gradient of k (5 Voronoi evaluations total, all bounded, per the task
- * spec - a cheaper forward-difference, as filter/relief's rlShade.glsl
+ * gradient of k (5 bounded Voronoi evaluations total). A cheaper
+ * forward-difference, as filter/relief's rlShade.glsl
  * uses for its cheap-to-sample blurred-luminance height field, would
  * bias the bevel normal off-axis for a feature this narrow, since k's
- * transition width can be as little as 1.5px). The height fed to S8's
+ * transition width can be as little as 1.5px). The height fed to filter/relief's
  * reliefShade (see filter/relief) is -k, NOT +k: a crack is a carved
  * groove (a dip), not a raised ridge, so height must FALL toward the
  * crack center. This is implemented by negating hC/hR/hT (hC = -kC, hR
@@ -47,8 +47,8 @@
  * gradient of -k exactly - equivalently, this flips the sign of the
  * gradient/normal reliefShade sees versus feeding +k directly, which is
  * what puts the lit wall on the correct (concave-groove) side of the
- * crack. Light angle is fixed at 135 degrees (S8/filter/relief's default
- * convention - upper-left), per the task spec (craquelure exposes no
+ * crack. Light angle is fixed at 135 degrees (filter/relief's default
+ * convention - upper-left; craquelure exposes no
  * lightAngle param). reliefShade's flat-gradient (grad=0) baseline is
  * dot((0,0,1), normalize(vec3(cos135, sin135, 0.75))) = 0.75/1.25 = 0.6
  * EXACTLY, not 0.5 - the shade term is remapped from reliefShade's 0..1
@@ -78,7 +78,6 @@
 
 uniform vec2 resolution;
 uniform vec2 tileOffset;
-uniform vec2 fullResolution;
 uniform float spacing;
 uniform float depth;
 uniform float brightness;
@@ -86,7 +85,7 @@ uniform int seed;
 
 out vec4 fragColor;
 
-// S1 - hash / jitter.
+// hash - hash / jitter.
 float hash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
@@ -99,7 +98,7 @@ vec2 hash22(vec2 p) {
     return fract((p3.xx + p3.yz) * p3.zy);
 }
 
-// S4 - value noise (fBm not needed here).
+// value noise - value noise (fBm not needed here).
 float vnoise(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
@@ -108,7 +107,7 @@ float vnoise(vec2 p) {
                mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
-// S5 extended - jittered-grid Voronoi F1/F2: returns x = nearest seed
+// Voronoi extended - jittered-grid Voronoi F1/F2: returns x = nearest seed
 // distance (F1), y = second-nearest seed distance (F2), in the same
 // cell-space units as `p`. Squared distances are compared internally
 // (cheaper); sqrt is taken only for the two winners since the crack
@@ -142,7 +141,7 @@ vec2 voronoiF1F2(vec2 p, float jitter, float seedVal) {
     return vec2(sqrt(best), sqrt(second));
 }
 
-// S8 - relief shade from height (verbatim).
+// Directional relief shading from height.
 float reliefShade(float hC, float hR, float hT, float strength, float lightAngleDeg) {
     vec2 grad = vec2(hR - hC, hT - hC) * strength;
     vec3 n = normalize(vec3(-grad, 1.0));

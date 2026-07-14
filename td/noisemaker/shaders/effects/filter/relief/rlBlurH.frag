@@ -4,7 +4,7 @@
 /*
  * Relief - horizontal Gaussian pass.
  *
- * Separable blur of the source image (S3 snippet). The blurred result
+ * Separable Gaussian blur of the source image. The blurred result
  * feeds rlBlurV, and the luminance of that final blur becomes the height
  * field h consumed by rlShade. Blurring rgb here (rather than luminance
  * directly) keeps this pass generic/reusable, matching filter/plasticWrap's
@@ -13,7 +13,7 @@
  *
  * radius = mix(0.5, 15.0, smoothness/100): higher smoothness -> larger
  * blur radius -> finer height-field detail is smoothed away -> coarser
- * relief (Photoshop's Bas Relief/Plaster/Note Paper "smoothness" slider).
+ * relief (Bas Relief/Plaster/Note Paper "smoothness" slider).
  */
 
 

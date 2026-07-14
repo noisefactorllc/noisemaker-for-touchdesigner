@@ -10,6 +10,72 @@
   "paramAliases": {
     "poiMode": "poi"
   },
+  "uniformLayout": {
+    "resolution": {
+      "slot": 0,
+      "components": "xy"
+    },
+    "time": {
+      "slot": 0,
+      "components": "z"
+    },
+    "poi": {
+      "slot": 1,
+      "components": "x"
+    },
+    "outputMode": {
+      "slot": 1,
+      "components": "y"
+    },
+    "iterations": {
+      "slot": 1,
+      "components": "z"
+    },
+    "centerHiX": {
+      "slot": 2,
+      "components": "x"
+    },
+    "centerHiY": {
+      "slot": 2,
+      "components": "y"
+    },
+    "centerLoX": {
+      "slot": 2,
+      "components": "z"
+    },
+    "centerLoY": {
+      "slot": 2,
+      "components": "w"
+    },
+    "zoomSpeed": {
+      "slot": 3,
+      "components": "x"
+    },
+    "zoomDepth": {
+      "slot": 3,
+      "components": "y"
+    },
+    "invert": {
+      "slot": 3,
+      "components": "z"
+    },
+    "stripeFreq": {
+      "slot": 3,
+      "components": "w"
+    },
+    "trapShape": {
+      "slot": 4,
+      "components": "x"
+    },
+    "lightAngle": {
+      "slot": 4,
+      "components": "y"
+    },
+    "rotation": {
+      "slot": 4,
+      "components": "z"
+    }
+  },
   "globals": {
     "poi": {
       "type": "int",

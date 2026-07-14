@@ -11,6 +11,40 @@
     "loopAAmp": "speedA",
     "loopBAmp": "speedB"
   },
+  "uniformLayout": {
+    "resolution": {
+      "slot": 0,
+      "components": "xy"
+    },
+    "time": {
+      "slot": 0,
+      "components": "z"
+    },
+    "seed": {
+      "slot": 0,
+      "components": "w"
+    },
+    "wrap": {
+      "slot": 1,
+      "components": "x"
+    },
+    "loopAScale": {
+      "slot": 1,
+      "components": "w"
+    },
+    "loopBScale": {
+      "slot": 2,
+      "components": "x"
+    },
+    "speedA": {
+      "slot": 2,
+      "components": "y"
+    },
+    "speedB": {
+      "slot": 2,
+      "components": "z"
+    }
+  },
   "globals": {
     "loopAOffset": {
       "type": "int",

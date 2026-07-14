@@ -13,6 +13,64 @@
     "xScale": "scaleX",
     "yScale": "scaleY"
   },
+  "uniformLayout": {
+    "resolution": {
+      "slot": 0,
+      "components": "xy"
+    },
+    "time": {
+      "slot": 0,
+      "components": "z"
+    },
+    "aspectRatio": {
+      "slot": 0,
+      "components": "w"
+    },
+    "scaleX": {
+      "slot": 1,
+      "components": "x"
+    },
+    "scaleY": {
+      "slot": 1,
+      "components": "y"
+    },
+    "seed": {
+      "slot": 1,
+      "components": "z"
+    },
+    "loopScale": {
+      "slot": 1,
+      "components": "w"
+    },
+    "speed": {
+      "slot": 2,
+      "components": "x"
+    },
+    "octaves": {
+      "slot": 2,
+      "components": "w"
+    },
+    "ridges": {
+      "slot": 3,
+      "components": "x"
+    },
+    "wrap": {
+      "slot": 3,
+      "components": "y"
+    },
+    "colorMode": {
+      "slot": 3,
+      "components": "z"
+    },
+    "tileOffset": {
+      "slot": 4,
+      "components": "xy"
+    },
+    "fullResolution": {
+      "slot": 4,
+      "components": "zw"
+    }
+  },
   "globals": {
     "type": {
       "type": "int",

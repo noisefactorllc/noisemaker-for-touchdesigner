@@ -2,7 +2,7 @@
 // NM_OUTPUT: fragColor
 #define inputTex sTD2DInputs[0]
 /*
- * Lens Flare - Photoshop-style additive lens flare (Filter > Render >
+ * Lens Flare - classic additive lens flare (Filter > Render >
  * Lens Flare). Every element is positioned along the flare axis
  * A(t) = mix(flarePos, mirrorPos, t), where flarePos = (centerX,
  * centerY) is the user-placed flare position and mirrorPos = 1 -
@@ -23,8 +23,7 @@
  * flare reads as one continuous pattern across CLI render tiles, per
  * the tile-aware pattern used by pondRipples/extrude/mosaicTiles.
  *
- * centerX/centerY are used RAW, with no 1.0-centerY flip, per the
- * screen-truth doctrine (.superpowers/sdd/orientation-groundtruth.md):
+ * centerX/centerY are used directly, with no 1.0-centerY flip:
  * position-derived vectors (flarePos here) flip along with the
  * framebuffer, and the WebGPU present-path flip cancels the raw
  * convention difference, so both backends land the flare in the same
@@ -34,10 +33,18 @@
  * circle/ring ghosts, halo band) is built from squared distances,
  * cos(6*phi), or a 3-axis abs(dot(...)) max - all even/mirror-symmetric
  * under a Y flip - so the only orientation-sensitive quantity in this
- * whole effect is flarePos itself; see the on-screen center-check in
- * the task report rather than treating any shape as a chirality proof.
+ * whole effect is flarePos itself.
  */
 
+
+// LENS_TYPE is a compile-time define injected by the runtime (see
+// definition.js `globals.lensType.define`). Each lens type selects a fully
+// distinct ghost-chain table (6/4/3 elements); baking LENS_TYPE lets the
+// compiler strip the other tables' dead branches instead of evaluating
+// every ghost for every pixel.
+#ifndef LENS_TYPE
+#define LENS_TYPE 0
+#endif
 
 
 uniform vec2 resolution;
@@ -46,7 +53,6 @@ uniform vec2 fullResolution;
 uniform float brightness;
 uniform float centerX;
 uniform float centerY;
-uniform int lensType;
 uniform vec3 tint;
 
 out vec4 fragColor;
@@ -90,7 +96,7 @@ vec3 haloRainbow(float dc) {
 }
 
 // Halo ring: a narrow band centered at radius 0.28 around the mirrored
-// point (t=1.0), matching Photoshop's ring that hugs the image-center
+// point (t=1.0), matching the ring that hugs the image-center
 // region opposite the flare.
 float haloBand(float dc) {
     return exp(-abs(dc - 0.28) * 60.0) * 0.25;
@@ -168,15 +174,15 @@ void nm_main() {
 
     // Anamorphic streak (all lens types; doubled for moviePrime).
     float streakVal = anamorphicStreak(delta0);
-    if (lensType == 3) {
-        streakVal *= 2.0;
-    }
+    #if LENS_TYPE==3
+    streakVal *= 2.0;
+    #endif
     flare += vec3(streakVal);
 
     // 6-point star: zoom50_300 and moviePrime only.
-    if (lensType == 0 || lensType == 3) {
-        flare += vec3(sixPointStar(delta0, d0));
-    }
+    #if LENS_TYPE==0 || LENS_TYPE==3
+    flare += vec3(sixPointStar(delta0, d0));
+    #endif
 
     // Rainbow halo ring at t=1.0 (all lens types).
     vec2 aMirror = flareAxis(flarePos, mirrorPos, 1.0, aspectRatio);
@@ -185,7 +191,7 @@ void nm_main() {
 
     // Ghost chain: table selected by lensType.
     vec2 g = vec2(0.0);
-    if (lensType == 0 || lensType == 3) {
+    #if LENS_TYPE==0 || LENS_TYPE==3
         // zoom50_300 (also the base table for moviePrime): 6 ghosts,
         // the largest (t=1.55) rendered hollow for classic-look variety.
         g = flareAxis(flarePos, mirrorPos, 0.25, aspectRatio);
@@ -205,7 +211,7 @@ void nm_main() {
 
         g = flareAxis(flarePos, mirrorPos, 1.55, aspectRatio);
         flare += vec3(0.40, 0.55, 1.00) * ringGhost(length(p - g), 0.20) * 0.12;
-    } else if (lensType == 1) {
+    #elif LENS_TYPE==1
         // prime35: 4 tight hexagon ghosts.
         g = flareAxis(flarePos, mirrorPos, 0.3, aspectRatio);
         flare += vec3(1.00, 0.80, 0.55) * hexGhost(p - g, 0.04) * 0.35;
@@ -218,7 +224,7 @@ void nm_main() {
 
         g = flareAxis(flarePos, mirrorPos, 1.3, aspectRatio);
         flare += vec3(0.80, 0.85, 0.95) * hexGhost(p - g, 0.08) * 0.20;
-    } else {
+    #else
         // prime105: 3 large soft circles.
         g = flareAxis(flarePos, mirrorPos, 0.45, aspectRatio);
         flare += vec3(0.92, 0.85, 0.78) * softCircleGhost(length(p - g), 0.12) * 0.25;
@@ -228,14 +234,14 @@ void nm_main() {
 
         g = flareAxis(flarePos, mirrorPos, 1.5, aspectRatio);
         flare += vec3(0.95, 0.88, 0.80) * softCircleGhost(length(p - g), 0.20) * 0.15;
-    }
+    #endif
 
     vec3 outFlare = flare * tint * (brightness / 100.0);
-    if (lensType == 3) {
-        // moviePrime: cooler overall tint multiplier on top of the
-        // user's tint.
-        outFlare *= vec3(0.9, 0.95, 1.1);
-    }
+    #if LENS_TYPE==3
+    // moviePrime: cooler overall tint multiplier on top of the
+    // user's tint.
+    outFlare *= vec3(0.9, 0.95, 1.1);
+    #endif
 
     fragColor = vec4(clamp(src.rgb + outFlare, 0.0, 1.0), src.a);
 }

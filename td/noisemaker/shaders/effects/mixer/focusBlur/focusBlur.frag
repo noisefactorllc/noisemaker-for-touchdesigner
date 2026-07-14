@@ -56,9 +56,9 @@ vec4 applyFocusBlur(sampler2D sceneTex, sampler2D depthTex, vec2 uv) {
 void nm_main() {
     vec2 globalCoord = gl_FragCoord.xy + tileOffset;
     vec2 uv = globalCoord / fullResolution;
-    
+
     vec4 color;
-    
+
     // depthSource: 0 = use inputTex (A) as depth map, blur tex (B)
     //              1 = use tex (B) as depth map, blur inputTex (A)
     if (depthSource == 0) {
@@ -66,10 +66,10 @@ void nm_main() {
     } else {
         color = applyFocusBlur(inputTex, tex, uv);
     }
-    
+
     // Preserve maximum alpha from both sources
     color.a = max(texture(inputTex, gl_FragCoord.xy / vec2(textureSize(inputTex, 0))).a, texture(tex, gl_FragCoord.xy / vec2(textureSize(tex, 0))).a);
-    
+
     fragColor = color;
 }
 void main() {

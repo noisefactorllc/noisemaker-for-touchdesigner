@@ -9,6 +9,68 @@
   ],
   "description": "Interference patterns from modulo operations",
   "paramAliases": {},
+  "uniformLayout": {
+    "resolution": {
+      "slot": 0,
+      "components": "xy"
+    },
+    "time": {
+      "slot": 0,
+      "components": "z"
+    },
+    "shape1": {
+      "slot": 1,
+      "components": "x"
+    },
+    "scale1": {
+      "slot": 1,
+      "components": "y"
+    },
+    "repeat1": {
+      "slot": 1,
+      "components": "z"
+    },
+    "shape2": {
+      "slot": 1,
+      "components": "w"
+    },
+    "scale2": {
+      "slot": 2,
+      "components": "x"
+    },
+    "repeat2": {
+      "slot": 2,
+      "components": "y"
+    },
+    "shape3": {
+      "slot": 2,
+      "components": "z"
+    },
+    "scale3": {
+      "slot": 2,
+      "components": "w"
+    },
+    "repeat3": {
+      "slot": 3,
+      "components": "x"
+    },
+    "blend": {
+      "slot": 3,
+      "components": "y"
+    },
+    "speed": {
+      "slot": 3,
+      "components": "z"
+    },
+    "smoothing": {
+      "slot": 3,
+      "components": "w"
+    },
+    "animMode": {
+      "slot": 4,
+      "components": "x"
+    }
+  },
   "globals": {
     "shape1": {
       "type": "int",

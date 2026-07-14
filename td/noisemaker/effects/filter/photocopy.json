@@ -5,9 +5,10 @@
   "starter": false,
   "tags": [
     "blur",
-    "edges"
+    "edges",
+    "artist"
   ],
-  "description": "Edge-band ink on paper via difference-of-Gaussians, like a bad photocopy",
+  "description": "Ink-on-paper via edge and tonal difference-of-Gaussians, like a bad photocopy",
   "paramAliases": {},
   "globals": {
     "detail": {
@@ -19,7 +20,7 @@
     },
     "darkness": {
       "type": "float",
-      "default": 50,
+      "default": 75,
       "uniform": "darkness",
       "min": 0,
       "max": 100

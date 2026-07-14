@@ -6,7 +6,7 @@
  * Chrome - map pass.
  *
  * Reads the blurred image (_chBlur, written by chBlurH/chBlurV) as a
- * luminance height field h (S2 lum), self-distorts its OWN sample point by
+ * luminance height field h (luminance lum), self-distorts its OWN sample point by
  * h's central-difference gradient (a cheap liquid-metal "refraction"), then
  * runs the re-sampled height through an oscillating sine tone curve with a
  * rim-specular boost and a cool/blue-gray tint. This pass reads ONLY the
@@ -16,10 +16,10 @@
  * Gradient: a true central difference in UV space with 1px taps -
  *   grad = vec2(h(uv + (texel.x,0)) - h(uv - (texel.x,0)),
  *               h(uv + (0,texel.y)) - h(uv - (0,texel.y)))
- * (NOT the forward-difference S8 relief-shade form, and NOT the 3x3 Sobel
- * S6 form - the brief specifies a plain central difference here).
+ * (NOT the forward-difference relief shading relief-shade form, and NOT the 3x3 Sobel
+ * Sobel gradient form).
  *
- * uv2 = uv + grad * (distortion/100) * 0.03: distortion scales the
+ * uv2 = uv + grad * (distortion/100) * 0.5: distortion scales the
  * self-warp strength; distortion = 0 collapses uv2 to uv exactly (grad's
  * contribution is multiplied to zero, not merely diminished).
  *
@@ -29,7 +29,7 @@
  * the underlying image shape.
  *
  * cycles = mix(1.0, 7.0, detail/100): how many light/dark sine bands appear
- * per unit of height - Photoshop Chrome's "Detail" slider.
+ * per unit of height - Chrome's "Detail" slider.
  *
  * v = 0.5 + 0.5*sin(h2*cycles*2*PI + h2*3.0): an oscillating tone curve.
  * The extra `+ h2*3.0` phase term (on top of the `cycles` multiple-angle
@@ -49,10 +49,8 @@
  *
  * Y-orientation: h/h2 sample _chBlur (a same-effect prior-pass FBO) through
  * the standard per-backend native uv convention (gl_FragCoord.xy/resolution
- * in GLSL, pos.xy/texSize in WGSL) with NO manual Y compensation. Per
- * orientation-groundtruth.md's "Intermediate-FBO content orientation"
- * finding (verified on filter/plasticWrap's/relief's own blur-chain height
- * fields), this class of read is orientation-transparent on both backends -
+ * in GLSL, pos.xy/texSize in WGSL) with NO manual Y compensation. This
+ * same-effect intermediate read is orientation-transparent on both backends -
  * it matches on-screen presentation and matches inputTex, with no
  * mirroring. The sine tone curve is a pure function of height only - no
  * directional light, no rotation, nothing else fragment-coordinate-derived
@@ -81,7 +79,7 @@ void nm_main() {
     float hT = lum(texture(blurTex, uv + vec2(0.0, texel.y)).rgb);
     vec2 grad = vec2(hR - hL, hT - hB);
 
-    vec2 uv2 = uv + grad * (distortion / 100.0) * 0.03;
+    vec2 uv2 = uv + grad * (distortion / 100.0) * 0.5;
     float h2 = lum(texture(blurTex, uv2).rgb);
 
     float cycles = mix(1.0, 7.0, detail / 100.0);

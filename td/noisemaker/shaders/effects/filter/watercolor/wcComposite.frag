@@ -7,7 +7,7 @@
  * paper tint, and a flat-wash lift applied on top of the median-simplified
  * color washes (global_wc_state, produced by the seed + wcSimplify passes).
  *
- * edge = S6 luminance-gradient magnitude computed ON THE SIMPLIFIED texture
+ * edge = Sobel gradient luminance-gradient magnitude computed ON THE SIMPLIFIED texture
  * (not the original input), so pigment darkens along the boundaries of the
  * SIMPLIFIED regions -- the same region edges a real wash would pool
  * against -- rather than every high-frequency detail in the source.
@@ -39,7 +39,7 @@ float vnoise(vec2 p) {
 
 float lum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 
-// S6 gradient, applied to the SIMPLIFIED texture (pigment pooling edges).
+// Sobel gradient gradient, applied to the SIMPLIFIED texture (pigment pooling edges).
 vec2 lumGradientSimplified(vec2 uv) {
     vec2 px = 1.0 / resolution;
     float tl = lum(texture(simplifiedTex, uv + px * vec2(-1.0,  1.0)).rgb);
@@ -67,7 +67,7 @@ void nm_main() {
     vec3 c = simplified * (1.0 - pool);
 
     // Paper granulation: hash/noise coordinate is the integer, tile-aware
-    // global pixel index (grain lesson, commit ee181726) so the grain
+    // global pixel index so the grain
     // aligns across GL/WGPU and across render tiles. Both the grain
     // strength and the warm paper tint are gated by paperTexture, so
     // paperTexture=0 yields a smooth, untinted wash and paperTexture=100

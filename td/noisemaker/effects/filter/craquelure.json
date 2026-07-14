@@ -5,9 +5,10 @@
   "starter": false,
   "tags": [
     "noise",
-    "edges"
+    "edges",
+    "artist"
   ],
-  "description": "Cracked-plaster groove network with carved relief shading over the image (Photoshop Craquelure)",
+  "description": "Cracked-plaster groove network with carved relief shading over the image (Craquelure)",
   "paramAliases": {},
   "globals": {
     "spacing": {

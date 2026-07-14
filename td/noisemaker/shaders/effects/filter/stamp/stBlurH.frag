@@ -4,13 +4,13 @@
 /*
  * Stamp - horizontal Gaussian pass.
  *
- * Separable blur of the source image (S3 snippet). The blurred result
+ * Separable Gaussian blur of the source image. The blurred result
  * feeds stBlurV, and stThreshold reads its luminance as the height field
  * that gets thresholded into ink/paper.
  *
  * radius = mix(0.5, 20.0, smoothness/100): higher smoothness -> larger
- * blur radius -> the threshold contour follows coarser shapes (Photoshop
- * Stamp/Torn Edges' "Smoothness" slider).
+ * blur radius -> the threshold contour follows coarser shapes, matching
+ * the Stamp/Torn Edges `smoothness` control.
  */
 
 

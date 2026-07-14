@@ -6,9 +6,9 @@
  * Relief - shading pass.
  *
  * Reads the blurred image (_rlBlur, written by rlBlurH/rlBlurV) as a height
- * field via luminance (S2 lum), computes a per-pixel directional-light
- * shade from a 1px forward-difference gradient (S8 reliefShade), and
- * tonemaps (S9) between inkColor/paperColor per `mode`:
+ * field via luminance (luminance lum), computes a per-pixel directional-light
+ * shade from a 1px forward-difference gradient (relief shading reliefShade), and
+ * tonemaps (ink/paper tonemapping) between inkColor/paperColor per `mode`:
  *
  *   basRelief (0): classic two-tone carved relief - shade blended 75/25
  *     with the raw height, mapped straight to ink/paper.
@@ -29,24 +29,19 @@
  * Y-orientation: hC/hR/hT sample _rlBlur (a same-effect prior-pass FBO)
  * through the standard per-backend native uv convention
  * (gl_FragCoord.xy/resolution in GLSL, pos.xy/texSize in WGSL) with NO
- * manual Y compensation. Per orientation-groundtruth.md's "Intermediate-FBO
- * content orientation" finding (verified on filter/plasticWrap's own
- * blur-chain height field), this class of read is orientation-transparent
+ * manual Y compensation. This same-effect intermediate read is orientation-transparent
  * on both backends - it matches on-screen presentation and matches
  * inputTex, with no mirroring - so GLSL and WGSL use textually identical
- * sampling and gradient math here, unlike plasticWrap's older pwSpec
- * (which predates that finding and instead calibrated its fixed light
- * vector empirically).
+ * sampling and gradient math here.
  *
  * The light vector L = normalize(vec3(cos(a), sin(a), 0.75)) is a plain
  * function of the lightAngle uniform - not fragment-coordinate-derived at
  * all - so it is likewise textually identical in both shaders. Standard
  * convention: a = radians(lightAngle); at lightAngle=135, cos(a) < 0 and
  * sin(a) > 0, so L points left+up in this always-Y-up-on-screen frame
- * (screen presentation is Y-up on both backends per the screen-truth
- * doctrine), landing the lit side upper-left; at lightAngle=-45 (135-180,
- * the opposite direction), the lit side flips to lower-right. Confirmed
- * on screen for both backends - see task-24-report.md.
+ * (screen presentation is Y-up on both backends), landing the lit side
+ * upper-left; at lightAngle=-45 (135-180, the opposite direction), the
+ * lit side flips to lower-right.
  *
  * The grain hash coordinate is the integer, tile-aware global pixel
  * position (gl_FragCoord + tileOffset, floored) rather than local
@@ -56,11 +51,18 @@
  */
 
 
+// MODE is a compile-time define injected by the runtime (see definition.js
+// `globals.mode.define`). Each mode is a distinct shade+tonemap path; baking
+// MODE lets the compiler drop the two dead arms instead of branching at
+// runtime on a value that is constant for the whole draw.
+#ifndef MODE
+#define MODE 0
+#endif
+
 
 
 uniform vec2 resolution;
 uniform vec2 tileOffset;
-uniform int mode;
 uniform float detail;
 uniform float lightAngle;
 uniform float balance;
@@ -102,39 +104,39 @@ void nm_main() {
     float strength = detail * 0.2;
     vec3 outColor;
 
-    if (mode == 1) {
-        // Plaster: hard blobby height plateau, inverted (dark source =
-        // raised), glossy (squared) shade.
-        float hhC = 1.0 - smoothstep(0.35, 0.65, hC);
-        float hhR = 1.0 - smoothstep(0.35, 0.65, hR);
-        float hhT = 1.0 - smoothstep(0.35, 0.65, hT);
-        float shade = reliefShade(hhC, hhR, hhT, strength, lightAngle);
-        float glossy = pow(shade, 2.0);
-        outColor = tonemap2(mix(hhC, glossy, 0.75), inkColor, paperColor);
-    } else if (mode == 2) {
-        // Note Paper: binary threshold cutout with a beveled contour band
-        // and grain.
-        float threshold = balance / 100.0;
-        float m = step(threshold, hC);
-        vec3 sheet = mix(inkColor * 0.9 + 0.1, paperColor, m);
+#if MODE==0
+    // Bas Relief (mode 0, default): shade blended with raw height,
+    // linear tonemap.
+    float shade = reliefShade(hC, hR, hT, strength, lightAngle);
+    outColor = tonemap2(mix(hC, shade, 0.75), inkColor, paperColor);
+#elif MODE==1
+    // Plaster: hard blobby height plateau, inverted (dark source =
+    // raised), glossy (squared) shade.
+    float hhC = 1.0 - smoothstep(0.35, 0.65, hC);
+    float hhR = 1.0 - smoothstep(0.35, 0.65, hR);
+    float hhT = 1.0 - smoothstep(0.35, 0.65, hT);
+    float shade = reliefShade(hhC, hhR, hhT, strength, lightAngle);
+    float glossy = pow(shade, 2.0);
+    outColor = tonemap2(mix(hhC, glossy, 0.75), inkColor, paperColor);
+#elif MODE==2
+    // Note Paper: binary threshold cutout with a beveled contour band
+    // and grain.
+    float threshold = balance / 100.0;
+    float m = step(threshold, hC);
+    vec3 sheet = mix(inkColor * 0.9 + 0.1, paperColor, m);
 
-        float shade = reliefShade(hC, hR, hT, strength, lightAngle);
-        float gradMag = length(vec2(hR - hC, hT - hC));
-        float bandHeight = max(gradMag * 2.0, 1e-5);
-        float edge = 1.0 - smoothstep(0.0, bandHeight, abs(hC - threshold));
-        vec3 beveled = clamp(sheet * mix(0.6, 1.4, shade), 0.0, 1.0);
-        vec3 sheetOut = mix(sheet, beveled, edge);
+    float shade = reliefShade(hC, hR, hT, strength, lightAngle);
+    float gradMag = length(vec2(hR - hC, hT - hC));
+    float bandHeight = max(gradMag * 2.0, 1e-5);
+    float edge = 1.0 - smoothstep(0.0, bandHeight, abs(hC - threshold));
+    vec3 beveled = clamp(sheet * mix(0.6, 1.4, shade), 0.0, 1.0);
+    vec3 sheetOut = mix(sheet, beveled, edge);
 
-        vec2 globalCoord = gl_FragCoord.xy + tileOffset;
-        float grain = (hash12(floor(globalCoord)) - 0.5) * (graininess / 100.0) * 0.15;
+    vec2 globalCoord = gl_FragCoord.xy + tileOffset;
+    float grain = (hash12(floor(globalCoord)) - 0.5) * (graininess / 100.0) * 0.15;
 
-        outColor = clamp(sheetOut + vec3(grain), 0.0, 1.0);
-    } else {
-        // Bas Relief (mode 0, default): shade blended with raw height,
-        // linear tonemap.
-        float shade = reliefShade(hC, hR, hT, strength, lightAngle);
-        outColor = tonemap2(mix(hC, shade, 0.75), inkColor, paperColor);
-    }
+    outColor = clamp(sheetOut + vec3(grain), 0.0, 1.0);
+#endif
 
     fragColor = vec4(outColor, src.a);
 }

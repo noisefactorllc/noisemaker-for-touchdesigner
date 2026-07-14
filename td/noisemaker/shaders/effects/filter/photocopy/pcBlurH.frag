@@ -4,12 +4,12 @@
 /*
  * Photocopy - horizontal Gaussian pass.
  *
- * Separable blur of the source image (S3 snippet). The blurred result
+ * Separable Gaussian blur of the source image. The blurred result
  * feeds pcBlurV, and pcCombine reads its luminance as the low-passed half
  * of the difference-of-Gaussians edge band.
  *
  * radius = mix(1.0, 24.0, (detail-1)/99): higher detail -> larger blur
- * radius -> the DoG band captures coarser edges (Photoshop Photocopy's
+ * radius -> the DoG band captures coarser edges (Photocopy's
  * "Detail" slider).
  */
 

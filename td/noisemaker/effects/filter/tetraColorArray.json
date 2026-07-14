@@ -9,6 +9,108 @@
   ],
   "description": "Apply Tetra color array palettes based on luminance",
   "paramAliases": {},
+  "uniformLayout": {
+    "colorMode": {
+      "slot": 0,
+      "components": "x"
+    },
+    "colorCount": {
+      "slot": 0,
+      "components": "y"
+    },
+    "positionMode": {
+      "slot": 0,
+      "components": "z"
+    },
+    "repeat": {
+      "slot": 0,
+      "components": "w"
+    },
+    "offset": {
+      "slot": 1,
+      "components": "x"
+    },
+    "alpha": {
+      "slot": 1,
+      "components": "y"
+    },
+    "smoothness": {
+      "slot": 1,
+      "components": "z"
+    },
+    "rotation": {
+      "slot": 1,
+      "components": "w"
+    },
+    "time": {
+      "slot": 2,
+      "components": "w"
+    },
+    "color0": {
+      "slot": 2,
+      "components": "xyz"
+    },
+    "color1": {
+      "slot": 3,
+      "components": "xyz"
+    },
+    "color2": {
+      "slot": 4,
+      "components": "xyz"
+    },
+    "color3": {
+      "slot": 5,
+      "components": "xyz"
+    },
+    "color4": {
+      "slot": 6,
+      "components": "xyz"
+    },
+    "color5": {
+      "slot": 7,
+      "components": "xyz"
+    },
+    "color6": {
+      "slot": 8,
+      "components": "xyz"
+    },
+    "color7": {
+      "slot": 9,
+      "components": "xyz"
+    },
+    "pos0": {
+      "slot": 10,
+      "components": "x"
+    },
+    "pos1": {
+      "slot": 10,
+      "components": "y"
+    },
+    "pos2": {
+      "slot": 10,
+      "components": "z"
+    },
+    "pos3": {
+      "slot": 10,
+      "components": "w"
+    },
+    "pos4": {
+      "slot": 11,
+      "components": "x"
+    },
+    "pos5": {
+      "slot": 11,
+      "components": "y"
+    },
+    "pos6": {
+      "slot": 11,
+      "components": "z"
+    },
+    "pos7": {
+      "slot": 11,
+      "components": "w"
+    }
+  },
   "globals": {
     "colorMode": {
       "type": "int",

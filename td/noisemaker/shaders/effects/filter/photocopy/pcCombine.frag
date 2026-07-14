@@ -5,21 +5,32 @@
 /*
  * Photocopy - combine pass.
  *
- * band = lum(src) - lum(blur) is the difference-of-Gaussians edge signal:
- * positive on the light side of an edge, negative on the dark side.
- * edgeInk = clamp(-band * gain, 0, 1) keeps only the dark side, gained by
- * `darkness` (mix(2, 10, darkness/100)).
+ * Two independent ink contributions, combined with max() so neither term
+ * has to carry the whole image alone:
  *
- * Midtone dropout: smoothstep(0.75, 0.4, lumSrc) is a FALLING ramp
- * (edge0=0.75 > edge1=0.4 by design: the standard clamp/mix smoothstep
- * formula extends gracefully to edge0 > edge1, producing 1 at/below 0.4
- * and 0 at/above 0.75) that zeroes edgeInk in bright source regions, so
- * only edges over darker material ink in. A second falling ramp,
- * smoothstep(0.12, 0.06, lumSrc), adds solid ink in deep shadows
- * (lumSrc < 0.12) regardless of edge content, ramping to full strength by
- * lumSrc <= 0.06. Total ink is clamped to 1.
+ * 1. Edge ink: band = lum(src) - lum(blur) is the difference-of-Gaussians
+ *    signal. abs(band) inks BOTH sides of an edge (a thin double-line
+ *    contour, the characteristic photocopier edge artifact), gained by
+ *    `darkness` via edgeGain = mix(4, 18, darkness/100).
  *
- * tonemap2 (S9): t=1 -> paper, so 1-ink means full ink -> ink color, zero
+ * 2. Tonal ink: toneInk = 1 - smoothstep(toneLo, toneHi, lumSrc) fills
+ *    the source's own mid-dark regions with solid ink directly, independent
+ *    of edge content - this is what keeps the image's actual shapes legible
+ *    as ink instead of relying on sparse hairline edges (a soft/low-contrast
+ *    source has a tiny DoG band almost everywhere, which starved the old
+ *    edge-only formula down to near-blank paper). toneHi = mix(0.35, 0.68,
+ *    darkness/100) tracks `darkness` so raising it both thickens edges and
+ *    inks a larger share of the tonal range; toneLo = toneHi - 0.26 is a
+ *    fixed-width falling ramp below it (complement-smoothstep idiom:
+ *    ascending edge0<edge1, negated - see ink/paper tonemapping callers elsewhere).
+ *
+ * ink = clamp(max(edgeInk, toneInk), 0, 1). Flat source: band=0 identically
+ * (blur of a flat field equals the field), so edgeInk=0 and ink=toneInk
+ * alone - a fully bright flat source (lumSrc=1 > toneHi) renders pure
+ * paper, a fully dark flat source (lumSrc=0 < toneLo) renders solid ink,
+ * matching Photocopy's expected flat-case response exactly as before.
+ *
+ * tonemap2 (ink/paper tonemapping): t=1 -> paper, so 1-ink means full ink -> ink color, zero
  * ink -> paper color. Alpha is taken from the source, not the blur.
  *
  * No directional light, no rotation, no fragment-coordinate-derived
@@ -52,11 +63,14 @@ void nm_main() {
     float lumBlur = lum(blur.rgb);
     float band = lumSrc - lumBlur;
 
-    float gain = mix(2.0, 10.0, darkness / 100.0);
-    float edgeInk = clamp(-band * gain, 0.0, 1.0);
+    float edgeGain = mix(4.0, 18.0, darkness / 100.0);
+    float edgeInk = clamp(abs(band) * edgeGain, 0.0, 1.0);
 
-    float ink = edgeInk * (1.0 - smoothstep(0.4, 0.75, lumSrc));
-    ink = clamp(ink + (1.0 - smoothstep(0.06, 0.12, lumSrc)), 0.0, 1.0);
+    float toneHi = mix(0.35, 0.68, darkness / 100.0);
+    float toneLo = toneHi - 0.26;
+    float toneInk = 1.0 - smoothstep(toneLo, toneHi, lumSrc);
+
+    float ink = clamp(max(edgeInk, toneInk), 0.0, 1.0);
 
     vec3 outColor = tonemap2(1.0 - ink, inkColor, paperColor);
     fragColor = vec4(outColor, src.a);

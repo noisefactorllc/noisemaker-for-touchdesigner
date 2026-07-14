@@ -2,8 +2,7 @@
 // NM_OUTPUT: fragColor
 #define inputTex sTD2DInputs[0]
 /*
- * Halftone - rotated-screen halftone reproduction. Covers Photoshop's
- * Color Halftone (mode: color) and Halftone Pattern (mode: mono).
+ * Halftone - rotated subtractive color screens and monochrome patterns.
  *
  * Screen geometry: global (tile-aware) pixel coordinates are rotated by
  * the screen's angle and tiled into `frequency`-px cells; a fragment's
@@ -11,15 +10,14 @@
  * band) drives an antialiased coverage value via smoothstep against
  * fwidth(), so the screen stays crisp at any resolution.
  *
- * mode == 0 (color): drives three independent screens, one per RGB
- * channel, at angle + {108, 162, 90} - Photoshop's default Color
- * Halftone screen angles - and multiplies their ink coverage into the
- * output so overlapping dots darken like overprinted ink (rosette). Each
- * screen's dot SIZE comes from that channel's own value, sampled with a
- * light 3x3 box blur at the CENTER of the current fragment's screen cell
- * (not the fragment itself) so a cell's dot has one flat size - the
- * posterized "true halftone" look - rather than wobbling with in-cell
- * image detail.
+ * mode == 0 (color): separates RGB into CMYK with under-color removal,
+ * then drives four independent screens at the user-facing channel
+ * angles. Each screen's dot SIZE comes from that ink's amount, sampled
+ * with a light 3x3 box blur at the CENTER of the current fragment's
+ * screen cell (not the fragment itself) so a cell's dot has one flat
+ * size - the posterized "true halftone" look - rather than wobbling with
+ * in-cell image detail. The screened inks composite subtractively back
+ * to RGB. Neutral RGB separates to K only and therefore stays neutral.
  *
  * mode == 1 (mono): drives a single screen from image luminance. The
  * `pattern` dropdown selects the spot function: dot (radial distance
@@ -38,14 +36,28 @@
  */
 
 
+// MODE and PATTERN are compile-time defines injected by the runtime (see
+// definition.js `globals.mode.define` / `globals.pattern.define`). Baking
+// them lets the compiler drop the unselected mode/pattern arms instead of
+// carrying a runtime int dispatch through every fragment.
+#ifndef MODE
+#define MODE 0
+#endif
+
+#ifndef PATTERN
+#define PATTERN 0
+#endif
+
 
 uniform vec2 resolution;
 uniform vec2 tileOffset;
 uniform vec2 fullResolution;
-uniform int mode;
-uniform int pattern;
 uniform float frequency;
-uniform float angle;
+uniform float cyanAngle;
+uniform float magentaAngle;
+uniform float yellowAngle;
+uniform float blackAngle;
+uniform float monoAngle;
 uniform float sharpness;
 uniform vec3 inkColor;
 uniform vec3 paperColor;
@@ -60,10 +72,18 @@ vec3 tonemap2(float t, vec3 ink, vec3 paper) {
     return mix(ink, paper, clamp(t, 0.0, 1.0));
 }
 
+// Standard CMYK separation with full under-color removal. The shared
+// neutral component becomes K, leaving C/M/Y at zero for neutral RGB.
+vec4 rgbToCmyk(vec3 rgb) {
+    float k = 1.0 - max(max(rgb.r, rgb.g), rgb.b);
+    float scale = max(1.0 - k, 0.00001);
+    vec3 cmy = clamp((1.0 - rgb - vec3(k)) / scale, 0.0, 1.0);
+    return vec4(cmy, k);
+}
+
 // Rotates a position-derived (global pixel space) vector by angleDeg.
-// GLSL uses this mat2(c,-s,s,c) form for position-derived geometry per
-// the screen-truth doctrine (see filter/pinch's rotate2D, filter/
-// pondRipples) - no manual Y compensation. Because this matrix is
+// GLSL uses this mat2(c,-s,s,c) form for position-derived geometry with
+// no manual Y compensation. Because this matrix is
 // orthonormal, calling it with -angleDeg gives the exact inverse
 // rotation (its transpose), which cellSampleFromRuv relies on below.
 vec2 rotate2D(vec2 v, float angleDeg) {
@@ -105,8 +125,32 @@ vec3 cellSampleFromRuv(vec2 ruv, float angleDeg, vec2 texel) {
 float halftoneCoverage(float d, float value, float sharpnessPct) {
     float spot = sqrt(clamp(value, 0.0, 1.0)) * 0.7071;
     float softness = 1.0 - clamp(sharpnessPct / 100.0, 0.0, 1.0);
-    float aa = mix(fwidth(d) * 1.5, 0.35, softness);
-    return smoothstep(spot + aa, spot - aa, d);
+    float aa = max(mix(fwidth(d) * 1.5, 0.35, softness), 0.00001);
+    return 1.0 - smoothstep(spot - aa, spot + aa, d);
+}
+
+// Clustered dots remain center-origin circles over the full tone range.
+// Up through 50% ink, the area-derived radius is unchanged. Darker tones
+// continue growing that same circle toward a sub-cell cap, avoiding both the
+// hard grid seams and circles clipped into squares.
+const float DOT_AREA_CAP = 0.50;
+const float PI = 3.141592653589793;
+const float MID_DOT_RADIUS = 0.39894228; // sqrt(0.5 / PI)
+const float MAX_DOT_RADIUS = 0.48;
+
+float roundDotCoverage(vec2 offset, float value, float sharpnessPct) {
+    float inkAmount = clamp(value, 0.0, 1.0);
+    float centerDistance = length(offset);
+    float inkRadius = sqrt(min(inkAmount, DOT_AREA_CAP) / PI);
+    if (inkAmount > DOT_AREA_CAP) {
+        inkRadius = mix(MID_DOT_RADIUS, MAX_DOT_RADIUS,
+            (inkAmount - DOT_AREA_CAP) / (1.0 - DOT_AREA_CAP));
+    }
+    float softness = 1.0 - clamp(sharpnessPct / 100.0, 0.0, 1.0);
+    float centerAA = max(mix(fwidth(centerDistance) * 1.5, 0.35, softness), 0.00001);
+    float resolvedInk = smoothstep(0.0, 1.0 / 255.0, value);
+    return (1.0 - smoothstep(-centerAA, centerAA,
+        centerDistance - inkRadius)) * resolvedInk;
 }
 
 void nm_main() {
@@ -115,38 +159,53 @@ void nm_main() {
     vec2 texel = 1.0 / resolution;
     float alpha = texture(inputTex, uv).a;
 
-    if (mode == 0) {
-        // Color Halftone.
-        vec2 ruvR = rotate2D(globalCoord, angle + 108.0) / frequency;
-        vec2 ruvG = rotate2D(globalCoord, angle + 162.0) / frequency;
-        vec2 ruvB = rotate2D(globalCoord, angle + 90.0) / frequency;
-        float valR = 1.0 - cellSampleFromRuv(ruvR, angle + 108.0, texel).r;
-        float valG = 1.0 - cellSampleFromRuv(ruvG, angle + 162.0, texel).g;
-        float valB = 1.0 - cellSampleFromRuv(ruvB, angle + 90.0, texel).b;
-        float inkR = halftoneCoverage(length(fract(ruvR) - 0.5), valR, sharpness);
-        float inkG = halftoneCoverage(length(fract(ruvG) - 0.5), valG, sharpness);
-        float inkB = halftoneCoverage(length(fract(ruvB) - 0.5), valB, sharpness);
-        fragColor = vec4(1.0 - inkR, 1.0 - inkG, 1.0 - inkB, alpha);
-        return;
-    }
-
-    // Halftone Pattern (mono).
+#if MODE == 0
+    // Subtractive color halftone.
+    vec2 ruvC = rotate2D(globalCoord, cyanAngle) / frequency;
+    vec2 ruvM = rotate2D(globalCoord, magentaAngle) / frequency;
+    vec2 ruvY = rotate2D(globalCoord, yellowAngle) / frequency;
+    vec2 ruvK = rotate2D(globalCoord, blackAngle) / frequency;
+    float valC = rgbToCmyk(cellSampleFromRuv(ruvC, cyanAngle, texel)).r;
+    float valM = rgbToCmyk(cellSampleFromRuv(ruvM, magentaAngle, texel)).g;
+    float valY = rgbToCmyk(cellSampleFromRuv(ruvY, yellowAngle, texel)).b;
+    float valK = rgbToCmyk(cellSampleFromRuv(ruvK, blackAngle, texel)).a;
+    float inkC = roundDotCoverage(fract(ruvC) - 0.5, valC, sharpness);
+    float inkM = roundDotCoverage(fract(ruvM) - 0.5, valM, sharpness);
+    float inkY = roundDotCoverage(fract(ruvY) - 0.5, valY, sharpness);
+    float inkK = roundDotCoverage(fract(ruvK) - 0.5, valK, sharpness);
+    vec3 screened = (vec3(1.0) - vec3(inkC, inkM, inkY)) * (1.0 - inkK);
+    fragColor = vec4(screened, alpha);
+    return;
+#else
+    // Monochrome screen pattern.
     float value;
     float d;
-    if (pattern == 2) {
-        // circle: concentric rings from the fixed image center, unrotated.
-        vec2 center = fullResolution * 0.5;
-        value = 1.0 - lum(boxBlur3(uv, texel));
-        float rd = length(globalCoord - center) / frequency;
-        d = abs(fract(rd) - 0.5);
-    } else {
-        vec2 ruv = rotate2D(globalCoord, angle) / frequency;
-        value = 1.0 - lum(cellSampleFromRuv(ruv, angle, texel));
-        vec2 off = fract(ruv) - 0.5;
-        d = (pattern == 1) ? abs(off.y) : length(off); // 1 = line, else dot
-    }
+    vec2 dotOffset = vec2(0.0);
+#if PATTERN == 2
+    // circle: concentric rings from the fixed image center, unrotated.
+    vec2 center = fullResolution * 0.5;
+    value = 1.0 - lum(boxBlur3(uv, texel));
+    float rd = length(globalCoord - center) / frequency;
+    d = abs(fract(rd) - 0.5);
+#else
+    vec2 ruv = rotate2D(globalCoord, monoAngle) / frequency;
+    value = 1.0 - lum(cellSampleFromRuv(ruv, monoAngle, texel));
+    vec2 off = fract(ruv) - 0.5;
+    dotOffset = off;
+    // 1 = line, else dot
+#if PATTERN == 1
+    d = abs(off.y);
+#else
+    d = length(off);
+#endif
+#endif
+#if PATTERN == 0
+    float ink = roundDotCoverage(dotOffset, value, sharpness);
+#else
     float ink = halftoneCoverage(d, value, sharpness);
+#endif
     fragColor = vec4(tonemap2(1.0 - ink, inkColor, paperColor), alpha);
+#endif
 }
 void main() {
     nm_main();

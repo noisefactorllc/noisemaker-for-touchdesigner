@@ -6,7 +6,7 @@
   "tags": [
     "noise"
   ],
-  "description": "Texture overlay blend",
+  "description": "Procedural surface and material texture overlay",
   "paramAliases": {},
   "globals": {
     "mode": {
@@ -18,7 +18,17 @@
         "crosshatch": 1,
         "halftone": 2,
         "paper": 3,
-        "stucco": 4
+        "stucco": 4,
+        "regular": 5,
+        "soft": 6,
+        "sprinkles": 7,
+        "clumped": 8,
+        "contrasty": 9,
+        "enlarged": 10,
+        "stippled": 11,
+        "horizontal": 12,
+        "vertical": 13,
+        "speckle": 14
       }
     },
     "alpha": {
@@ -34,6 +44,25 @@
       "uniform": "scale",
       "min": 0.1,
       "max": 10
+    },
+    "intensity": {
+      "type": "float",
+      "default": 40,
+      "uniform": "intensity",
+      "min": 0,
+      "max": 100
+    },
+    "contrast": {
+      "type": "float",
+      "default": 50,
+      "uniform": "contrast",
+      "min": 0,
+      "max": 100
+    },
+    "mono": {
+      "type": "boolean",
+      "default": true,
+      "uniform": "mono"
     }
   },
   "passes": [
@@ -45,7 +74,10 @@
       },
       "uniforms": {
         "alpha": "alpha",
-        "scale": "scale"
+        "scale": "scale",
+        "intensity": "intensity",
+        "contrast": "contrast",
+        "mono": "mono"
       },
       "outputs": {
         "fragColor": "outputTex"

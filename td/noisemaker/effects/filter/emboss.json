@@ -6,9 +6,18 @@
   "tags": [
     "edges"
   ],
-  "description": "Emboss effect creating raised relief appearance",
+  "description": "Emboss relief with color convolution or opt-in gray directional edge tracing",
   "paramAliases": {},
   "globals": {
+    "style": {
+      "type": "int",
+      "default": 0,
+      "define": "STYLE",
+      "choices": {
+        "color": 0,
+        "gray": 1
+      }
+    },
     "amount": {
       "type": "float",
       "default": 1,
@@ -29,6 +38,13 @@
       "uniform": "height",
       "min": 1,
       "max": 10
+    },
+    "colorAmount": {
+      "type": "float",
+      "default": 100,
+      "uniform": "colorAmount",
+      "min": 0,
+      "max": 100
     }
   },
   "passes": [

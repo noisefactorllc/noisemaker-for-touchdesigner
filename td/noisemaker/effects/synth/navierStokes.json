@@ -8,6 +8,90 @@
   ],
   "description": "Stable-fluids Navier-Stokes solver",
   "paramAliases": {},
+  "uniformLayouts": {
+    "nsSplat": {
+      "resolution": {
+        "slot": 0,
+        "components": "xy"
+      },
+      "seed": {
+        "slot": 0,
+        "components": "w"
+      },
+      "speed": {
+        "slot": 1,
+        "components": "x"
+      },
+      "inputForce": {
+        "slot": 1,
+        "components": "y"
+      },
+      "inputDye": {
+        "slot": 1,
+        "components": "z"
+      },
+      "resetState": {
+        "slot": 1,
+        "components": "w"
+      }
+    },
+    "nsAdvect": {
+      "resolution": {
+        "slot": 0,
+        "components": "xy"
+      },
+      "speed": {
+        "slot": 0,
+        "components": "w"
+      },
+      "dyeDecay": {
+        "slot": 1,
+        "components": "x"
+      },
+      "velocityDecay": {
+        "slot": 1,
+        "components": "y"
+      }
+    },
+    "nsSmooth": {
+      "resolution": {
+        "slot": 0,
+        "components": "xy"
+      },
+      "smoothing": {
+        "slot": 0,
+        "components": "z"
+      }
+    },
+    "nsDivergence": {
+      "resolution": {
+        "slot": 0,
+        "components": "xy"
+      }
+    },
+    "nsPressure": {
+      "resolution": {
+        "slot": 0,
+        "components": "xy"
+      }
+    },
+    "nsGradient": {
+      "resolution": {
+        "slot": 0,
+        "components": "xy"
+      }
+    },
+    "ns": {
+      "resolution": {
+        "slot": 0,
+        "components": "xy"
+      },
+      "inputIntensity": {
+        "slot": 1,
+        "components": "x"
+      }
+    }
+  },
   "globals": {
     "tex": {
       "type": "surface",

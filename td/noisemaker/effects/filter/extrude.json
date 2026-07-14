@@ -5,15 +5,16 @@
   "starter": false,
   "tags": [
     "distort",
-    "geometric"
+    "geometric",
+    "artist"
   ],
-  "description": "Break the image into 3D blocks or pyramids projecting toward the viewer (Photoshop Extrude)",
+  "description": "Break the image into 3D blocks or pyramids projecting toward the viewer (Extrude)",
   "paramAliases": {},
   "globals": {
     "type": {
       "type": "int",
       "default": 0,
-      "uniform": "extrudeType",
+      "define": "EXTRUDE_TYPE",
       "choices": {
         "blocks": 0,
         "pyramids": 1
@@ -37,7 +38,7 @@
     "depthSource": {
       "type": "int",
       "default": 0,
-      "uniform": "depthSource",
+      "define": "DEPTH_SOURCE",
       "choices": {
         "luminance": 0,
         "random": 1

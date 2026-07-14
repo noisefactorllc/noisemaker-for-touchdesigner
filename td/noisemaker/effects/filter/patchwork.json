@@ -5,9 +5,10 @@
   "starter": false,
   "tags": [
     "pixel",
-    "edges"
+    "edges",
+    "artist"
   ],
-  "description": "Needlepoint grid of solid-color squares raised by luminance with lit bevel edges (Photoshop Patchwork)",
+  "description": "Needlepoint grid of solid-color squares raised by luminance with lit bevel edges (Patchwork)",
   "paramAliases": {},
   "globals": {
     "squareSize": {

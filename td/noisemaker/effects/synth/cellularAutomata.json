@@ -8,6 +8,76 @@
   ],
   "description": "2D cellular automata with rule presets",
   "paramAliases": {},
+  "uniformLayouts": {
+    "ca": {
+      "resolution": {
+        "slot": 0,
+        "components": "xy"
+      },
+      "time": {
+        "slot": 0,
+        "components": "z"
+      },
+      "smoothing": {
+        "slot": 1,
+        "components": "y"
+      }
+    },
+    "caFb": {
+      "deltaTime": {
+        "slot": 0,
+        "components": "y"
+      },
+      "seed": {
+        "slot": 0,
+        "components": "z"
+      },
+      "resetState": {
+        "slot": 0,
+        "components": "w"
+      },
+      "ruleIndex": {
+        "slot": 1,
+        "components": "x"
+      },
+      "speed": {
+        "slot": 1,
+        "components": "y"
+      },
+      "weight": {
+        "slot": 1,
+        "components": "z"
+      },
+      "bornMask0": {
+        "slot": 2,
+        "components": "xyzw"
+      },
+      "bornMask1": {
+        "slot": 3,
+        "components": "xyzw"
+      },
+      "bornMask2": {
+        "slot": 4,
+        "components": "x"
+      },
+      "surviveMask0": {
+        "slot": 4,
+        "components": "yzw"
+      },
+      "surviveMask1": {
+        "slot": 5,
+        "components": "xyzw"
+      },
+      "surviveMask2": {
+        "slot": 6,
+        "components": "xy"
+      },
+      "source": {
+        "slot": 6,
+        "components": "z"
+      }
+    }
+  },
   "globals": {
     "tex": {
       "type": "surface",

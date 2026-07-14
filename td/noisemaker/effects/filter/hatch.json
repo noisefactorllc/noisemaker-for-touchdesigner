@@ -5,9 +5,10 @@
   "starter": false,
   "tags": [
     "noise",
-    "edges"
+    "edges",
+    "artist"
   ],
-  "description": "Hand-drawn sketch engine covering Photoshop's Graphic Pen, Charcoal, Chalk & Charcoal, Conte Crayon, Crosshatch, and Colored Pencil filters",
+  "description": "Hand-drawn sketch engine covering Graphic Pen, Charcoal, Chalk & Charcoal, Conte Crayon, Crosshatch, and Colored Pencil filters",
   "paramAliases": {},
   "globals": {
     "mode": {

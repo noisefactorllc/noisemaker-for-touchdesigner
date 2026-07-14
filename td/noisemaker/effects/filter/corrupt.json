@@ -9,6 +9,52 @@
   ],
   "description": "Scanline-based data corruption",
   "paramAliases": {},
+  "uniformLayout": {
+    "time": {
+      "slot": 0,
+      "components": "x"
+    },
+    "seed": {
+      "slot": 0,
+      "components": "y"
+    },
+    "intensity": {
+      "slot": 0,
+      "components": "z"
+    },
+    "sort": {
+      "slot": 0,
+      "components": "w"
+    },
+    "shift": {
+      "slot": 1,
+      "components": "x"
+    },
+    "bits": {
+      "slot": 1,
+      "components": "y"
+    },
+    "channelShift": {
+      "slot": 1,
+      "components": "z"
+    },
+    "speed": {
+      "slot": 1,
+      "components": "w"
+    },
+    "melt": {
+      "slot": 2,
+      "components": "x"
+    },
+    "scatter": {
+      "slot": 2,
+      "components": "y"
+    },
+    "bandHeight": {
+      "slot": 2,
+      "components": "z"
+    }
+  },
   "globals": {
     "intensity": {
       "type": "float",

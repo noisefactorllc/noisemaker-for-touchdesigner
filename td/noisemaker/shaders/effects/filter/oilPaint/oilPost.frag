@@ -4,7 +4,7 @@
 #define flatTex sTD2DInputs[1]
 /*
  * Oil Paint - post pass: reshapes the flattened (oilFlatten) result into
- * one of six Photoshop-parity painterly looks selected by MODE, then
+ * one of six classic-filter fidelity painterly looks selected by MODE, then
  * applies a shared granulation pass to every mode.
  *   facet (0)     - passthrough of the flattened patches.
  *   daubs (1)     - unsharp the flattened patches for crisp dab edges.
@@ -62,7 +62,7 @@ float fbm(vec2 p) {
 
 float lum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 
-// S6 gradient, applied to the FLATTENED texture (fresco/dryBrush edges).
+// Sobel gradient gradient, applied to the FLATTENED texture (fresco/dryBrush edges).
 vec2 lumGradientFlat(vec2 uv) {
     vec2 px = 1.0 / resolution;
     float tl = lum(texture(flatTex, uv + px * vec2(-1.0,  1.0)).rgb);
@@ -77,7 +77,7 @@ vec2 lumGradientFlat(vec2 uv) {
                 tl + 2.0 * t + tr - bl - 2.0 * b - br);
 }
 
-// 3x3 tent blur of the flattened texture. Shared verbatim by daubs' unsharp
+// 3x3 tent blur of the flattened texture. Shared by daubs' unsharp
 // mask (MODE 1) and knife's softening blend (MODE 4) -- same blur, ONE WAY
 // ONLY; only the per-mode mix weight differs.
 vec3 tent3x3(vec2 uv) {
@@ -113,8 +113,8 @@ vec3 modeColor(vec2 uv, vec3 c, vec2 globalCoord) {
     float levels = floor(mix(8.0, 3.0, detail / 100.0) + 0.5);
     vec3 poster = floor(c * levels) / levels;
     float gradMag = length(lumGradientFlat(uv));
-    // 1.5 (gradient-to-alpha gain) and 0.15 (max edge darken) are
-    // implementer judgment calls, tuned by eye -- this reuses fresco's
+    // 1.5 is the gradient-to-alpha gain and 0.15 caps edge darkening.
+    // This reuses fresco's
     // (MODE 3) lumGradientFlat helper but applies it as a subtler,
     // capped darken rather than fresco's stronger detail-scaled darken.
     float edgeDarken = clamp(gradMag * 1.5, 0.0, 1.0) * 0.15;
@@ -141,8 +141,7 @@ void nm_main() {
 
     // Tile-aware integer global pixel coordinate for noise/hash inputs.
     // KERNEL sampling above (tent3x3/lumGradientFlat) uses the local uv
-    // path; NOISE/hash uses this integer global pixel instead, per the
-    // grain lesson (commit ee181726).
+    // path; NOISE/hash uses this integer global pixel instead.
     vec2 globalCoord = floor(gl_FragCoord.xy) + tileOffset;
 
     vec3 outc = modeColor(uv, c, globalCoord);

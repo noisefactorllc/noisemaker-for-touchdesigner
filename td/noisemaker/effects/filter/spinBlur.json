@@ -4,9 +4,10 @@
   "func": "spinBlur",
   "starter": false,
   "tags": [
-    "blur"
+    "blur",
+    "artist"
   ],
-  "description": "Rotational blur around a center point (Photoshop Radial Blur, Spin mode)",
+  "description": "Rotational blur around a center point (Radial Blur, Spin mode)",
   "paramAliases": {},
   "globals": {
     "amount": {

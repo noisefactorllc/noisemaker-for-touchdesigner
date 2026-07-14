@@ -7,33 +7,26 @@
  *
  * The blurred image (_pwBlur, written by pwBlurH/pwBlurV) supplies a height
  * field h via its luminance. A 1px central-difference gradient of h gives a
- * per-pixel surface normal, which is lit by a fixed key light and raised to
- * a gloss exponent to produce a specular term. A curvature term boosts the
- * specular energy on ridges, so the sheen hugs raised contours rather than
- * washing evenly over plain slopes -- the "shrink-wrapped" look. The
- * specular term is screened onto the original image.
+ * per-pixel surface normal. A configurable key light and fixed view vector
+ * form a Blinn half-vector for the directional highlight. A five-point Laplacian adds
+ * energy at two-dimensional ridge crests, so the sheen hugs raised contours
+ * rather than washing evenly over plain slopes. The result is screened onto
+ * the original image.
  *
- * Y-orientation note: the gradient taps (uv +/- 1px in x and y) and the key
- * light vector L below are fixed, backend-agnostic constants -- unlike e.g.
+ * Y-orientation note: the gradient taps (uv +/- 1px in x and y) and the
+ * user-supplied key-light vector are interpreted identically by both
+ * backends -- unlike e.g.
  * spinBlur's rotation of a fragment-position-derived offset, nothing here is
  * built from the fragment's own coordinate relative to a center parameter.
- * Per the screen-truth doctrine (shared-context.md; verified for emboss's
- * analogous fixed kernel-tap case in orientation-groundtruth.md), that means
- * the WGSL port must TEXTUALLY MATCH this file exactly, with no manual Y
- * compensation, rather than following spinBlur/pondRipples' raw-convention
+ * The WGSL port therefore matches this file exactly, with no manual Y
+ * compensation, rather than following spinBlur/pondRipples' position-rotation
  * pattern.
  *
- * L's xy signs were determined empirically, not by armchair Y-up reasoning:
- * a standalone Playwright on-screen probe (radial gradient dome, quadrant +
- * weighted-centroid analysis of the specular diff, both backends -- see
- * task-22-report.md) showed the naive "light from upper-left" literal
- * (-0.4, 0.6, 0.7) actually lands the brightest region at screen
- * lower-right on webgl2 (bit-exact reproducible, confirmed by direct visual
- * inspection of an amplified diff, not just the metric). The xy signs below
- * are flipped from that literal so the measured brightest region is
- * upper-left on screen for webgl2, matching the requirement; z (dominant,
- * toward-viewer) is untouched. webgl2 and webgpu were re-confirmed to land
- * on the identical screen-side after this change.
+ * The vector control uses the user-facing light heading shared by the
+ * Lighting effect. This height-field gradient uses the opposite XY direction,
+ * so its azimuth is rotated 180 degrees below while Z remains toward the
+ * viewer. Keeping that conversion inside the shader also preserves the
+ * established default Plastic Wrap pixels.
  */
 
 
@@ -42,6 +35,7 @@
 uniform vec2 resolution;
 uniform float highlight;
 uniform float smoothness;
+uniform vec3 lightDirection;
 
 out vec4 fragColor;
 
@@ -60,27 +54,40 @@ void nm_main() {
 
     vec2 grad = vec2(hR - hL, hT - hB);
 
-    // Gradient-to-slope scale: documented constant. 8.0 turns a full 0..1
+    // Gradient-to-slope scale: 10.0 turns a full 0..1
     // luminance swing over a ~2px span into a strongly tilted facet
-    // (grad ~0.5 * 8 = 4, well past the point where the normal is mostly
+    // (grad ~0.5 * 10 = 5, well past the point where the normal is mostly
     // sideways) while leaving gentle/smoothed contours near-flat.
-    float strength = 8.0;
+    float strength = 10.0;
     vec3 n = normalize(vec3(-grad * strength, 1.0));
-    // Fixed key light, empirically signed so the lit side reads as
-    // upper-left on screen (see header note) -- matches Photoshop Plastic
-    // Wrap's default glossy look. z stays dominant/positive (toward viewer).
-    vec3 L = normalize(vec3(0.4, -0.6, 0.7));
+    float lightLengthSq = dot(lightDirection, lightDirection);
+    vec3 operatorLight = lightLengthSq > 0.000001
+        ? lightDirection
+        : vec3(-0.4, 0.6, 0.7);
+    vec3 controlledLight = vec3(-operatorLight.xy, operatorLight.z);
+    vec3 L = normalize(controlledLight);
+    vec3 V = vec3(0.0, 0.0, 1.0);
+    vec3 halfVector = L + V;
+    float halfLengthSq = dot(halfVector, halfVector);
+    vec3 defaultL = normalize(vec3(0.4, -0.6, 0.7));
+    vec3 defaultHalf = normalize(defaultL + V);
+    vec3 H = halfLengthSq > 0.000001
+        ? normalize(halfVector)
+        : defaultHalf;
 
     float gloss = mix(24.0, 6.0, smoothness / 100.0);
-    float spec = pow(clamp(dot(n, L), 0.0, 1.0), gloss);
+    float flatSpec = pow(H.z, gloss);
+    float rawSpec = pow(clamp(dot(n, H), 0.0, 1.0), gloss);
+    // Remove the flat-plane response and normalize the remaining directional
+    // highlight so unmodulated image regions do not receive a milky wash.
+    float spec = clamp((rawSpec - flatSpec) / max(1.0 - flatSpec, 0.0001), 0.0, 1.0);
 
-    // Ridge boost: h_c*2 - h_l - h_r is the discrete negative second
-    // derivative along x -- positive at a local maximum (a ridge crest).
-    // Boosting spec there concentrates the sheen on contour crests instead
-    // of spreading evenly across plain slopes.
-    float curv = hC * 2.0 - hL - hR;
-    float ridge = clamp(curv * strength, 0.0, 1.0);
-    spec *= 1.0 + ridge * 2.0;
+    // The negative five-point Laplacian is positive at a two-dimensional
+    // height-field crest. Unlike the prior x-only second derivative, it
+    // responds equally to horizontal, vertical, and curved contours.
+    float curv = 4.0 * hC - hL - hR - hB - hT;
+    float ridge = clamp(curv * strength * 2.0, 0.0, 1.0);
+    spec = clamp(spec * 1.35 + ridge * 0.75, 0.0, 1.0);
 
     vec3 specColor = clamp(vec3(spec) * (highlight / 100.0), 0.0, 1.0);
     // Screen blend: 1 - (1-a)(1-b). highlight=0 -> specColor=0 -> out=src exactly.

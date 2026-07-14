@@ -8,6 +8,96 @@
   ],
   "description": "Newton fractal explorer with deep zoom",
   "paramAliases": {},
+  "uniformLayout": {
+    "resolution": {
+      "slot": 0,
+      "components": "xy"
+    },
+    "time": {
+      "slot": 0,
+      "components": "z"
+    },
+    "degree": {
+      "slot": 0,
+      "components": "w"
+    },
+    "relaxation": {
+      "slot": 1,
+      "components": "x"
+    },
+    "iterations": {
+      "slot": 1,
+      "components": "y"
+    },
+    "tolerance": {
+      "slot": 1,
+      "components": "z"
+    },
+    "poi": {
+      "slot": 1,
+      "components": "w"
+    },
+    "centerHiX": {
+      "slot": 2,
+      "components": "x"
+    },
+    "centerHiY": {
+      "slot": 2,
+      "components": "y"
+    },
+    "centerLoX": {
+      "slot": 2,
+      "components": "z"
+    },
+    "centerLoY": {
+      "slot": 2,
+      "components": "w"
+    },
+    "zoomSpeed": {
+      "slot": 3,
+      "components": "x"
+    },
+    "zoomDepth": {
+      "slot": 3,
+      "components": "y"
+    },
+    "degreeSpeed": {
+      "slot": 3,
+      "components": "z"
+    },
+    "degreeRange": {
+      "slot": 3,
+      "components": "w"
+    },
+    "relaxSpeed": {
+      "slot": 4,
+      "components": "x"
+    },
+    "relaxRange": {
+      "slot": 4,
+      "components": "y"
+    },
+    "rotation": {
+      "slot": 4,
+      "components": "z"
+    },
+    "outputMode": {
+      "slot": 5,
+      "components": "x"
+    },
+    "invert": {
+      "slot": 5,
+      "components": "y"
+    },
+    "tileOffset": {
+      "slot": 6,
+      "components": "xy"
+    },
+    "fullResolution": {
+      "slot": 6,
+      "components": "zw"
+    }
+  },
   "globals": {
     "poi": {
       "type": "int",

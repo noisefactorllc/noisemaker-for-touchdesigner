@@ -8,6 +8,44 @@
   ],
   "description": "3D curl noise using simplex noise",
   "paramAliases": {},
+  "uniformLayout": {
+    "resolution": {
+      "slot": 0,
+      "components": "xy"
+    },
+    "time": {
+      "slot": 0,
+      "components": "z"
+    },
+    "aspectRatio": {
+      "slot": 0,
+      "components": "w"
+    },
+    "scale": {
+      "slot": 1,
+      "components": "x"
+    },
+    "seed": {
+      "slot": 1,
+      "components": "y"
+    },
+    "speed": {
+      "slot": 1,
+      "components": "z"
+    },
+    "intensity": {
+      "slot": 2,
+      "components": "z"
+    },
+    "tileOffset": {
+      "slot": 3,
+      "components": "xy"
+    },
+    "fullResolution": {
+      "slot": 3,
+      "components": "zw"
+    }
+  },
   "globals": {
     "scale": {
       "type": "float",

@@ -5,7 +5,8 @@
   "starter": false,
   "tags": [
     "blur",
-    "edges"
+    "edges",
+    "artist"
   ],
   "description": "Liquid-metal chrome: self-distorting oscillating tone curve over a blurred-luminance height field",
   "paramAliases": {},

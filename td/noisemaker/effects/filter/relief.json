@@ -5,7 +5,8 @@
   "starter": false,
   "tags": [
     "blur",
-    "edges"
+    "edges",
+    "artist"
   ],
   "description": "Two-tone ink/paper relief carving: Bas Relief, Plaster, and Note Paper sketch renderings",
   "paramAliases": {},
@@ -13,7 +14,7 @@
     "mode": {
       "type": "int",
       "default": 0,
-      "uniform": "mode",
+      "define": "MODE",
       "choices": {
         "basRelief": 0,
         "plaster": 1,

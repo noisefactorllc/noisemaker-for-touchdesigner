@@ -9,6 +9,22 @@
   ],
   "description": "Chromatic aberration via per-channel temporal frame delay",
   "paramAliases": {},
+  "uniformLayouts": {
+    "temporalAberration": {
+      "redDelay": {
+        "slot": 0,
+        "components": "x"
+      },
+      "greenDelay": {
+        "slot": 0,
+        "components": "y"
+      },
+      "blueDelay": {
+        "slot": 0,
+        "components": "z"
+      }
+    }
+  },
   "globals": {
     "redDelay": {
       "type": "float",

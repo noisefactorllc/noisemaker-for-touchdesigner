@@ -6,15 +6,14 @@
  * Stamp - threshold pass.
  *
  * Reads the blurred image (_stBlur, written by stBlurH/stBlurV) as a
- * luminance height field (S2 lum) and thresholds it into two flat ink/
- * paper tones (S9 tonemap2), the way a rubber stamp impression flattens an
+ * luminance height field (luminance lum) and thresholds it into two flat ink/
+ * paper tones (ink/paper tonemapping tonemap2), the way a rubber stamp impression flattens an
  * image to two colors.
  *
  * t = lum(blur) + (fbm(globalCoord/3.0) - 0.5) * roughness/100 * 0.35: the
  * blurred luminance is the base height field; roughness > 0 perturbs it
- * with tile-aware value noise (S4 fbm over S1 hash, integer global pixel
- * coordinate per the grain lesson - oilPaint's oilPost sponge-mode
- * precedent, commit ee181726) so the threshold contour gets ragged (Torn
+ * with tile-aware value noise (value noise fbm over hash hash, integer global pixel
+ * coordinate) so the threshold contour gets ragged (Torn
  * Edges) instead of staying a clean iso-line (roughness = 0, Stamp).
  *
  * b = balance/100 is the threshold. aa = max(fwidth(t), 0.01) +
@@ -32,8 +31,8 @@
  *
  * fbm/hash noise here is isotropic per-pixel value noise - no directional
  * light, no rotation, nothing fragment-coordinate-derived beyond the noise
- * coordinate itself - so per the screen-truth doctrine this pass needs no
- * backend-specific Y compensation; GLSL and WGSL are textually identical
+ * coordinate itself - so this pass needs no backend-specific Y compensation;
+ * GLSL and WGSL are textually identical
  * throughout (matches photocopy's DoG precedent).
  */
 

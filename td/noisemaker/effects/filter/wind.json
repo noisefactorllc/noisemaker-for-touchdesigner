@@ -4,15 +4,16 @@
   "func": "wind",
   "starter": false,
   "tags": [
-    "distort"
+    "distort",
+    "artist"
   ],
-  "description": "Directional wind-blown streaks off bright edges, wind/blast/stagger methods (Photoshop Wind)",
+  "description": "Soft directional streaks drawn from bright edges, with wind, blast, and stagger methods",
   "paramAliases": {},
   "globals": {
     "method": {
       "type": "int",
-      "default": 0,
-      "uniform": "method",
+      "default": 1,
+      "define": "METHOD",
       "choices": {
         "wind": 0,
         "blast": 1,
@@ -30,14 +31,14 @@
     },
     "strength": {
       "type": "float",
-      "default": 50,
+      "default": 90,
       "uniform": "strength",
       "min": 0,
       "max": 100
     },
     "threshold": {
       "type": "float",
-      "default": 25,
+      "default": 10,
       "uniform": "threshold",
       "min": 0,
       "max": 100

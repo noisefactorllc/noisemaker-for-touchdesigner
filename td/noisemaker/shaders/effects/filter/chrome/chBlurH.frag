@@ -4,12 +4,12 @@
 /*
  * Chrome - horizontal Gaussian pass.
  *
- * Separable blur of the source image (S3 snippet). The blurred result
+ * Separable Gaussian blur of the source image. The blurred result
  * feeds chBlurV, and chMap reads its luminance as the height field driving
  * the self-distortion and oscillating tone curve.
  *
  * radius = mix(1.0, 16.0, smoothness/100): higher smoothness -> larger
- * blur radius -> coarser, larger chrome bands (Photoshop Chrome's
+ * blur radius -> coarser, larger chrome bands (Chrome's
  * "Smoothness" slider maps to feature scale).
  */
 

@@ -4,9 +4,10 @@
   "func": "morphology",
   "starter": false,
   "tags": [
-    "blur"
+    "blur",
+    "artist"
   ],
-  "description": "Grayscale morphology dilate/erode (Photoshop Maximum/Minimum)",
+  "description": "Grayscale morphology dilate/erode (Maximum/Minimum)",
   "paramAliases": {},
   "globals": {
     "mode": {
@@ -28,7 +29,7 @@
     "shape": {
       "type": "int",
       "default": 0,
-      "uniform": "shape",
+      "define": "SHAPE",
       "choices": {
         "square": 0,
         "round": 1

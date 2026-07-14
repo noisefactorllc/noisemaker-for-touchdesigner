@@ -4,7 +4,8 @@
   "func": "highPass",
   "starter": false,
   "tags": [
-    "edges"
+    "edges",
+    "artist"
   ],
   "description": "High-pass filter isolating edge detail as a flat mid-gray field",
   "paramAliases": {},

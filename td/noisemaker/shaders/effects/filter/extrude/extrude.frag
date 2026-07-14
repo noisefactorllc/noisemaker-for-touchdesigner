@@ -2,7 +2,7 @@
 // NM_OUTPUT: fragColor
 #define inputTex sTD2DInputs[0]
 /*
- * Extrude - Photoshop-style block/pyramid extrusion toward the viewer.
+ * Extrude - classic block/pyramid extrusion toward the viewer.
  *
  * The image is divided into a `size`x`size`-pixel grid using tile-aware
  * GLOBAL pixel coordinates (gl_FragCoord + tileOffset), so the grid is
@@ -20,7 +20,7 @@
  * grid - and it is also the natural anchor for an effect whose entire
  * geometry radiates from the image center. Each cell has a height h in
  * [0,1]: depthSource luminance uses a small 3x3 average sample at the
- * cell center (S2 luminance of that average, per the brief); depthSource
+ * cell center (luminance luminance of that average); depthSource
  * random uses hash12(cellId), where cellId is the GLOBAL center-relative
  * cell index, so the hash is identical for a given cell regardless of
  * which tile is rendering it - tile-aware by construction. (The WGSL
@@ -29,7 +29,7 @@
  * indices already coincide cross-backend - see extrude.wgsl's header.)
  *
  * Each cell's height maps to a scale factor s = 1 + h*(depth/100)*0.4
- * (s in [1, 1.4] at depth=100, per the brief's formula).
+ * (s in [1, 1.4] at depth=100).
  *
  * blocks: the cell's square footprint, scaled by s ABOUT THE IMAGE
  * CENTER, is its projected top face - both the offset from center and
@@ -79,7 +79,7 @@
  *   the un-projected position (inverse of the "scale about center by s"
  *   map: localPos = imgCenter + (P-imgCenter)/s) - a "window" onto the
  *   original picture, unshaded (it is the flat, viewer-facing cap).
- * - blocks side band: ALWAYS the cell-mean color (Photoshop never maps
+ * - blocks side band: ALWAYS the cell-mean color (never maps
  *   image content onto a block's side walls, solidFront or not), times a
  *   per-side facing shade from a fixed simulated light (see SHADE_*
  *   below), chosen by whichever of left/right/top/bottom the pixel sits
@@ -92,15 +92,15 @@
  *   center, since apex = cellCenter*s), and the facing shade is ALWAYS
  *   applied on top: mix(1.0, sideShadeConstant, apexBarycentricWeight) -
  *   full brightness at the (undisplaced) base edge, fading to the face's
- *   characteristic shade at the tip. This is the "barycentric-ish side
- *   shading" the brief calls for; "solidFront works the same" means it
+ *   characteristic shade at the tip. This is barycentric-like side
+ *   shading. solidFront applies the same way, so it
  *   is the identical mean-vs-image toggle as blocks, just applied to a
  *   surface that is always shaded (pyramids have no unshaded flat cap).
  *
  * SHADE_* constants: simulated light from angle 150 degrees (standard
  * math convention: 0=+X/right, 90=+Y/up - i.e. mostly from the left,
  * slightly above), facing = dot(sideNormal, lightDir)*0.5+0.5, shade =
- * 0.55 + 0.45*facing (per the brief's formula). Precomputed here (GLSL
+ * 0.55 + 0.45*facing. Precomputed here (GLSL
  * has no constant-expression sin/cos): left=0.969856 (brightest),
  * top=0.8875, bottom=0.6625, right=0.580144 (darkest) - four clearly
  * distinct facets, chosen over a symmetric 45/135-degree light so all
@@ -126,8 +126,7 @@
  * DEFAULT solidFront=true, depth=0 is NOT a passthrough - it settles
  * into flat per-cell mean-color posterization (Mosaic-alike), which is
  * the documented, intended resting state of this effect at its defaults,
- * not a bug (the brief explicitly anticipates and calls for this
- * reasoning). pyramids at depth=0 similarly degenerate to apex =
+ * not a bug. pyramids at depth=0 similarly degenerate to apex =
  * cellCenter, which splits every cell into 4 exact quarter-triangles
  * (the classic "connect center to all 4 corners" square decomposition) -
  * so even at depth=0, solidFront=true pyramids show a faceted radial-
@@ -137,14 +136,30 @@
  */
 
 
+// EXTRUDE_TYPE is a compile-time define injected by the runtime (see
+// definition.js `globals.type.define`). blocks and pyramids use fully
+// distinct hit-test and shading code, so baking the selector lets the
+// compiler drop the unused variant entirely instead of branching on it
+// per pixel.
+#ifndef EXTRUDE_TYPE
+#define EXTRUDE_TYPE 0
+#endif
+
+// DEPTH_SOURCE is a compile-time define injected by the runtime (see
+// definition.js `globals.depthSource.define`). luminance samples a 3x3
+// texture average per candidate cell inside the occlusion-walk loop;
+// random only hashes the cell index. Baking the selector lets the
+// random variant skip all texture sampling in that loop.
+#ifndef DEPTH_SOURCE
+#define DEPTH_SOURCE 0
+#endif
+
 
 uniform vec2 resolution;
 uniform vec2 tileOffset;
 uniform vec2 fullResolution;
-uniform int extrudeType;
 uniform float size;
 uniform float depth;
-uniform int depthSource;
 uniform bool solidFront;
 
 out vec4 fragColor;
@@ -189,10 +204,11 @@ vec4 cellAvgColor3x3(vec2 centerPx) {
 }
 
 float cellHeight(vec2 cellC, vec2 cellIdxF) {
-    if (depthSource == 1) {
-        return hash12(cellIdxF);
-    }
+#if DEPTH_SOURCE==1
+    return hash12(cellIdxF);
+#else
     return lum(cellAvgColor3x3(cellC).rgb);
+#endif
 }
 
 // Barycentric coords of p in triangle (a,b,c); w (.z) corresponds to c.
@@ -280,36 +296,36 @@ void nm_main() {
         float h = cellHeight(cellC, cellIdxF);
         float s = 1.0 + h * (depth / 100.0) * 0.4;
 
-        if (extrudeType == 1) {
-            // pyramids: priority is s alone (no flat-top tier).
-            vec2 apex = imgCenter + (cellC - imgCenter) * s;
-            int tri = pyramidTriHit(P, cellC, apex, halfCell);
-            if (tri >= 0 && s > bestPriority) {
-                bestPriority = s;
+#if EXTRUDE_TYPE==1
+        // pyramids: priority is s alone (no flat-top tier).
+        vec2 apex = imgCenter + (cellC - imgCenter) * s;
+        int tri = pyramidTriHit(P, cellC, apex, halfCell);
+        if (tri >= 0 && s > bestPriority) {
+            bestPriority = s;
+            bestCenterPx = cellC;
+            bestS = s;
+            bestTri = tri;
+            found = true;
+        }
+#else
+        // blocks: top face is the footprint scaled by s about the
+        // image center; side band is the rest of the un-scaled
+        // footprint (only ever true for i==0 - see header).
+        vec2 faceCenter = imgCenter + (cellC - imgCenter) * s;
+        vec2 faceHalf = halfCell * s;
+        bool topHit = all(lessThanEqual(abs(P - faceCenter), faceHalf));
+        bool sideHit = (!topHit) && all(lessThanEqual(abs(P - cellC), halfCell));
+        if (topHit || sideHit) {
+            float priority = s + (topHit ? 1000.0 : 0.0);
+            if (priority > bestPriority) {
+                bestPriority = priority;
                 bestCenterPx = cellC;
                 bestS = s;
-                bestTri = tri;
+                bestIsTop = topHit;
                 found = true;
             }
-        } else {
-            // blocks: top face is the footprint scaled by s about the
-            // image center; side band is the rest of the un-scaled
-            // footprint (only ever true for i==0 - see header).
-            vec2 faceCenter = imgCenter + (cellC - imgCenter) * s;
-            vec2 faceHalf = halfCell * s;
-            bool topHit = all(lessThanEqual(abs(P - faceCenter), faceHalf));
-            bool sideHit = (!topHit) && all(lessThanEqual(abs(P - cellC), halfCell));
-            if (topHit || sideHit) {
-                float priority = s + (topHit ? 1000.0 : 0.0);
-                if (priority > bestPriority) {
-                    bestPriority = priority;
-                    bestCenterPx = cellC;
-                    bestS = s;
-                    bestIsTop = topHit;
-                    found = true;
-                }
-            }
         }
+#endif
 
         if (t >= distToCenter) { break; }
     }
@@ -322,7 +338,8 @@ void nm_main() {
         // a visible crack.
         vec2 cellC = imgCenter + (floor((P - imgCenter) / size) + 0.5) * size;
         outColor = cellAvgColor3x3(cellC);
-    } else if (extrudeType == 1) {
+    } else {
+#if EXTRUDE_TYPE==1
         vec2 apex = imgCenter + (bestCenterPx - imgCenter) * bestS;
         vec2 topC = bestCenterPx + TOP_SIGN * vec2(0.0, halfCell.y);
         vec2 botC = bestCenterPx - TOP_SIGN * vec2(0.0, halfCell.y);
@@ -352,17 +369,20 @@ void nm_main() {
         }
         float shade = mix(1.0, shadeConst, apexW);
         outColor = vec4(baseColor.rgb * shade, baseColor.a);
-    } else if (bestIsTop) {
-        if (solidFront) {
-            outColor = cellAvgColor3x3(bestCenterPx);
+#else
+        if (bestIsTop) {
+            if (solidFront) {
+                outColor = cellAvgColor3x3(bestCenterPx);
+            } else {
+                vec2 localPos = imgCenter + (P - imgCenter) / bestS;
+                outColor = texture(inputTex, toSampleUV(localPos));
+            }
         } else {
-            vec2 localPos = imgCenter + (P - imgCenter) / bestS;
-            outColor = texture(inputTex, toSampleUV(localPos));
+            float shade = sideShade(P, bestCenterPx);
+            vec4 meanColor = cellAvgColor3x3(bestCenterPx);
+            outColor = vec4(meanColor.rgb * shade, meanColor.a);
         }
-    } else {
-        float shade = sideShade(P, bestCenterPx);
-        vec4 meanColor = cellAvgColor3x3(bestCenterPx);
-        outColor = vec4(meanColor.rgb * shade, meanColor.a);
+#endif
     }
 
     fragColor = outColor;

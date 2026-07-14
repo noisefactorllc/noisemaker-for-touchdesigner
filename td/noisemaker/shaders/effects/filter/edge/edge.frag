@@ -6,8 +6,6 @@
  */
 
 
-uniform vec2 tileOffset;
-uniform vec2 fullResolution;
 
 uniform float kernel;
 uniform float size;
@@ -19,6 +17,7 @@ uniform float threshold;
 uniform float amount;
 uniform float mixAmt;
 uniform float level;
+uniform float contourSide;
 
 out vec4 fragColor;
 
@@ -56,10 +55,10 @@ vec4 applyBlend(vec4 edge, vec4 orig, int mode) {
     return edge;                                                                // normal (6)
 }
 
-// Contour: mark a level-crossing where sign(c - level) differs from any of
-// the 4 cardinal neighbors (Photoshop Trace Contour). Returns a binary vec3:
+// Contour: mark only the selected side of a level crossing against the 4
+// cardinal neighbors (Trace Contour). Returns a binary vec3:
 // 1.0 = background (white), 0.0 = contour line (dark).
-vec3 contourConv(vec2 fragCoord, vec2 texelSize, vec3 centerRGB, float lvl, bool useLuma) {
+vec3 contourConv(vec2 fragCoord, vec2 texelSize, vec3 centerRGB, float lvl, bool useLuma, bool upperSide) {
     vec3 northRGB = texture(inputTex, (fragCoord + vec2(0.0,  1.0)) * texelSize).rgb;
     vec3 southRGB = texture(inputTex, (fragCoord + vec2(0.0, -1.0)) * texelSize).rgb;
     vec3 eastRGB  = texture(inputTex, (fragCoord + vec2( 1.0, 0.0)) * texelSize).rgb;
@@ -67,22 +66,27 @@ vec3 contourConv(vec2 fragCoord, vec2 texelSize, vec3 centerRGB, float lvl, bool
 
     if (useLuma) {
         float centerL = dot(centerRGB, LUMA);
-        float centerSign = sign(centerL - lvl);
-        bool crossing = centerSign != sign(dot(northRGB, LUMA) - lvl) ||
-                         centerSign != sign(dot(southRGB, LUMA) - lvl) ||
-                         centerSign != sign(dot(eastRGB, LUMA) - lvl)  ||
-                         centerSign != sign(dot(westRGB, LUMA) - lvl);
+        bool centerOnSide = upperSide ? centerL >= lvl : centerL < lvl;
+        bool crossing = centerOnSide && (upperSide
+            ? dot(northRGB, LUMA) < lvl || dot(southRGB, LUMA) < lvl ||
+              dot(eastRGB, LUMA) < lvl  || dot(westRGB, LUMA) < lvl
+            : dot(northRGB, LUMA) >= lvl || dot(southRGB, LUMA) >= lvl ||
+              dot(eastRGB, LUMA) >= lvl  || dot(westRGB, LUMA) >= lvl);
         return vec3(crossing ? 0.0 : 1.0);
     }
 
-    vec3 centerSign = sign(centerRGB - lvl);
+    bvec3 centerOnSide = upperSide ? greaterThanEqual(centerRGB, vec3(lvl))
+                                    : lessThan(centerRGB, vec3(lvl));
     bvec3 crossing = bvec3(
-        centerSign.r != sign(northRGB.r - lvl) || centerSign.r != sign(southRGB.r - lvl) ||
-        centerSign.r != sign(eastRGB.r - lvl)  || centerSign.r != sign(westRGB.r - lvl),
-        centerSign.g != sign(northRGB.g - lvl) || centerSign.g != sign(southRGB.g - lvl) ||
-        centerSign.g != sign(eastRGB.g - lvl)  || centerSign.g != sign(westRGB.g - lvl),
-        centerSign.b != sign(northRGB.b - lvl) || centerSign.b != sign(southRGB.b - lvl) ||
-        centerSign.b != sign(eastRGB.b - lvl)  || centerSign.b != sign(westRGB.b - lvl)
+        centerOnSide.r && (upperSide
+            ? northRGB.r < lvl || southRGB.r < lvl || eastRGB.r < lvl || westRGB.r < lvl
+            : northRGB.r >= lvl || southRGB.r >= lvl || eastRGB.r >= lvl || westRGB.r >= lvl),
+        centerOnSide.g && (upperSide
+            ? northRGB.g < lvl || southRGB.g < lvl || eastRGB.g < lvl || westRGB.g < lvl
+            : northRGB.g >= lvl || southRGB.g >= lvl || eastRGB.g >= lvl || westRGB.g >= lvl),
+        centerOnSide.b && (upperSide
+            ? northRGB.b < lvl || southRGB.b < lvl || eastRGB.b < lvl || westRGB.b < lvl
+            : northRGB.b >= lvl || southRGB.b >= lvl || eastRGB.b >= lvl || westRGB.b >= lvl)
     );
     return vec3(crossing.r ? 0.0 : 1.0, crossing.g ? 0.0 : 1.0, crossing.b ? 0.0 : 1.0);
 }
@@ -106,7 +110,7 @@ void nm_main() {
 
     if (kernelType == 2) {
         // Contour: level-crossing trace, not a weighted convolution.
-        conv = contourConv(gl_FragCoord.xy, texelSize, origColor.rgb, level / 100.0, useLuma);
+        conv = contourConv(gl_FragCoord.xy, texelSize, origColor.rgb, level / 100.0, useLuma, contourSide > 0.5);
     } else {
         for (int dy = -3; dy <= 3; dy++) {
             for (int dx = -3; dx <= 3; dx++) {

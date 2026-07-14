@@ -2,7 +2,7 @@
 // NM_OUTPUT: fragColor
 #define inputTex sTD2DInputs[0]
 /*
- * Spin Blur - rotational blur around a center point (Photoshop Radial
+ * Spin Blur - rotational blur around a center point (Radial
  * Blur, Spin mode). Averages a fixed N-tap comb; each tap resamples the
  * input after rotating the pixel's offset-from-center by
  * theta_i = (i/(N-1) - 0.5) * radians(amount) around (centerX, centerY),
@@ -17,12 +17,9 @@
  * by a bounded sub-step offset, which does not preserve that symmetry
  * exactly - it bounds the residual cross-backend difference by the
  * jitter magnitude rather than eliminating it outright, so this is
- * weaker than "structurally immune." End-to-end coordinate-convention
- * match (GLSL gl_FragCoord vs WGSL @builtin(position), both used
- * unflipped) was verified empirically on this pipeline in task-5's
- * Y-orientation verification (filter/directionalBlur, a strictly harder
- * asymmetric case); see task-6's fix report (F4) for a centerY-specific
- * non-default-value re-check of this effect.
+ * weaker than "structurally immune." GLSL gl_FragCoord and WGSL
+ * @builtin(position) are both used unflipped; presented-pixel parity is
+ * covered with a non-centered, non-default regression fixture.
  */
 
 
@@ -68,10 +65,12 @@ void nm_main() {
 
     float arc = radians(amount);
     float angularStep = arc / float(N - 1);
-    // Seed with globalCoord (tile-space + tileOffset), not gl_FragCoord.xy
-    // alone, so the dither field is continuous across CLI render tiles
-    // instead of restarting at each tile's local origin.
-    float jitter = (hash12(globalCoord) - 0.5) * angularStep;
+    // Mirror-invariant global coordinates keep corresponding WebGL2/WebGPU
+    // pixels on the same dither value while remaining continuous across
+    // tiled renders. The reflected WebGPU tap set applies the opposite sign.
+    vec2 jitterCoord = vec2(globalCoord.x,
+        abs(globalCoord.y - fullResolution.y * 0.5));
+    float jitter = (hash12(jitterCoord) - 0.5) * angularStep;
 
     vec4 sum = vec4(0.0);
     for (int i = 0; i < N; i++) {

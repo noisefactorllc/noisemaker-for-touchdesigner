@@ -9,6 +9,80 @@
   ],
   "description": "Apply Tetra cosine palettes based on luminance",
   "paramAliases": {},
+  "uniformLayout": {
+    "offsetR": {
+      "slot": 0,
+      "components": "x"
+    },
+    "offsetG": {
+      "slot": 0,
+      "components": "y"
+    },
+    "offsetB": {
+      "slot": 0,
+      "components": "z"
+    },
+    "colorMode": {
+      "slot": 0,
+      "components": "w"
+    },
+    "ampR": {
+      "slot": 1,
+      "components": "x"
+    },
+    "ampG": {
+      "slot": 1,
+      "components": "y"
+    },
+    "ampB": {
+      "slot": 1,
+      "components": "z"
+    },
+    "repeat": {
+      "slot": 1,
+      "components": "w"
+    },
+    "freqR": {
+      "slot": 2,
+      "components": "x"
+    },
+    "freqG": {
+      "slot": 2,
+      "components": "y"
+    },
+    "freqB": {
+      "slot": 2,
+      "components": "z"
+    },
+    "offset": {
+      "slot": 2,
+      "components": "w"
+    },
+    "phaseR": {
+      "slot": 3,
+      "components": "x"
+    },
+    "phaseG": {
+      "slot": 3,
+      "components": "y"
+    },
+    "phaseB": {
+      "slot": 3,
+      "components": "z"
+    },
+    "alpha": {
+      "slot": 3,
+      "components": "w"
+    },
+    "rotation": {
+      "slot": 4,
+      "components": "x"
+    },
+    "time": {
+      "slot": 4,
+      "components": "y"
+    }
+  },
   "globals": {
     "colorMode": {
       "type": "int",

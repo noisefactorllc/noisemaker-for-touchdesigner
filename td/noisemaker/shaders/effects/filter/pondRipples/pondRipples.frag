@@ -2,12 +2,10 @@
 // NM_OUTPUT: fragColor
 #define inputTex sTD2DInputs[0]
 /*
- * Pond Ripples - concentric ring distortion around the fixed image
- * center (Photoshop ZigZag: Around Center / Out From Center / Pond
- * Ripples styles).
+ * Pond Ripples - concentric ring distortion around the fixed image center.
  *
  * r = distance from center (aspect-corrected, tile-aware global UV);
- * phase = r * ridges * 2*PI; w = sin(phase) * (amount/100) * 0.05 *
+ * phase = r * ridges * 2*PI; w = sin(phase) * amountGain * 0.05 *
  * (1 - r) is the per-ring wave displacement, damped toward the image
  * edge - and exactly 0 at r=0 (the center pixel) regardless of the
  * damping term, since sin(0)=0, which keeps the polar reconstruction
@@ -25,12 +23,22 @@
  * i.e. the matrix [[co,s],[-s,co]]). See pondRipples.wgsl for why the
  * WGSL port must use the manual expansion
  * (co*p.x + s*p.y, -s*p.x + co*p.y), not the naive-looking
- * (co*p.x - s*p.y, s*p.x + co*p.y), to match this numerically
- * (filter/spinBlur precedent, commit ad98b39d).
+ * (co*p.x - s*p.y, s*p.x + co*p.y), to match this numerically.
  *
- * Wrap mode and antialiasing are copied verbatim from filter/pinch.
+ * Wrap mode and antialiasing match filter/pinch.
  */
 
+
+// STYLE and WRAP are compile-time defines injected by the runtime (see
+// definition.js `globals.style.define` / `globals.wrap.define`). The
+// #ifndef guards below are only a standalone-compile fallback.
+#ifndef STYLE
+#define STYLE 2
+#endif
+
+#ifndef WRAP
+#define WRAP 0
+#endif
 
 
 uniform vec2 resolution;
@@ -38,8 +46,6 @@ uniform vec2 tileOffset;
 uniform vec2 fullResolution;
 uniform float amount;
 uniform int ridges;
-uniform int style;
-uniform int wrap;
 uniform bool antialias;
 
 out vec4 fragColor;
@@ -59,7 +65,19 @@ void nm_main() {
     // Clamp the damping term at 0 so corners beyond r=1 (aspect ratios
     // wider/taller than ~1.73:1) don't invert phase and amplify instead
     // of damping.
-    float w = sin(phase) * (amount / 100.0) * 0.05 * max(0.0, 1.0 - r);
+    float damping = max(0.0, 1.0 - r);
+    float w;
+    if (amount <= 30.0) {
+        // Preserve the original 0..30 response, including the exact shipped
+        // default expression at amount=30.
+        w = sin(phase) * (amount / 100.0) * 0.05 * damping;
+    } else {
+        // Continue smoothly from the original default slope, then accelerate
+        // toward a 2.0 gain at amount=100 (twice the previous maximum).
+        float x = (amount - 30.0) / 70.0;
+        float amountGain = 0.3 + 0.7 * x + x * x;
+        w = sin(phase) * amountGain * 0.05 * damping;
+    }
 
     // Per-style effective displacement: rotDelta feeds the angular
     // rotation, rDelta feeds the radial extension. aroundCenter uses
@@ -67,17 +85,17 @@ void nm_main() {
     // w evenly across both for a diagonal ripple.
     float rotDelta = 0.0;
     float rDelta = 0.0;
-    if (style == 0) {
-        // aroundCenter
-        rotDelta = w;
-    } else if (style == 1) {
-        // outFromCenter
-        rDelta = w;
-    } else {
-        // pondRipples: both at half strength
-        rotDelta = w * 0.5;
-        rDelta = w * 0.5;
-    }
+#if STYLE==0
+    // aroundCenter
+    rotDelta = w;
+#elif STYLE==1
+    // outFromCenter
+    rDelta = w;
+#else
+    // pondRipples: both at half strength
+    rotDelta = w * 0.5;
+    rDelta = w * 0.5;
+#endif
 
     // r>0.0 guard avoids a 0/0 direction at the exact center pixel; w is
     // always exactly 0 there (see header), so any direction would do,
@@ -95,16 +113,16 @@ void nm_main() {
     uv += 0.5;
 
     // Apply wrap mode
-    if (wrap == 0) {
-        // mirror
-        uv = abs(mod(uv + 1.0, 2.0) - 1.0);
-    } else if (wrap == 1) {
-        // repeat
-        uv = mod(uv, 1.0);
-    } else {
-        // clamp
-        uv = clamp(uv, 0.0, 1.0);
-    }
+#if WRAP==0
+    // mirror
+    uv = abs(mod(uv + 1.0, 2.0) - 1.0);
+#elif WRAP==1
+    // repeat
+    uv = mod(uv, 1.0);
+#else
+    // clamp
+    uv = clamp(uv, 0.0, 1.0);
+#endif
 
     // Convert distorted global UV back to tile-local for texture sampling.
     // Clamp to tile bounds so wrap modes don't sample past tile coverage.

@@ -9,6 +9,68 @@
   ],
   "description": "Bitwise operation patterns (XOR squares, AND, OR, etc.)",
   "paramAliases": {},
+  "uniformLayout": {
+    "resolution": {
+      "slot": 0,
+      "components": "xy"
+    },
+    "time": {
+      "slot": 0,
+      "components": "z"
+    },
+    "operation": {
+      "slot": 0,
+      "components": "w"
+    },
+    "scale": {
+      "slot": 1,
+      "components": "x"
+    },
+    "offsetX": {
+      "slot": 1,
+      "components": "y"
+    },
+    "offsetY": {
+      "slot": 1,
+      "components": "z"
+    },
+    "mask": {
+      "slot": 1,
+      "components": "w"
+    },
+    "seed": {
+      "slot": 2,
+      "components": "x"
+    },
+    "colorMode": {
+      "slot": 2,
+      "components": "y"
+    },
+    "speed": {
+      "slot": 2,
+      "components": "z"
+    },
+    "rotation": {
+      "slot": 2,
+      "components": "w"
+    },
+    "colorOffset": {
+      "slot": 3,
+      "components": "x"
+    },
+    "tileOffset": {
+      "slot": 4,
+      "components": "xy"
+    },
+    "fullResolution": {
+      "slot": 4,
+      "components": "zw"
+    },
+    "renderScale": {
+      "slot": 5,
+      "components": "x"
+    }
+  },
   "globals": {
     "operation": {
       "type": "int",

@@ -5,7 +5,8 @@
   "starter": false,
   "tags": [
     "blur",
-    "edges"
+    "edges",
+    "artist"
   ],
   "description": "Simplified color washes with pigment pooling at edges and paper granulation",
   "paramAliases": {},

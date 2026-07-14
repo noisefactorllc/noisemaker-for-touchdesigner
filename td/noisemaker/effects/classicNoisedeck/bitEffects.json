@@ -11,6 +11,64 @@
   "paramAliases": {
     "loopAmp": "speed"
   },
+  "uniformLayout": {
+    "resolution": {
+      "slot": 0,
+      "components": "xy"
+    },
+    "time": {
+      "slot": 0,
+      "components": "z"
+    },
+    "seed": {
+      "slot": 0,
+      "components": "w"
+    },
+    "n": {
+      "slot": 1,
+      "components": "z"
+    },
+    "scale": {
+      "slot": 2,
+      "components": "x"
+    },
+    "rotation": {
+      "slot": 2,
+      "components": "y"
+    },
+    "speed": {
+      "slot": 2,
+      "components": "z"
+    },
+    "tiles": {
+      "slot": 3,
+      "components": "y"
+    },
+    "complexity": {
+      "slot": 3,
+      "components": "z"
+    },
+    "hueRange": {
+      "slot": 4,
+      "components": "x"
+    },
+    "hueRotation": {
+      "slot": 4,
+      "components": "y"
+    },
+    "baseHueRange": {
+      "slot": 4,
+      "components": "z"
+    },
+    "tileOffset": {
+      "slot": 5,
+      "components": "xy"
+    },
+    "fullResolution": {
+      "slot": 5,
+      "components": "zw"
+    }
+  },
   "globals": {
     "mode": {
       "type": "int",

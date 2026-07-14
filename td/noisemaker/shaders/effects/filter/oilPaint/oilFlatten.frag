@@ -2,7 +2,7 @@
 // NM_OUTPUT: fragColor
 #define inputTex sTD2DInputs[0]
 /*
- * Oil Paint - flatten pass: 8-sector Kuwahara filter (S7 snippet). Reduces
+ * Oil Paint - flatten pass: 8-sector Kuwahara filter. Reduces
  * the input to per-pixel flat color patches -- the painterly "dab"
  * substrate that oilPost.glsl reshapes per MODE. facet mode uses a
  * tighter radius (min(size, 3)) so its patches read as small flat
@@ -18,14 +18,15 @@
 
 
 
-uniform vec2 resolution;
 uniform float size;
 
 out vec4 fragColor;
 
 void nm_main() {
-    vec2 uv = gl_FragCoord.xy / resolution;
-    vec2 px = 1.0 / resolution;
+    // Integer fragment center: every neighbor offset is an integer, so samples
+    // land exactly on texel centers.
+    ivec2 icenter = ivec2(gl_FragCoord.xy);
+    ivec2 dims = textureSize(inputTex, 0);
 
 #if MODE == 0
     float radius = min(size, 3.0);
@@ -34,18 +35,22 @@ void nm_main() {
 #endif
     float fr = clamp(radius, 1.0, 12.0);
     float frSq = fr * fr;
+    int sampleLimit = int(ceil(fr));
 
-    vec3 mean[8];
-    vec3 sqr[8];
-    float cnt[8];
-    for (int k = 0; k < 8; k++) {
-        mean[k] = vec3(0.0);
-        sqr[k] = vec3(0.0);
-        cnt[k] = 0.0;
-    }
+    // Eight octant accumulators in explicit registers -- NOT a dynamically
+    // indexed fragment-local array. On WebGL2/ANGLE such an array spills to
+    // memory and every one of the ~113 per-pixel accumulations pays a
+    // round-trip; explicit variables stay in registers. Each sample is still
+    // added to its own sector in scan order, so the result is bit-identical.
+    vec3 m0 = vec3(0.0), m1 = vec3(0.0), m2 = vec3(0.0), m3 = vec3(0.0);
+    vec3 m4 = vec3(0.0), m5 = vec3(0.0), m6 = vec3(0.0), m7 = vec3(0.0);
+    vec3 q0 = vec3(0.0), q1 = vec3(0.0), q2 = vec3(0.0), q3 = vec3(0.0);
+    vec3 q4 = vec3(0.0), q5 = vec3(0.0), q6 = vec3(0.0), q7 = vec3(0.0);
+    float n0 = 0.0, n1 = 0.0, n2 = 0.0, n3 = 0.0;
+    float n4 = 0.0, n5 = 0.0, n6 = 0.0, n7 = 0.0;
 
-    for (int y = -12; y <= 12; y++) {
-        for (int x = -12; x <= 12; x++) {
+    for (int y = -sampleLimit; y <= sampleLimit; y++) {
+        for (int x = -sampleLimit; x <= sampleLimit; x++) {
             vec2 d = vec2(float(x), float(y));
             if (abs(d.x) > fr || abs(d.y) > fr || dot(d, d) > frSq) { continue; }
             // Stride-2 outer ring: fr > 8.0 only when size > 8 (default
@@ -81,39 +86,48 @@ void nm_main() {
             // diagonal tie always resolves to the higher-angle sector.
             // (0,0) has no angle; pin it to sector 4, matching the
             // original atan2 guard's result.
-            int k;
+            // Samples sit on texel centers, so texelFetch returns the identical
+            // texel that clamp-to-edge bilinear did while skipping the filter
+            // unit -- the WebGL2/ANGLE bottleneck on a 100+ tap window. The
+            // clamp reproduces the sampler's clamp-to-edge behavior.
+            ivec2 sc = clamp(icenter + ivec2(x, y), ivec2(0), dims - ivec2(1));
+            vec3 c = texelFetch(inputTex, sc, 0).rgb;
+            vec3 cc = c * c;
+            // Octant classification fused with accumulation: the joint
+            // per-quadrant tests select the sector, and each sample is added
+            // directly to that sector's explicit accumulator -- no computed
+            // array index is ever formed.
             if (x == 0 && y == 0) {
-                k = 4;
+                m4 += c; q4 += cc; n4 += 1.0;
             } else if (d.x > 0.0 && d.y >= 0.0) {
-                k = (abs(d.x) <= abs(d.y)) ? 5 : 4;
+                if (abs(d.x) <= abs(d.y)) { m5 += c; q5 += cc; n5 += 1.0; }
+                else                      { m4 += c; q4 += cc; n4 += 1.0; }
             } else if (d.x <= 0.0 && d.y > 0.0) {
-                k = (abs(d.x) < abs(d.y)) ? 6 : 7;
+                if (abs(d.x) < abs(d.y))  { m6 += c; q6 += cc; n6 += 1.0; }
+                else                      { m7 += c; q7 += cc; n7 += 1.0; }
             } else if (d.x < 0.0 && d.y <= 0.0) {
-                k = (abs(d.x) <= abs(d.y)) ? 1 : 0;
+                if (abs(d.x) <= abs(d.y)) { m1 += c; q1 += cc; n1 += 1.0; }
+                else                      { m0 += c; q0 += cc; n0 += 1.0; }
             } else {
                 // remaining case: d.x >= 0.0 && d.y < 0.0
-                k = (abs(d.x) < abs(d.y)) ? 2 : 3;
+                if (abs(d.x) < abs(d.y))  { m2 += c; q2 += cc; n2 += 1.0; }
+                else                      { m3 += c; q3 += cc; n3 += 1.0; }
             }
-
-            vec3 c = texture(inputTex, uv + d * px).rgb;
-            mean[k] += c;
-            sqr[k] += c * c;
-            cnt[k] += 1.0;
         }
     }
 
     vec3 bestC = vec3(0.0);
     float bestV = 1e9;
-    for (int k = 0; k < 8; k++) {
-        if (cnt[k] < 1.0) { continue; }
-        vec3 m = mean[k] / cnt[k];
-        vec3 v = sqr[k] / cnt[k] - m * m;
-        float tv = v.r + v.g + v.b;
-        if (tv < bestV) {
-            bestV = tv;
-            bestC = m;
-        }
-    }
+    // Unrolled lowest-variance selection over the 8 sectors, evaluated 0..7 in
+    // the same order as the original loop so ties resolve to the identical sector.
+    if (n0 >= 1.0) { vec3 m = m0 / n0; vec3 v = q0 / n0 - m * m; float tv = v.r + v.g + v.b; if (tv < bestV) { bestV = tv; bestC = m; } }
+    if (n1 >= 1.0) { vec3 m = m1 / n1; vec3 v = q1 / n1 - m * m; float tv = v.r + v.g + v.b; if (tv < bestV) { bestV = tv; bestC = m; } }
+    if (n2 >= 1.0) { vec3 m = m2 / n2; vec3 v = q2 / n2 - m * m; float tv = v.r + v.g + v.b; if (tv < bestV) { bestV = tv; bestC = m; } }
+    if (n3 >= 1.0) { vec3 m = m3 / n3; vec3 v = q3 / n3 - m * m; float tv = v.r + v.g + v.b; if (tv < bestV) { bestV = tv; bestC = m; } }
+    if (n4 >= 1.0) { vec3 m = m4 / n4; vec3 v = q4 / n4 - m * m; float tv = v.r + v.g + v.b; if (tv < bestV) { bestV = tv; bestC = m; } }
+    if (n5 >= 1.0) { vec3 m = m5 / n5; vec3 v = q5 / n5 - m * m; float tv = v.r + v.g + v.b; if (tv < bestV) { bestV = tv; bestC = m; } }
+    if (n6 >= 1.0) { vec3 m = m6 / n6; vec3 v = q6 / n6 - m * m; float tv = v.r + v.g + v.b; if (tv < bestV) { bestV = tv; bestC = m; } }
+    if (n7 >= 1.0) { vec3 m = m7 / n7; vec3 v = q7 / n7 - m * m; float tv = v.r + v.g + v.b; if (tv < bestV) { bestV = tv; bestC = m; } }
 
     fragColor = vec4(bestC, 1.0);
 }

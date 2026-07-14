@@ -12,6 +12,56 @@
     "backgroundColor": "bgColor",
     "backgroundOpacity": "bgAlpha"
   },
+  "uniformLayout": {
+    "resolution": {
+      "slot": 0,
+      "components": "xy"
+    },
+    "time": {
+      "slot": 0,
+      "components": "z"
+    },
+    "position": {
+      "slot": 1,
+      "components": "x"
+    },
+    "rotation": {
+      "slot": 1,
+      "components": "y"
+    },
+    "scaleAmt": {
+      "slot": 1,
+      "components": "z"
+    },
+    "offsetX": {
+      "slot": 1,
+      "components": "w"
+    },
+    "offsetY": {
+      "slot": 2,
+      "components": "x"
+    },
+    "tiling": {
+      "slot": 2,
+      "components": "y"
+    },
+    "flip": {
+      "slot": 2,
+      "components": "z"
+    },
+    "bgAlpha": {
+      "slot": 2,
+      "components": "w"
+    },
+    "bgColor": {
+      "slot": 3,
+      "components": "xyz"
+    },
+    "imageSize": {
+      "slot": 4,
+      "components": "xy"
+    }
+  },
   "globals": {
     "position": {
       "type": "int",
