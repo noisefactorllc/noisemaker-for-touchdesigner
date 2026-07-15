@@ -48,6 +48,12 @@ BATCH = os.path.join(REPO, 'parity', 'batch-golden.mjs')
 # reported (continuous Gray-Scott, 0.977 @ f8), mirroring their 2D counterparts.
 ACCUM_EFFECTS = {'cellularAutomata', 'reactionDiffusion', 'motionBlur', 'convolutionFeedback',
                  'synth3d_cellularAutomata3d', 'synth3d_reactionDiffusion3d'}
+DEFERRED_EFFECTS = {
+    '_vs32probe', 'buddhabrot', 'filter3d_flow3d', 'filter3d_palette3d', 'physical',
+    'present_hero', 'synth3d_cell3d', 'synth3d_flythrough3d', 'synth3d_fractal3d',
+    'synth3d_noise', 'synth3d_renderCubemap3d', 'synth3d_renderCubemapSurface',
+    'synth3d_renderLit3d', 'synth3d_shape3d',
+}
 
 
 def reference_root():
@@ -65,6 +71,31 @@ def reference_root():
 def program_names():
     """Every in-repo parity program (parity/programs/*.dsl), sorted."""
     return sorted(f[:-4] for f in os.listdir(PROGRAMS) if f.endswith('.dsl'))
+
+
+def expected_sweep_names():
+    """Every program required in the single-frame or accumulation sweep."""
+    return [name for name in program_names() if name not in DEFERRED_EFFECTS]
+
+
+def validate_render_set(path):
+    """Reject missing, unexpected, or duplicate staged sweep names."""
+    with open(path) as fh:
+        actual = fh.read().split()
+    expected = set(expected_sweep_names())
+    actual_set = set(actual)
+    missing = sorted(expected - actual_set)
+    unexpected = sorted(actual_set - expected)
+    duplicates = sorted(name for name in actual_set if actual.count(name) > 1)
+    if missing or unexpected or duplicates:
+        if missing:
+            sys.stderr.write('missing staged cases: %s\n' % ' '.join(missing))
+        if unexpected:
+            sys.stderr.write('unexpected staged cases: %s\n' % ' '.join(unexpected))
+        if duplicates:
+            sys.stderr.write('duplicate staged cases: %s\n' % ' '.join(duplicates))
+        return False
+    return True
 
 
 def export_graph(name):
@@ -116,15 +147,28 @@ def render_goldens(names):
     with open(man, 'w') as fh:
         for n in names:
             fh.write('%s %s\n' % (n, os.path.join(PROGRAMS, n + '.dsl')))
+    for name in names:
+        try:
+            os.remove(os.path.join(OUT, name + '.golden.png'))
+        except FileNotFoundError:
+            pass
     subprocess.run(
         ['node', BATCH, man, OUT, '--size', os.environ.get('NM_SIZE', '256'),
          '--frames', '8', '--timestep', '0', '--time', os.environ.get('NM_TIME', '0.25')],
-        cwd=REPO, check=False)
+        cwd=REPO, check=True)
 
 
 def main():
-    reference_root()
     emit = sys.argv[sys.argv.index('--emit') + 1] if '--emit' in sys.argv else None
+    if emit == 'expected':
+        print(' '.join(expected_sweep_names()))
+        return
+    if '--validate-set' in sys.argv:
+        path = sys.argv[sys.argv.index('--validate-set') + 1]
+        if not validate_render_set(path):
+            sys.exit(2)
+        return
+    reference_root()
     os.makedirs(OUT, exist_ok=True)
     render, defer, accum = [], [], []
     for name in program_names():
@@ -140,6 +184,17 @@ def main():
             render.append(name)
         else:
             defer.append((name, '; '.join(reasons)))
+
+    actual = set(render + accum)
+    expected = set(expected_sweep_names())
+    if actual != expected:
+        missing = sorted(expected - actual)
+        unexpected = sorted(actual - expected)
+        if missing:
+            sys.stderr.write('unclassified gateable cases: %s\n' % ' '.join(missing))
+        if unexpected:
+            sys.stderr.write('unexpected gateable cases: %s\n' % ' '.join(unexpected))
+        sys.exit(2)
 
     if emit == 'render':
         print(' '.join(render))

@@ -15,6 +15,14 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"; REPO="$(cd "$HERE/.." && pwd)"
 PY="$REPO/parity/.venv/bin/python"; [ -x "$PY" ] || PY=python3
 OUT="$REPO/parity/out"; CHUNK="${CHUNK:-15}"
+LEDGER_PATH="${LEDGER_PATH:-parity/ledger.tsv}"
+case "$LEDGER_PATH" in /*) ;; *) LEDGER_PATH="$REPO/$LEDGER_PATH" ;; esac
+RESULTS="$(mktemp -t noisemaker-td-ledger.XXXXXX)"
+REPORTS="$(mktemp -d -t noisemaker-td-reports.XXXXXX)"
+trap 'rm -f "$RESULTS"; rm -rf "$REPORTS"' EXIT
+record_result() {
+  printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5" >> "$RESULTS"
+}
 
 # Per-effect tolerance: "<max-abs-diff/255> <ssim-min>". Default 2.001 is the epsilon-tolerant
 # form of "<= 2" (compare.py's float round-trip reads an exact 2.0 as 2.0000001). SSIM stays 0.98.
@@ -41,8 +49,9 @@ tol_for() { case "$1" in
   median|median_radius_*) echo "255 0.99" ;;  # quickselect median RANK reorders under the 1-LSB input;
                                    # scatter scales with window (r1 mean 0.35 / r2 3.18 / r3 7.30), ssim
                                    # r1 0.99992 / r2 0.99871 / r3 0.99523; means identical -- rank-selection.
-  hatch_mode_coloredPencil) echo "255 0.99" ;;  # per-cell pencil-HUE selection flips a sparse pixel set to
-                                   # a different (valid) pencil colour (mean 0.20, ssim 0.99986).
+  hatch_mode_coloredPencil|hatch_coloredPencil_*) echo "255 0.99" ;;  # per-cell pencil-HUE selection flips a sparse pixel set to
+                                   # a different (valid) pencil colour (rightDiag mean 0.20,
+                                   # ssim 0.99986; leftDiag mean 0.20, ssim 0.99991).
   dither_type_errorDiffusion) echo "255 0.99" ;;  # Floyd-Steinberg diffusion is SEQUENTIAL; a 1-LSB input
                                    # flips a threshold that cascades then re-converges (mean 0.012, ssim
                                    # 0.99993) -- order-dependent, not bit-reproducible cross-device.
@@ -53,14 +62,16 @@ tol_for() { case "$1" in
   chrome)     echo "34 0.98" ;;   # reflection-map lookup grazing-angle NEAREST tie; the release-pass
                                    # ("distortion responsive") strengthened the warp, widening the tie set
                                    # from the old 2 px to 32 px (mean 0.13, ssim 0.99999).
-  plasticWrap) echo "24 0.98" ;;  # specular-highlight grazing-angle tie; release-pass vec3 light dir +
-                                   # stronger relief (20 px, mean 0.13, ssim 0.99998).
+  plasticWrap|plasticWrap_directed) echo "32 0.98" ;;  # specular-highlight grazing-angle tie; release-pass
+                                   # vec3 light dir + stronger relief (default 20 px; directed 30 px;
+                                   # mean <=0.14 and ssim 0.99998 for both).
   # --- warp / threshold / convolution +/-1-2 LSB boundary (unchanged shaders; cross-device residual) ---
   spiral|tunnel) echo "3 0.98" ;; # polar/radial warp with NEAREST resample -> texel-boundary tie (3 px)
   degauss)    echo "4 0.98" ;;    # CRT scanline displacement warp; NEAREST tie + transcendental (4 px)
   step)       echo "3 0.99" ;;    # hard step() threshold; boundary pixels flip under the 1-LSB input (ssim 1.0)
   unsharpMask) echo "3 0.98" ;;   # 3-pass blur + high-frequency amplification accumulates +/-1 LSB (3 px)
-  relief_mode_plaster) echo "3 0.98" ;;  # relief bevel gradient boundary +/-1 LSB (3 px, ssim 0.99999)
+  relief_mode_plaster) echo "8 0.98" ;;  # relief bevel gradient boundary (explicit lightAngle 37:
+                                   # max 7, mean 0.06, ssim 0.99999)
   *)          echo "2.001 0.98" ;;
 esac; }
 
@@ -89,13 +100,21 @@ esac; done
 if [ "$stage" = 1 ]; then "$PY" "$REPO/parity/stage_coverage.py" >/dev/null || exit $?; fi
 SET="$(cat "$OUT/_render_set.txt" 2>/dev/null || true)"
 [ -n "$SET" ] || { echo "no render set — run parity/stage_coverage.py first"; exit 1; }
+if ! "$PY" "$REPO/parity/stage_coverage.py" --validate-set "$OUT/_render_set.txt"; then
+  echo "[FAIL] render set does not match the expected staged universe"
+  exit 1
+fi
 
 # 1. render all candidates (chunked TD sessions). Permissive tol so the render step always emits a
 #    candidate; the authoritative verdict is the per-effect compare in step 2.
+render_failed=""
 if [ "$render" = 1 ]; then
   read -ra ALL <<< "$SET"; n=${#ALL[@]}; i=0
   while [ $i -lt $n ]; do
-    TOL=255 SSIM=0 bash "$REPO/parity/run.sh" "${ALL[*]:i:CHUNK}" >/dev/null 2>&1 || true
+    chunk="${ALL[*]:i:CHUNK}"
+    if ! TOL=255 SSIM=0 bash "$REPO/parity/run.sh" "$chunk" >/dev/null 2>&1; then
+      render_failed="$render_failed $chunk"
+    fi
     i=$((i + CHUNK))
   done
 fi
@@ -103,19 +122,39 @@ fi
 # 2. per-effect compare with the tolerance table.
 pass=0; fail=0; defer=0; failed=""
 for name in $SET; do
-  [ -f "$OUT/$name.golden.png" ] || continue
+  case " $render_failed " in
+    *" $name "*)
+      echo "[FAIL] $name (renderer exited nonzero)"
+      record_result "$name" FAIL "TouchDesigner renderer exited nonzero" - -
+      fail=$((fail + 1)); failed="$failed $name"; continue ;;
+  esac
   d="$(defer_reason "$name")"
-  if [ -n "$d" ]; then echo "[ACCUM] $name — $d"; defer=$((defer + 1)); continue; fi
-  if [ ! -f "$OUT/$name.candidate.png" ]; then
-    echo "[FAIL] $name (no candidate)"; fail=$((fail + 1)); failed="$failed $name"; continue
+  if [ -n "$d" ]; then
+    echo "[ACCUM] $name — $d"; record_result "$name" DEFER "$d" - -
+    defer=$((defer + 1)); continue
   fi
   read -r TOL SSIM <<< "$(tol_for "$name")"
+  if [ ! -f "$OUT/$name.golden.png" ]; then
+    echo "[FAIL] $name (no golden)"; record_result "$name" FAIL "missing reference golden" "$TOL" "$SSIM"
+    fail=$((fail + 1)); failed="$failed $name"; continue
+  fi
+  if [ ! -f "$OUT/$name.candidate.png" ]; then
+    echo "[FAIL] $name (no candidate)"; record_result "$name" FAIL "missing TouchDesigner candidate" "$TOL" "$SSIM"
+    fail=$((fail + 1)); failed="$failed $name"; continue
+  fi
+  report="$REPORTS/$name.json"
   if "$PY" "$REPO/parity/compare.py" "$OUT/$name.golden.png" "$OUT/$name.candidate.png" \
-       --name "$name" --tolerance "$TOL" --ssim-min "$SSIM"; then
+       --name "$name" --tolerance "$TOL" --ssim-min "$SSIM" --report "$report"; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1)); failed="$failed $name"
   fi
+  record_result "$name" REPORT "$report" "$TOL" "$SSIM"
 done
+if ! "$PY" "$REPO/parity/write-ledger.py" --root "$REPO" --results "$RESULTS" \
+     --expected-set "$OUT/_render_set.txt" --output "$LEDGER_PATH"; then
+  echo "[FAIL] canonical ledger contains rejecting or incomplete evidence: $LEDGER_PATH"
+  if [ "$fail" -eq 0 ]; then fail=$((fail + 1)); failed="$failed ledger"; fi
+fi
 echo "=== SWEEP: $pass / $((pass + fail)) PASS, $defer via accumulate.sh${failed:+  — FAILED:$failed} ==="
-[ -z "$failed" ]
+[ "$fail" -eq 0 ]

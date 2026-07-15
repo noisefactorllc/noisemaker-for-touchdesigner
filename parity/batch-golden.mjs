@@ -256,5 +256,6 @@ async function main () {
     }
   } finally { await session.teardown() }
   process.stdout.write(`[batch-golden] ${ok} ok, ${fail} fail\n`)
+  if (fail > 0) process.exitCode = 1
 }
 main().catch(e => { process.stderr.write(`[batch-golden] FATAL ${e?.stack || e}\n`); process.exit(1) })
