@@ -1,4 +1,4 @@
-# noisemaker-td
+# Noisemaker for TouchDesigner
 
 > Run **Noisemaker**'s procedural visuals inside **Derivative TouchDesigner**.
 
@@ -16,7 +16,7 @@ render(o0)
 That little language is Noisemaker's **DSL** (a domain-specific language for visuals). The original
 engine runs in the browser at [noisedeck.app](https://noisedeck.app).
 
-**noisemaker-td** runs that same engine *inside TouchDesigner* — the same programs and the same ~180
+**Noisemaker for TouchDesigner** runs that same engine *inside TouchDesigner* — the same programs and the same ~180
 effects, built as a live network of TouchDesigner's own GLSL operators. Use it to generate textures,
 backgrounds, and animated source material from code, with no image files.
 
@@ -130,7 +130,7 @@ Coverage table, parity numbers, and the full "chaos" explanation: **[STATUS.md](
 ## How it works
 
 Noisemaker turns a DSL program into a **render graph** — a normalized list of GPU passes. That graph
-is the shared seam every Noisemaker port targets. noisemaker-td ports the whole compiler to **Python**
+is the shared seam every Noisemaker port targets. Noisemaker for TouchDesigner ports the whole compiler to **Python**
 (so it runs inside TouchDesigner) and builds the graph as a live network of **GLSL TOP** operators
 that TD cooks.
 

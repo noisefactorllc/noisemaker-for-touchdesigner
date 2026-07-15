@@ -45,7 +45,7 @@ int nm_agentTexel(out int vid, out vec4 pos, out vec4 col) {
 // float32's representable step (~0.06) is coarse enough that fract() quantizes into ~16 buckets ->
 // Metal over-deposits ~8x vs the reference's ANGLE -> an HDR over-bright trail that blows out the
 // downstream navierStokes (white-out / -- on TD's Metal float16 -- Inf->NaN). A hi/lo split keeps
-// the products small so fract is exact for IDs into the millions. (noisemaker-hlsl abb9578,
+// the products small so fract is exact for IDs into the millions. (noisemaker-unity abb9578,
 // noisemaker-godot 58a1b88.)
 float nm_particleRandom(int vid) {
     float pidf = float(vid);

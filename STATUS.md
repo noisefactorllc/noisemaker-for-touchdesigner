@@ -1,4 +1,4 @@
-# noisemaker-td — status & parity
+# Noisemaker for TouchDesigner — status & parity
 
 *Last verified 2026-07-14 on Apple Silicon / Metal. Re-crystallized (full re-verification, not an
 incremental sync) against upstream Noisemaker **content** frozen at commit `75507112`. **The SHA is

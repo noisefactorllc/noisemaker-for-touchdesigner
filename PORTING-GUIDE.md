@@ -1,4 +1,4 @@
-# Porting Guide — reference GLSL → TouchDesigner GLSL TOP
+# Noisemaker for TouchDesigner — Porting Guide
 
 How an effect's reference shader becomes a TouchDesigner GLSL TOP program. Most of this is
 automated by `tools/convert-shaders.mjs`; this document is the rulebook it implements and the

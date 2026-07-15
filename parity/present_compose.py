@@ -72,7 +72,7 @@ def main():
     cx, cy = panel_w + pad * 2, pad + 40
     img.paste(canvas_disp, (cx, cy))
     d.rectangle([cx - 1, cy - 1, cx + disp, cy + disp], outline=(60, 62, 70), width=1)
-    d.text((cx, cy + disp + 8), 'noisemaker-td · live compiler · 1800 frames (30s) · stateSize x1024 + navierStokes',
+    d.text((cx, cy + disp + 8), 'Noisemaker for TouchDesigner · live compiler · 1800 frames (30s) · stateSize x1024 + navierStokes',
            font=label_font, fill=DIM)
 
     img.save(out_path)

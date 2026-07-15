@@ -1,6 +1,6 @@
-"""Polymorphic DSL compiler — Python port of the noisemaker-hlsl C# `Compiler/`.
+"""Polymorphic DSL compiler — Python port of the noisemaker-unity C# `Compiler/`.
 
-Mirrors `noisemaker-hlsl/unity/com.noisemaker.hlsl/Compiler/` file-for-file, which is
+Mirrors `noisemaker-unity/unity/com.noisemaker.hlsl/Compiler/` file-for-file, which is
 itself a 1:1 port of the upstream JS engine (its `shaders/src`). The pipeline
 (reference specs 01-03) is:
 
