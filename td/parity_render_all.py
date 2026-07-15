@@ -3,7 +3,7 @@
 Because TouchDesigner has no honored startup-script env var, the parity bring-up runs inside a
 live TD session. Paste ONE line into the Textport (Alt/Option+T):
 
-    exec(open('/path/to/noisemaker-td/td/parity_render_all.py').read())
+    exec(open('/path/to/noisemaker-for-touchdesigner/td/parity_render_all.py').read())
 
 It builds each Tier-1 graph via the noisemaker runtime, renders one deterministic frame, saves
 `parity/out/<prog>.candidate.png`, and logs per-effect results to `parity/out/_render_log.txt`
@@ -24,7 +24,7 @@ def _find_repo():
     env = os.environ.get('NM_TD_REPO')
     if env and os.path.isdir(os.path.join(env, 'td', 'noisemaker')):
         return env
-    raise RuntimeError('cannot locate the noisemaker-td repo: set NM_TD_REPO or run via the .toe')
+    raise RuntimeError('cannot locate the noisemaker-for-touchdesigner repo: set NM_TD_REPO or run via the .toe')
 
 REPO = _find_repo()
 TD_DIR = os.path.join(REPO, 'td')

@@ -2,7 +2,7 @@
 
 A structural port of the Noisemaker shader engine (its `shaders/`, reached via
 `NM_REFERENCE_ROOT`) to **Derivative TouchDesigner** (2025.32820+), mirroring the existing
-Unity/HLSL port (`noisemaker-unity`) and the Godot port (`noisemaker-godot`): live procedural
+Unity/HLSL port (`noisemaker-for-unity`) and the Godot port (`noisemaker-for-godot`): live procedural
 texture from the Polymorphic DSL, rendered through a network of **GLSL TOP**
 operators built programmatically in TouchDesigner Python, **tolerance-parity** to the
 JS/WebGL2 reference.

@@ -8,8 +8,8 @@
 > below are a record of how the port was built, not its present state. Last reconciled 2026-06-24.
 
 **Goal:** A structural port of the Noisemaker shader engine (its `shaders/`, reached via
-`NM_REFERENCE_ROOT`) to **TouchDesigner 2025.32820+**, mirroring the Unity/HLSL (`noisemaker-unity`)
-and Godot (`noisemaker-godot`) ports: live procedural texture from the Polymorphic DSL, rendered
+`NM_REFERENCE_ROOT`) to **TouchDesigner 2025.32820+**, mirroring the Unity/HLSL (`noisemaker-for-unity`)
+and Godot (`noisemaker-for-godot`) ports: live procedural texture from the Polymorphic DSL, rendered
 through a Python-built **GLSL TOP** network, tolerance-parity to the JS/WebGL2 reference.
 
 **Architecture (see ARCHITECTURE.md at the repo root):** the seam is the **Render Graph JSON**
@@ -138,7 +138,7 @@ classifies the in-repo DSLs and renders their reference goldens from the upstrea
 ## Phase 6 — Live TD-Python DSL compiler  ✅ DONE — 185/186 corpus graph-parity, wired into set_dsl
 
 Ported `reference/01–03` (+ expander/resources/04) to Python under `td/noisemaker/compiler/`,
-**mirroring `noisemaker-unity/unity/com.noisemaker.hlsl/Compiler/` file-for-file** (~6.7k C# LOC):
+**mirroring `noisemaker-for-unity/unity/com.noisemaker.hlsl/Compiler/` file-for-file** (~6.7k C# LOC):
 `lang/{token,lexer,ast,parser,enums,enum_paths,effect_registry,diagnostics,validator,expander,
 palette_expansion}` + `graph/{dim,resources}` + `dsl_compiler` (orchestrator). The C# typed model
 (`UniformValue`/`ArgValue`/`Dim`/`OrderedMap`/`JsonValue`) collapses to native Python values + dicts;
@@ -147,7 +147,7 @@ AST nodes are plain dicts matching the reference JS objects; clone = `copy.deepc
       + `tools/dump-{tokens,ast,validated}.mjs`): **lexer / parser / validator 186/186 byte-exact** vs
       reference `lex`/`parse`/`compile`; **graph 185/186 byte-clean** vs the `export-graph.mjs` oracle
       (the 1 skip `B5oBsA` references a nonexistent effect — the reference rejects it too).
-- [x] Corpus = the **blaster** compositions (`parity/corpus/`, from `noisemaker-unity/parity/corpus`)
+- [x] Corpus = the **blaster** compositions (`parity/corpus/`, from `noisemaker-for-unity/parity/corpus`)
       + the 73 `parity/programs/`. Points/agent comps compile clean (WebGL2 graph = `drawMode:"points"`
       render passes — no compute/MRT fields trigger the staged path).
 - [x] Two parity fixes beyond hlsl: define-suffix order keys off the **sorted global key** (not the

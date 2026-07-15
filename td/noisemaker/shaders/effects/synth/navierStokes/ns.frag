@@ -47,7 +47,7 @@ void nm_main() {
         vec2 inputUv = globalCoord / fullResolution;
         // PARITY/RANGE (port guard, not in the reference GLSL): clamp to [0,1] — a no-op for the
         // reference's [0,1] o0; bounds an HDR particle-field input so the display blend can't leak
-        // HDR into the output. (noisemaker-unity abb9578 / godot 58a1b88.)
+        // HDR into the output. (noisemaker-for-unity abb9578 / godot 58a1b88.)
         vec3 inputColor = clamp(texture(inputTex, inputUv).rgb, 0.0, 1.0);
         outCol = mix(outCol, inputColor, blend);
     }

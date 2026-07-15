@@ -5,7 +5,7 @@ ONCE inside an activated TouchDesigner to materialize the bootstrap project. Aft
 `.toe` can be opened directly and rebuilds itself on load.
 
 Run it from TD's Textport (Alt/Option+T):
-    >>> exec(open('/path/to/noisemaker-td/td/make_bootstrap.py').read())
+    >>> exec(open('/path/to/noisemaker-for-touchdesigner/td/make_bootstrap.py').read())
 (Note: there is NO headless startup hook — the `TOUCH_START_COMMAND` env var does not exist in build
 2025.32820. Use the Textport method above, or an Execute DAT inside a `.toe` as the parity harness does.)
 
@@ -17,7 +17,7 @@ and saves `td/noisemaker.toe`.
 """
 import os
 
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # noisemaker-td/
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # noisemaker-for-touchdesigner/
 TD_DIR = os.path.join(REPO, 'td')
 RUNTIME = TD_DIR
 DEFAULT_GRAPH = os.path.join(REPO, 'parity', 'out', 'solid.graph.json')

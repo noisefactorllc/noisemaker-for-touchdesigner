@@ -52,8 +52,8 @@ not a defect.
   edge one ULP differently. Unreachable from the network, the GLSL, or the MAT.
 
 ### The target is stable, not broken
-No NaN, no white-out, bounded over 1800 frames. Two fixes ported from `noisemaker-unity@abb9578` /
-`noisemaker-godot@58a1b88` keep the deposit rate faithful (without them Metal blows out):
+No NaN, no white-out, bounded over 1800 frames. Two fixes ported from `noisemaker-for-unity@abb9578` /
+`noisemaker-for-godot@58a1b88` keep the deposit rate faithful (without them Metal blows out):
 - **density-cull precision** — `fract(particleID·GR)` loses float32 precision at ~1 M agents (the raw
   product ≈ 6.5e5, where float32's step ≈ 0.06 quantizes `fract` into ~16 buckets → Metal
   over-deposits ~8× vs ANGLE). A hi/lo split keeps the products small so `fract` stays exact

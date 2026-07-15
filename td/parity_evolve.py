@@ -38,7 +38,7 @@ def _find_repo():
     env = os.environ.get('NM_TD_REPO')
     if env and os.path.isdir(os.path.join(env, 'td', 'noisemaker')):
         return env
-    raise RuntimeError('cannot locate the noisemaker-td repo: set NM_TD_REPO or run via the .toe')
+    raise RuntimeError('cannot locate the noisemaker-for-touchdesigner repo: set NM_TD_REPO or run via the .toe')
 
 
 REPO = _find_repo()

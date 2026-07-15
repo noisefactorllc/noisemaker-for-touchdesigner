@@ -81,7 +81,7 @@ DSL string. Drop this in an **Execute DAT** (`onStart`) inside your COMP:
 
 ```python
 import sys
-sys.path.insert(0, '/path/to/noisemaker-td/td')        # the package dir (package name: noisemaker)
+sys.path.insert(0, '/path/to/noisemaker-for-touchdesigner/td')        # the package dir (package name: noisemaker)
 from noisemaker.runtime.nm_renderer import NMRenderer
 
 def onStart():

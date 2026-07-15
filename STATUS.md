@@ -163,5 +163,5 @@ the upstream engine via `NM_REFERENCE_ROOT`.
 Golden PNGs (`parity/export-and-render.mjs`) need `playwright` resolvable from
 `NM_REFERENCE_ROOT`'s own `node_modules` (it drives `vendor/shade-mcp`'s headless-Chromium harness
 against the upstream repo's own `demo/` viewer) — a normal `npm install` inside a full upstream
-clone provides this; it is intentionally not a noisemaker-td dependency (this repo's own tooling has
+clone provides this; it is intentionally not a noisemaker-for-touchdesigner dependency (this repo's own tooling has
 zero npm dependencies by design — see `tools/package.json`).
