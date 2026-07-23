@@ -7,6 +7,10 @@ reference CONTENT (tree-diffed, per-effect+mode parity-proven), never by history
 truth are `parity/sweep.sh`, `parity/accumulate.sh`, `parity/cubemap.sh`, `parity/compiler/check_*.py`,
 and the machine-readable per-(effect,mode) ledger `parity/ledger.tsv`.*
 
+*Incrementally synced 2026-07-23 to reference `349e9909` — `filter/pondRipples` gained a `speed`
+control, the only port-affecting change in that range. Re-swept in full: **279/279 PASS** (6 via
+`accumulate.sh`), including two new animated fixtures. Numbers below are refreshed accordingly.*
+
 This file holds the detailed coverage and parity numbers. For what the project is and how to use it,
 see the [README](README.md).
 

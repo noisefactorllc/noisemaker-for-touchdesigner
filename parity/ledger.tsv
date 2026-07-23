@@ -93,7 +93,7 @@ halftone	PASS	1.000003695487976	0.9999946355819702	2.001	0.98	sweep	parity/out/h
 halftone_mode_color	PASS	1.000003695487976	0.9999946355819702	2.001	0.98	sweep	parity/out/halftone_mode_color.golden.png
 halftone_mode_mono	PASS	1.000003695487976	0.999983549118042	2.001	0.98	sweep	parity/out/halftone_mode_mono.golden.png
 halftone_pattern_circle	PASS	1.000003695487976	0.9995748996734619	2.001	0.98	sweep	parity/out/halftone_pattern_circle.golden.png
-halftone_pattern_dot	PASS	1.000003695487976	0.9999946355819702	2.001	0.98	sweep	parity/out/halftone_pattern_dot.golden.png
+halftone_pattern_dot	PASS	1.000003695487976	0.999983549118042	2.001	0.98	sweep	parity/out/halftone_pattern_dot.golden.png
 halftone_pattern_line	PASS	1.000003695487976	0.9996200203895569	2.001	0.98	sweep	parity/out/halftone_pattern_line.golden.png
 hatch	PASS	0.9999999403953552	1.0	2.001	0.98	sweep	parity/out/hatch.golden.png
 hatch_coloredPencil_leftDiag	NEAR	216.0	0.9999069571495056	255.0	0.99	sweep	parity/out/hatch_coloredPencil_leftDiag.golden.png
@@ -184,6 +184,8 @@ polar	PASS	1.000003695487976	0.9999814033508301	2.001	0.98	sweep	parity/out/pola
 polygon	PASS	1.0	0.9999998807907104	2.001	0.98	sweep	parity/out/polygon.golden.png
 pondRipples	PASS	1.000003695487976	0.9999802708625793	2.001	0.98	sweep	parity/out/pondRipples.golden.png
 pondRipples_amount_100	PASS	1.000003695487976	0.9999807476997375	2.001	0.98	sweep	parity/out/pondRipples_amount_100.golden.png
+pondRipples_speed_3	PASS	1.000003695487976	0.9999802708625793	2.001	0.98	sweep	parity/out/pondRipples_speed_3.golden.png
+pondRipples_speed_neg4	PASS	1.000003695487976	0.9999805688858032	2.001	0.98	sweep	parity/out/pondRipples_speed_neg4.golden.png
 pondRipples_style_aroundCenter	PASS	1.000003695487976	0.9999800324440002	2.001	0.98	sweep	parity/out/pondRipples_style_aroundCenter.golden.png
 pondRipples_style_outFromCenter	PASS	1.000003695487976	0.999980628490448	2.001	0.98	sweep	parity/out/pondRipples_style_outFromCenter.golden.png
 pondRipples_style_pondRipples	PASS	1.000003695487976	0.9999805688858032	2.001	0.98	sweep	parity/out/pondRipples_style_pondRipples.golden.png

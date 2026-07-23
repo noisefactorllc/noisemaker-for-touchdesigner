@@ -25,6 +25,14 @@
       "min": 1,
       "max": 20
     },
+    "speed": {
+      "type": "int",
+      "default": 0,
+      "uniform": "speed",
+      "min": -5,
+      "max": 5,
+      "zero": 0
+    },
     "style": {
       "type": "int",
       "default": 2,
