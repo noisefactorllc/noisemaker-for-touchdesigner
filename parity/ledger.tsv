@@ -185,7 +185,7 @@ polygon	PASS	1.0	0.9999998807907104	2.001	0.98	sweep	parity/out/polygon.golden.p
 pondRipples	PASS	1.000003695487976	0.9999802708625793	2.001	0.98	sweep	parity/out/pondRipples.golden.png
 pondRipples_amount_100	PASS	1.000003695487976	0.9999807476997375	2.001	0.98	sweep	parity/out/pondRipples_amount_100.golden.png
 pondRipples_speed_3	PASS	1.000003695487976	0.9999802708625793	2.001	0.98	sweep	parity/out/pondRipples_speed_3.golden.png
-pondRipples_speed_neg4	PASS	1.000003695487976	0.9999805688858032	2.001	0.98	sweep	parity/out/pondRipples_speed_neg4.golden.png
+pondRipples_speed_neg5	PASS	1.000003695487976	0.9999805092811584	2.001	0.98	sweep	parity/out/pondRipples_speed_neg5.golden.png
 pondRipples_style_aroundCenter	PASS	1.000003695487976	0.9999800324440002	2.001	0.98	sweep	parity/out/pondRipples_style_aroundCenter.golden.png
 pondRipples_style_outFromCenter	PASS	1.000003695487976	0.999980628490448	2.001	0.98	sweep	parity/out/pondRipples_style_outFromCenter.golden.png
 pondRipples_style_pondRipples	PASS	1.000003695487976	0.9999805688858032	2.001	0.98	sweep	parity/out/pondRipples_style_pondRipples.golden.png
