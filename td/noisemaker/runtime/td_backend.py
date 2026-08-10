@@ -296,13 +296,9 @@ class TDBackend:
         # Boolean-typed defines (fallback `#define K true|false`) MUST be injected as true/false:
         # the reference emits `1`/`0` and leans on WebGL2/ANGLE accepting `if (1)`, but TD's strict
         # #version 460 core rejects a non-bool `if` condition (the curl `if (RIDGES)` compile error).
-        bool_keys = _bool_define_keys(frag)
-        header = ''.join(
-            '#define %s %s\n' % (k, ('true' if _truthy(v) else 'false') if k in bool_keys else _glsl_lit(v))
-            for k, v in p.defines.items())
         tag = self._unique_name(p.id)
         dat = self.parent.create(_td('textDAT'), tag + '_src')
-        dat.text = header + frag
+        dat.text = _assemble_effect_source(frag, p.defines)
         self.ops.append(dat)
 
         n_inputs = len(input_order)
@@ -680,17 +676,60 @@ _BOOL_DEFINE_RE = re.compile(r'#define\s+(\w+)\s+(?:true|false)\b')
 _BOOL_IF_RE = re.compile(r'\bif\s*\(\s*!?\s*([A-Za-z_]\w*)\s*\)')
 
 
+def _strip_comments_for_scan(source):
+    """Remove GLSL comments from detector input while preserving the assembled source.
+
+    Comment spans become whitespace, with block-comment newlines retained. A small stateful scan
+    handles both comment forms and unterminated block comments without the ambiguity of a regex.
+    """
+    out = []
+    i = 0
+    while i < len(source):
+        if source.startswith('//', i):
+            i += 2
+            while i < len(source) and source[i] != '\n':
+                i += 1
+            out.append(' ')
+        elif source.startswith('/*', i):
+            i += 2
+            while i < len(source) and not source.startswith('*/', i):
+                if source[i] == '\n':
+                    out.append('\n')
+                i += 1
+            i = min(i + 2, len(source))
+            out.append(' ')
+        else:
+            out.append(source[i])
+            i += 1
+    return ''.join(out)
+
+
 def _bool_define_keys(frag_text):
     """Keys that are GLSL bools — declared via an in-shader `#define K true|false` fallback OR used
     as a bare `if (K)` / `if (!K)` condition. These must be injected as true/false (not 1/0) so a
     strict-core boolean condition stays a bool (else TD rejects `if (0)`)."""
-    return set(_BOOL_DEFINE_RE.findall(frag_text)) | set(_BOOL_IF_RE.findall(frag_text))
+    scan_text = _strip_comments_for_scan(frag_text)
+    return set(_BOOL_DEFINE_RE.findall(scan_text)) | set(_BOOL_IF_RE.findall(scan_text))
 
 
 def _truthy(v):
     if isinstance(v, str):
         return v.strip().lower() not in ('0', 'false', '', 'none')
     return bool(v)
+
+
+def _assemble_effect_source(frag_text, defines):
+    """Prepend define overrides without modifying the original fragment source."""
+    bool_keys = _bool_define_keys(frag_text)
+    header = ''.join(
+        '#define %s %s\n' % (
+            key,
+            ('true' if _truthy(value) else 'false')
+            if key in bool_keys else _glsl_lit(value),
+        )
+        for key, value in defines.items()
+    )
+    return header + frag_text
 
 
 def _try(fn):

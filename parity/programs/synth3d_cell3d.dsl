@@ -1,3 +1,3 @@
 search synth3d, render
-cell3d().render3d().write(o0)
+cell3d(volumeSize: x32).render3d().write(o0)
 render(o0)

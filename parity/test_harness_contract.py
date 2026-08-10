@@ -24,6 +24,24 @@ def load_stage_coverage():
 
 
 class HarnessContractTests(unittest.TestCase):
+    def test_single_and_batch_exporters_use_the_full_clean_start_protocol(self):
+        single = (REPO / "parity" / "export-and-render.mjs").read_text()
+        batch = (REPO / "parity" / "batch-golden.mjs").read_text()
+
+        for source in (single, batch):
+            self.assertIn("p.graph.id !== base && p.isCompiling === false", source)
+            self.assertIn("}, baselineId, { timeout: STATUS_TIMEOUT })", source)
+            self.assertIn("for (const texId of backend.textures.keys())", source)
+            self.assertIn("backend.clearTexture(texId)", source)
+            self.assertIn("surface.read = readId", source)
+            self.assertIn("surface.write = writeId", source)
+            self.assertIn("p.frameIndex = 0", source)
+            self.assertIn("p.lastTime = 0", source)
+            self.assertLess(
+                source.index("if (window.__noisemakerSetPausedTime)"),
+                source.index("p.lastTime = 0"),
+            )
+
     def test_batch_golden_sets_nonzero_exit_when_any_item_fails(self):
         source = (REPO / "parity" / "batch-golden.mjs").read_text()
         self.assertRegex(source, r"if \(fail > 0\) process\.exitCode = 1")

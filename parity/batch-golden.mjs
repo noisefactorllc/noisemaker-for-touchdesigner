@@ -70,7 +70,7 @@ async function renderOne (page, dsl, size, time, lastId, frames = 8, timestep = 
     if (window.__nmStableId === p.graph.id) { window.__nmStableCount = (window.__nmStableCount || 0) + 1 }
     else { window.__nmStableId = p.graph.id; window.__nmStableCount = 0 }
     return window.__nmStableCount >= 1
-  }, { timeout: STATUS_TIMEOUT }, baselineId)
+  }, baselineId, { timeout: STATUS_TIMEOUT })
   // DETERMINISM STEP 1 — STOP the free-running RAF loop. The demo starts an
   // animation loop on load and on every recompile; while it runs it advances the
   // pipeline (frameIndex/lastTime + every state/feedback surface) an unknown
