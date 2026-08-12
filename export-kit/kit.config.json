@@ -1,0 +1,34 @@
+{
+  "configVersion": 1,
+  "id": "touchdesigner",
+  "series": "0.1",
+  "shaderSource": "kit",
+  "engineSource": "kit",
+  "pageTemplate": false,
+  "subtrees": [
+    { "from": "td/noisemaker", "to": "engine/noisemaker" }
+  ],
+  "licenses": [
+    { "from": "LICENSE", "to": "LICENSES/noisemaker-for-touchdesigner-LICENSE.txt" }
+  ],
+  "shaderCorpus": {
+    "effectsDir": "td/noisemaker/shaders/effects",
+    "includeDir": "td/noisemaker/shaders/include"
+  },
+  "shaderLayout": {
+    "root": "shaders",
+    "effectsPrefix": "",
+    "includeDir": null
+  },
+  "inject": {
+    "type": "dsl-file",
+    "target": "program.dsl"
+  },
+  "compat": {
+    "mode": "list",
+    "fromDefs": "td/noisemaker/effects",
+    "excludeNames": ["media", "scope", "spectrum"],
+    "excludeIds": []
+  },
+  "engineBytesFrom": ["engine/"]
+}
