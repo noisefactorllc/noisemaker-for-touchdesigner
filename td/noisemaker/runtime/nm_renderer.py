@@ -9,6 +9,9 @@ Public API:
     nm.set_dsl(src)            Phase 6 — compile DSL live in-engine, then build
     nm.resize(w, h)            change render resolution (rebuilds)
     nm.Output                  the presented TOP (renderSurface) — wire to a Null/Out for display
+    nm.add_sink(sink)          register an output sink for explicitly submitted frames
+    nm.submit_frame(timestamp) cook and submit the current TOP to registered sinks
+    nm.create_frame_export_queue(...)  create a delayed GPU-download queue
     nm.render_to(path, time)   deterministic single-frame render (parity / export)
 
 Touches the TouchDesigner Python API — only runs inside a TD process.
@@ -61,6 +64,23 @@ class NMRenderer:
         if self.pipeline is None:
             return None
         return self.pipeline.render_to(path, time=time)
+
+    def add_sink(self, sink):
+        if self.pipeline is None:
+            raise RuntimeError('NMRenderer has no active pipeline; build before adding a sink')
+        return self.pipeline.add_sink(sink)
+
+    def submit_frame(self, timestamp=None):
+        if self.pipeline is None:
+            return False
+        return self.pipeline.submit_frame(timestamp)
+
+    def create_frame_export_queue(self, *, slots=3, on_error=None):
+        if self.pipeline is None:
+            raise RuntimeError(
+                'NMRenderer has no active pipeline; build before creating a frame export queue'
+            )
+        return self.pipeline.create_frame_export_queue(slots=slots, on_error=on_error)
 
     @property
     def Output(self):

@@ -14,3 +14,8 @@
 #
 # Everything except render_graph/graph_loader/dim touches the TouchDesigner Python API
 # (`op`, `parent`, `glslTOP`, …) and therefore only runs inside a TouchDesigner process.
+
+from .frame_export import FrameExportQueue
+from .sink import SinkManager
+
+__all__ = ['FrameExportQueue', 'SinkManager']

@@ -7,8 +7,11 @@ pin `time` to a fixed value and render one frame.
 
 Touches the TouchDesigner Python API — only runs inside a TD process.
 """
+import time as clock
+
 from . import uniform_binder
 from .engine_uniforms import engine_uniforms
+from .sink import SinkManager
 from .td_backend import TDBackend
 from .surface_manager import SurfaceManager
 
@@ -25,12 +28,32 @@ class Pipeline:
                                  time=time, surface_manager=self.surfaces)
         self.output = None      # the TOP presented (renderSurface)
         self._effect_tops = []
+        self.sink_manager = SinkManager()
 
     def build(self, graph):
         self.output = self.backend.build(graph)
         self.surfaces.finalize()
         self._effect_tops = [g for g in self.backend.ops if _is_glsl_top(g)]
+        self._configure_sinks()
         return self.output
+
+    def _configure_sinks(self):
+        self.sink_manager.configure({
+            'width': self.width,
+            'height': self.height,
+            'format': 'rgba8unorm',
+            'colorSpace': 'srgb',
+            'alphaMode': 'straight',
+            'fps': 60,
+        })
+
+    def add_sink(self, sink):
+        """Register a sink for explicitly submitted completed output frames."""
+        return self.sink_manager.add(sink)
+
+    def create_frame_export_queue(self, *, slots=3, on_error=None):
+        """Create a bounded queue backed by TouchDesigner's delayed TOP downloads."""
+        return self.backend.create_frame_export_queue(slots=slots, on_error=on_error)
 
     def set_resolution(self, width, height):
         self.width = width
@@ -66,19 +89,40 @@ class Pipeline:
             self.set_time(time)
         if self.output is None:
             return None
+        self.submit_frame()
+        return str(self.output.save(filepath, createFolders=True))
+
+    def submit_frame(self, timestamp=None):
+        """Cook and submit the current output TOP to registered sinks."""
+        if self.output is None:
+            return False
         try:
             self.output.cook(force=True)
         except Exception:
             pass
-        return str(self.output.save(filepath, createFolders=True))
+        if timestamp is None:
+            timestamp = clock.perf_counter() * 1000.0
+        self.sink_manager.submit(self.output, timestamp)
+        return True
 
     def teardown(self):
-        self.backend.teardown()
+        first_error = None
+        try:
+            self.sink_manager.close()
+        except Exception as error:
+            first_error = error
+        try:
+            self.backend.teardown()
+        except Exception as error:
+            if first_error is None:
+                first_error = error
         for o in self.surfaces.ops:
             try:
                 o.destroy()
             except Exception:
                 pass
+        if first_error is not None:
+            raise first_error
 
 
 def _is_glsl_top(op):

@@ -235,6 +235,15 @@ class TDBackend:
         self.ops = []
         self.tex_top = {}
 
+    def create_frame_export_queue(self, *, slots=3, on_error=None):
+        """Create a bounded queue using TouchDesigner's delayed ``TOP.numpyArray`` readback."""
+        from .frame_export import FrameExportQueue
+        from .td_frame_export import TouchDesignerFrameExportAdapter
+
+        return FrameExportQueue(
+            TouchDesignerFrameExportAdapter(self.parent), slots=slots, on_error=on_error
+        )
+
     def _effect_uniform_layout(self, namespace, func):
         """The effect's std140 `uniformLayout` ({name:{slot,components}}) from its JSON, cached.
 
