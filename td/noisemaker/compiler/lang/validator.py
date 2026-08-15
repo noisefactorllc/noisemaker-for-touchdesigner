@@ -35,7 +35,7 @@ _STATE_VALUES = frozenset([
     'time', 'frame', 'mouse', 'resolution', 'seed', 'a', 'u1', 'u2', 'u3', 'u4',
     's1', 's2', 'b1', 'b2', 'a1', 'a2', 'deltaTime',
 ])
-_ALLOWED_STRING_PARAMS = frozenset(['text.text', 'text.font', 'text.justify'])
+_ALLOWED_STRING_PARAMS = frozenset(['text.text', 'text.font', 'text.justify', 'text.style'])
 _SURFACE_PASSTHROUGH_CALLS = frozenset(['read'])
 
 from . import diagnostics as _diag  # noqa: E402

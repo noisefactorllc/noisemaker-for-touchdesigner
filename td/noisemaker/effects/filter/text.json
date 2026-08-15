@@ -77,6 +77,10 @@
         "center": "center",
         "right": "right"
       }
+    },
+    "style": {
+      "type": "string",
+      "default": ""
     }
   },
   "passes": [
