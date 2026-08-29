@@ -55,6 +55,35 @@ FORMAT_MAP = {
     'rgba32f': 'rgba32float', 'rgba32float': 'rgba32float',
 }
 
+_FORMAT_BYTES = {
+    'rgba8': 4, 'rgba8unorm': 4, 'rgba8fixed': 4,
+    'rgba16f': 8, 'rgba16float': 8,
+    'rgba32f': 16, 'rgba32float': 16,
+}
+_FORMAT_FOR_BYTES = {4: 'rgba8fixed', 8: 'rgba16float', 16: 'rgba32float'}
+
+
+def _mrt_storage_format(pass_, graph, max_color_bytes_per_sample=None):
+    """Choose one common MRT format that fits TouchDesigner's attachment budget.
+
+    A GLSL TOP requires every color buffer to use the same format. Preserve the
+    widest graph-declared attachment format when it fits; otherwise step down to
+    the widest common RGBA format whose aggregate byte cost fits the device.
+    """
+    budget = (_MAX_COLOR_BYTES_PER_SAMPLE if max_color_bytes_per_sample is None
+              else max_color_bytes_per_sample)
+    output_count = max(len(pass_.outputs), int(getattr(pass_, 'draw_buffers', 0) or 0), 1)
+    requested_bytes = max(
+        (_FORMAT_BYTES.get(getattr(graph.spec_for(tex_id), 'fmt', None), 8)
+         for tex_id in pass_.outputs.values()),
+        default=8,
+    )
+    for bytes_per_attachment in (16, 8, 4):
+        if (bytes_per_attachment <= requested_bytes and
+                bytes_per_attachment * output_count <= budget):
+            return _FORMAT_FOR_BYTES[bytes_per_attachment]
+    return 'rgba8fixed'
+
 # Reference GL blend-factor names -> TouchDesigner GLSL MAT src/destblend menu values.
 # Only the factors the deposit passes use (additive ONE/ONE + premultiplied OVER) are needed.
 _BLEND_FACTOR_MAP = {
@@ -112,6 +141,7 @@ class TDBackend:
         self._layout_cache = {}                    # (namespace, func) -> std140 uniformLayout | None
         self._prog_tops = {}                       # progName -> [TOPs] (debug: dump a specific pass)
         self._mrt_diag_done = False                 # one-time Render Select param introspection log
+        self._mrt_format_warned = set()             # pass ids warned about common-format demotion
         self._tex_res = {}                          # texId -> (w,h) resolved (for feedback sizing)
         self.has_feedback = False                  # graph has a cross-frame cycle (drive N frames)
         self._points_cam = None                    # shared dummy ortho Camera COMP for deposit renders
@@ -318,9 +348,26 @@ class TDBackend:
         g.par.pixeldat = dat
         _try(lambda: setattr(g.par, 'glslversion', '4.60'))
 
-        # resolution + format from the (primary) output texture spec.
+        # A GLSL TOP's MRT attachments must all share one format. Pick the widest common format
+        # that fits Metal's aggregate attachment budget; Render Select TOPs below convert each
+        # attachment back to its graph-declared logical format.
         spec = self._primary_output_spec(p, graph)
-        self._apply_res_format(g, spec, p.uniforms)
+        mrt_format = _mrt_storage_format(p, graph) if p.is_mrt else None
+        self._apply_res_format(g, spec, p.uniforms, format_override=mrt_format)
+        if p.is_mrt:
+            requested_bytes = max(
+                (_FORMAT_BYTES.get(getattr(graph.spec_for(tex_id), 'fmt', None), 8)
+                 for tex_id in p.outputs.values()),
+                default=8,
+            )
+            if (_FORMAT_BYTES[mrt_format] < requested_bytes and
+                    p.id not in self._mrt_format_warned):
+                self._mrt_format_warned.add(p.id)
+                self._warn('MRT pass %s uses common %s storage so %d color buffers fit the '
+                           '%d-byte attachment budget' % (
+                               p.id, mrt_format,
+                               max(len(p.outputs), int(p.draw_buffers or 0), 1),
+                               _MAX_COLOR_BYTES_PER_SAMPLE))
 
         # MRT: render to N color buffers (the shader's layout(location=k)); each is read back via
         # its own Render Select TOP (registered in the output step below).
@@ -385,7 +432,8 @@ class TDBackend:
         # Select TOP — the Select (not the GLSL TOP) is the readable producer for that texId.
         if p.is_mrt and len(p.outputs) > 1:
             for idx, (attach, tex_id) in enumerate(p.outputs.items()):
-                self.tex_top[tex_id] = self._register_mrt_buffer(g, idx, tex_id, tag)
+                self.tex_top[tex_id] = self._register_mrt_buffer(
+                    g, idx, tex_id, tag, graph.spec_for(tex_id))
                 if self.surfaces is not None:
                     self.surfaces.note_write(tex_id, self.tex_top[tex_id])
         else:
@@ -395,7 +443,7 @@ class TDBackend:
                     self.surfaces.note_write(tex_id, g)
         return g
 
-    def _register_mrt_buffer(self, glsl_top, idx, tex_id, tag):
+    def _register_mrt_buffer(self, glsl_top, idx, tex_id, tag, spec=None):
         """A Render Select TOP that exposes color-buffer `idx` of an MRT GLSL TOP as a readable TOP.
         TD's Render Select reads its source from the `top` PARAM (not an input wire) and picks the
         attachment with `bufferindex`."""
@@ -403,6 +451,8 @@ class TDBackend:
         self.ops.append(sel)
         _try(lambda: setattr(sel.par, 'top', glsl_top))
         _try(lambda: setattr(sel.par, 'bufferindex', idx))
+        if spec is not None:
+            _try(lambda: setattr(sel.par, 'format', FORMAT_MAP.get(spec.fmt, 'rgba16float')))
         return sel
 
     def _default_input_top(self):
@@ -630,17 +680,18 @@ class TDBackend:
         tex_id = p.outputs.get('color') or next(iter(p.outputs.values()), None)
         return graph.spec_for(tex_id) if tex_id else None
 
-    def _apply_res_format(self, g, spec, uniforms=None):
+    def _apply_res_format(self, g, spec, uniforms=None, format_override=None):
         w = self.width
         h = self.height
-        fmt = 'rgba16float'
+        fmt = format_override or 'rgba16float'
         if spec is not None:
             # Pass the pass's uniforms so dynamic dims resolve to the ACTUAL value, not the spec
             # default: ns_velocity is {screenDivide: zoom_chain_1} — without uniforms it falls back
             # to default 4 (64x64 instead of screen/zoom), running the whole sim at the wrong grid.
             w = _dim.resolve_dimension(spec.width, self.width, uniforms)
             h = _dim.resolve_dimension(spec.height, self.height, uniforms)
-            fmt = FORMAT_MAP.get(spec.fmt, 'rgba16float')
+            if format_override is None:
+                fmt = FORMAT_MAP.get(spec.fmt, 'rgba16float')
         _try(lambda: setattr(g.par, 'outputresolution', 'custom'))
         _try(lambda: setattr(g.par, 'resolutionw', int(w)))
         _try(lambda: setattr(g.par, 'resolutionh', int(h)))
@@ -676,6 +727,11 @@ def _glsl_lit(v):
 # 3D volume atlas size cap (see TDBackend._cap_volume_size). Default 32 (a 32x1024 atlas) fits TD's
 # Non-Commercial 1280 cook-resolution cap; raise on a Commercial/Educational license.
 _MAX_VOLUME_SIZE = int(os.environ.get('NM_MAX_VOLUME_SIZE', '32'))
+
+# Native macOS Apple-Silicon GPUs support at least 64 aggregate color-attachment bytes per sample.
+# TouchDesigner's GLSL TOP exposes no per-attachment formats, so MRT passes need one common format
+# within that budget. Keep an override for empirically stricter devices (for example, 32-byte paths).
+_MAX_COLOR_BYTES_PER_SAMPLE = int(os.environ.get('NM_MAX_COLOR_BYTES_PER_SAMPLE', '64'))
 
 _BOOL_DEFINE_RE = re.compile(r'#define\s+(\w+)\s+(?:true|false)\b')
 # A define used as a BARE boolean condition — `if (NAME)` / `if (!NAME)` — is a GLSL bool even when
