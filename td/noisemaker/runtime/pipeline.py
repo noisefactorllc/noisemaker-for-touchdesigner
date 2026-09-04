@@ -7,30 +7,35 @@ pin `time` to a fixed value and render one frame.
 
 Touches the TouchDesigner Python API — only runs inside a TD process.
 """
+import os
 import time as clock
 
-from . import uniform_binder
-from .engine_uniforms import engine_uniforms
+from .automation import get_audio_input_requirements
 from .sink import SinkManager
 from .td_backend import TDBackend
 from .surface_manager import SurfaceManager
 
 
 class Pipeline:
-    def __init__(self, parent_comp, shaders_root, *, width=256, height=256, time=0.25):
+    def __init__(self, parent_comp, shaders_root, *, width=256, height=256, time=0.25,
+                 midi_state=None, audio_state=None):
         self.parent = parent_comp
         self.shaders_root = shaders_root
         self.width = width
         self.height = height
         self._time = time
+        self._external_state = {'midi': midi_state, 'audio': audio_state}
+        self._graph = None
         self.surfaces = SurfaceManager(parent_comp)
         self.backend = TDBackend(parent_comp, shaders_root, width=width, height=height,
-                                 time=time, surface_manager=self.surfaces)
+                                 time=time, surface_manager=self.surfaces,
+                                 external_state=self._external_state)
         self.output = None      # the TOP presented (renderSurface)
         self._effect_tops = []
         self.sink_manager = SinkManager()
 
     def build(self, graph):
+        self._graph = graph
         self.output = self.backend.build(graph)
         self.surfaces.finalize()
         self._effect_tops = [g for g in self.backend.ops if _is_glsl_top(g)]
@@ -67,20 +72,27 @@ class Pipeline:
         own uniforms (speed/dyeDecay/zoom/...). Instead we refresh the engine values WITHIN each
         TOP's full declared binding and re-bind the whole set (same slot count, stable order)."""
         self._time = float(t)
-        eu = engine_uniforms(self.width, self.height, self._time)
-        for g, bound in self.backend._effect_uniforms:
-            for k, v in eu.items():
-                if k in bound:                    # only refresh engine uniforms the shader declares
-                    bound[k] = v
-            uniform_binder.bind_uniforms(g, bound)
-        # std140 uniform arrays (remap data[]): time/resolution live in the packed array too, so
-        # refresh those engine values and re-pack+re-bind the array (cheap; only synth/remap today).
-        for g, layout, merged, arrays in getattr(self.backend, '_effect_arrays', []):
-            merged.update(eu)
-            packed = uniform_binder.pack_uniforms_with_layout(merged, layout)
-            for arr_name, info in arrays.items():
-                n4 = info['length'] * 4
-                uniform_binder.bind_uniform_array(g, arr_name, (packed + [0.0] * n4)[:n4])
+        self.backend.refresh_uniforms(self._time, self._external_state)
+
+    def set_midi_state(self, state):
+        self._external_state['midi'] = state
+        self._refresh_external_state()
+
+    def set_audio_state(self, state):
+        self._external_state['audio'] = state
+        self._refresh_external_state()
+
+    def get_audio_input_requirements(self):
+        effects_root = os.path.join(os.path.dirname(os.path.dirname(self.shaders_root)), 'effects')
+        return get_audio_input_requirements(self._graph, effects_root) if self._graph else {
+            'needsLegacy': False, 'needsLegacyRaw': False, 'selected': [],
+        }
+
+    def _refresh_external_state(self):
+        self.backend.external_state = self._external_state
+        if self._graph is None:
+            return
+        self.backend.refresh_uniforms(self._time, self._external_state)
 
     def render_to(self, filepath, *, time=None):
         """Deterministic one-shot render of the presented surface to an image file.

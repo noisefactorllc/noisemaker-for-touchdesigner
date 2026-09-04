@@ -8,6 +8,10 @@ Public API:
     nm.set_graph_dict(d)       build from an in-memory normalized graph dict
     nm.set_dsl(src)            Phase 6 — compile DSL live in-engine, then build
     nm.resize(w, h)            change render resolution (rebuilds)
+    nm.set_time(time)          resolve animated uniforms at normalized time
+    nm.set_midi_state(state)   provide the current legacy/selected MIDI snapshot
+    nm.set_audio_state(state)  provide the current legacy/selected audio snapshot
+    nm.get_audio_input_requirements() describe captures required by the active graph
     nm.Output                  the presented TOP (renderSurface) — wire to a Null/Out for display
     nm.add_sink(sink)          register an output sink for explicitly submitted frames
     nm.submit_frame(timestamp) cook and submit the current TOP to registered sinks
@@ -34,6 +38,8 @@ class NMRenderer:
         self.time = time
         self.pipeline = None
         self._graph = None
+        self._midi_state = None
+        self._audio_state = None
 
     # -- build paths -------------------------------------------------------
     def set_graph(self, path):
@@ -63,7 +69,13 @@ class NMRenderer:
     def render_to(self, path, time=0.25):
         if self.pipeline is None:
             return None
+        self.time = float(time)
         return self.pipeline.render_to(path, time=time)
+
+    def set_time(self, time):
+        self.time = float(time)
+        if self.pipeline is not None:
+            self.pipeline.set_time(self.time)
 
     def add_sink(self, sink):
         if self.pipeline is None:
@@ -82,6 +94,21 @@ class NMRenderer:
             )
         return self.pipeline.create_frame_export_queue(slots=slots, on_error=on_error)
 
+    def set_midi_state(self, state):
+        self._midi_state = state
+        if self.pipeline is not None:
+            self.pipeline.set_midi_state(state)
+
+    def set_audio_state(self, state):
+        self._audio_state = state
+        if self.pipeline is not None:
+            self.pipeline.set_audio_state(state)
+
+    def get_audio_input_requirements(self):
+        if self.pipeline is None:
+            return {'needsLegacy': False, 'needsLegacyRaw': False, 'selected': []}
+        return self.pipeline.get_audio_input_requirements()
+
     @property
     def Output(self):
         return self.pipeline.output if self.pipeline else None
@@ -92,5 +119,6 @@ class NMRenderer:
             self.pipeline.teardown()
         self._graph = graph
         self.pipeline = Pipeline(self.owner, self.shaders_root, width=self.width, height=self.height,
-                                 time=self.time)
+                                 time=self.time, midi_state=self._midi_state,
+                                 audio_state=self._audio_state)
         return self.pipeline.build(graph)

@@ -17,9 +17,11 @@ PARITY-CRITICAL behaviors replicated (reference/02):
   - errors are collected, not thrown, except missing-search — §1.2 H11.
 
 Unimplemented paths raise UnsupportedDsl (mirrors hlsl NotImplementedException) — FAIL LOUDLY:
-  if/elif/else, break/continue/return, midi/audio automation args, Func, state-value args.
+  if/elif/else, break/continue/return, Func, state-value args.
 """
 import copy
+import json
+import math
 
 from . import enum_paths
 from . import enums
@@ -35,10 +37,42 @@ _STATE_VALUES = frozenset([
     'time', 'frame', 'mouse', 'resolution', 'seed', 'a', 'u1', 'u2', 'u3', 'u4',
     's1', 's2', 'b1', 'b2', 'a1', 'a2', 'deltaTime',
 ])
-_ALLOWED_STRING_PARAMS = frozenset(['text.text', 'text.font', 'text.justify', 'text.style'])
+_AUTOMATION_FIELDS = {
+    K.Oscillator: ('oscType', 'min', 'max', 'speed', 'offset', 'seed'),
+    K.Midi: ('channel', 'mode', 'min', 'max', 'sensitivity', 'name', 'id'),
+    K.Audio: ('band', 'min', 'max', 'channel', 'name', 'id'),
+}
+_MAX_AUTOMATION_DEPTH = 8
+_UNDEF = object()
+_ALLOWED_STRING_PARAMS = frozenset([
+    'text.text', 'text.font', 'text.justify', 'text.style',
+    'midi.name', 'midi.id', 'audio.name', 'audio.id',
+])
 _SURFACE_PASSTHROUGH_CALLS = frozenset(['read'])
 
 from . import diagnostics as _diag  # noqa: E402
+
+
+def _decode_json_string_literal_content(raw):
+    try:
+        return json.loads('"' + raw + '"')
+    except (TypeError, ValueError):
+        escapes = {
+            "'": "'", '"': '"', '\\': '\\', 'n': '\n', 'r': '\r',
+            't': '\t', 'b': '\b', 'f': '\f', 'v': '\v', '0': '\0',
+        }
+        decoded = []
+        index = 0
+        while index < len(raw):
+            if raw[index] != '\\' or index + 1 >= len(raw):
+                decoded.append(raw[index])
+                index += 1
+                continue
+            index += 1
+            next_char = raw[index]
+            decoded.append(escapes.get(next_char, '\\' + next_char))
+            index += 1
+        return ''.join(decoded)
 
 
 def validate(ast, registry):
@@ -52,6 +86,7 @@ class _Validator:
         self._symbols = {}
         self._search_order = None
         self._temp_index = 0
+        self._reported_automation_cycles = set()
 
     def _run(self, ast):
         render = ast['render']['name'] if ast.get('render') else None
@@ -114,7 +149,7 @@ class _Validator:
         if not vars_:
             return
         for v in vars_:
-            expr = self._substitute(copy.deepcopy(v['expr']))
+            expr = self._substitute(copy.deepcopy(v['expr']), [v['name']])
             if expr is not None and self._is_starter_chain(expr):
                 head = self._first_chain_call(expr)
                 if head is not None:
@@ -174,41 +209,63 @@ class _Validator:
 
     # --- substitute (reference/02 §2.10) --------------------------------
 
-    def _substitute(self, node):
+    def _substitute(self, node, resolving=None):
+        if resolving is None:
+            resolving = []
         if node is None:
             return None
         t = node.get('type')
+        if t == K.Ident and node['name'] in resolving:
+            cycle_start = resolving.index(node['name'])
+            cycle = resolving[cycle_start:] + [node['name']]
+            cycle_key = ' -> '.join(cycle)
+            if cycle_key not in self._reported_automation_cycles:
+                self._reported_automation_cycles.add(cycle_key)
+                self._push_diag('S001', node, 'Automation cycle detected: ' + cycle_key)
+            return {'type': K.Number, 'value': 0, '_automationInvalid': True}
         if t == K.Ident and node['name'] in self._symbols:
-            result = self._substitute(copy.deepcopy(self._symbols[node['name']]))
+            result = self._substitute(
+                copy.deepcopy(self._symbols[node['name']]), resolving + [node['name']]
+            )
             if result is not None:
                 self._set_var_ref(result, node['name'])
             return result
+        if t in _AUTOMATION_FIELDS:
+            mapped = dict(node)
+            for field_name in _AUTOMATION_FIELDS[t]:
+                if field_name in node:
+                    mapped[field_name] = self._substitute(node[field_name], resolving)
+            return mapped
         if t == K.Chain:
             new_chain = []
             for e in node['chain']:
                 if e.get('type') == K.Call:
                     mapped = {'type': K.Call, 'name': e['name'],
-                              'args': [self._substitute(a) for a in e['args']]}
+                              'args': [self._substitute(a, resolving) for a in e['args']]}
                     if e.get('kwargs') is not None:
-                        mapped['kwargs'] = {k: self._substitute(val) for k, val in e['kwargs'].items()}
+                        mapped['kwargs'] = {
+                            k: self._substitute(val, resolving) for k, val in e['kwargs'].items()
+                        }
                     new_chain.append(self._resolve_call(mapped))
                 else:
                     new_chain.append(e)
             return {'type': K.Chain, 'chain': new_chain}
         if t == K.Call:
             mapped = {'type': K.Call, 'name': node['name'],
-                      'args': [self._substitute(a) for a in node['args']]}
+                      'args': [self._substitute(a, resolving) for a in node['args']]}
             if node.get('namespace') is not None:
                 mapped['namespace'] = node['namespace']
             if node.get('kwargs') is not None:
-                mapped['kwargs'] = {k: self._substitute(val) for k, val in node['kwargs'].items()}
+                mapped['kwargs'] = {
+                    k: self._substitute(val, resolving) for k, val in node['kwargs'].items()
+                }
             return self._resolve_call(mapped)
         return node
 
     @staticmethod
     def _set_var_ref(n, name):
         if n.get('type') in (K.Number, K.Ident, K.Member, K.Oscillator, K.Midi, K.Audio):
-            n['varRef'] = name
+            n['_varRef'] = name
 
     def _resolve_call(self, call):
         name = call['name']
@@ -834,15 +891,9 @@ class _Validator:
         if t == K.Func:
             raise UnsupportedDsl("Func numeric params ((state)=>...) are not implemented in the first-cut "
                                  "DSL frontend (reference/02 §6.10).")
-        if t == K.Oscillator:
-            args[arg_key] = self._resolve_oscillator(node)
+        if t in _AUTOMATION_FIELDS:
+            args[arg_key] = self._compile_automation_descriptor(node)
             return
-        if t == K.Midi:
-            raise UnsupportedDsl("midi() automation args are not implemented in the first-cut DSL frontend "
-                                 "(reference/02 §6.12).")
-        if t == K.Audio:
-            raise UnsupportedDsl("audio() automation args are not implemented in the first-cut DSL frontend "
-                                 "(reference/02 §6.13).")
         if t == K.Member:
             cur = self._resolve_enum_number(node['path'])
             if cur is not None:
@@ -889,39 +940,206 @@ class _Validator:
         else:
             args[arg_key] = self._default_arg(d)
 
-    # 6.11 osc() value oscillator -> resolved config object (reference/02 §6.11)
-    def _resolve_oscillator(self, node):
-        osc_type = 0
-        ot = node['oscType']
-        if ot.get('type') == K.Member:
-            r = self._resolve_enum_number(ot['path'])
-            if r is not None:
-                osc_type = r
-        elif ot.get('type') == K.Ident:
-            r = self._resolve_enum_number(["oscKind", ot['name']])
-            if r is not None:
-                osc_type = r
-        return {
-            'type': 'Oscillator',
-            'oscType': osc_type,
-            'min': _clamp01(self._resolve_osc_param(node['min']) if self._resolve_osc_param(node['min']) is not None else 0),
-            'max': _clamp01(self._resolve_osc_param(node['max']) if self._resolve_osc_param(node['max']) is not None else 1),
-            'speed': self._resolve_osc_param(node['speed']) if self._resolve_osc_param(node['speed']) is not None else 1,
-            'offset': self._resolve_osc_param(node['offset']) if self._resolve_osc_param(node['offset']) is not None else 0,
-            'seed': self._resolve_osc_param(node['seed']) if self._resolve_osc_param(node['seed']) is not None else 1,
-        }
+    # 6.11-6.13 recursive osc()/midi()/audio() runtime descriptors.
+    def _resolve_automation_enum(self, node, enum_name, fallback, valid_values,
+                                 descriptor_name, field_name):
+        resolved = None
+        if node is not None and node.get('type') == K.Number:
+            resolved = node.get('value')
+        elif node is not None and node.get('type') == K.Member:
+            resolved = self._resolve_enum_number(node.get('path'))
+        elif node is not None and node.get('type') == K.Ident:
+            resolved = self._resolve_enum_number([enum_name, node.get('name')])
+        if (isinstance(resolved, (int, float)) and not isinstance(resolved, bool)
+                and math.isfinite(resolved) and float(resolved).is_integer()
+                and resolved in valid_values):
+            return resolved
+        if node is not None and node.get('type') == K.String:
+            self._push_diag('S001', node, 'String literal not allowed for %s() %s' % (
+                descriptor_name, field_name))
+        else:
+            message = ('audio() band must resolve to an integer from 0 to 4 (got %s)' % resolved
+                       if descriptor_name == 'audio' and field_name == 'band'
+                       else '%s() %s must resolve to a supported enum value' % (
+                           descriptor_name, field_name))
+            self._push_diag('S002', node, message)
+        return fallback
 
-    def _resolve_osc_param(self, param):
-        if param is None:
-            return None
-        t = param.get('type')
-        if t == K.Number:
-            return param['value']
-        if t == K.Boolean:
-            return 1 if param['value'] else 0
-        if t == K.Member:
-            return self._resolve_enum_number(param['path'])
-        return None
+    def _resolve_automation_string(self, node, descriptor_name, field_name):
+        if node is None:
+            return _UNDEF
+        allowlist_key = '%s.%s' % (descriptor_name, field_name)
+        if allowlist_key not in _ALLOWED_STRING_PARAMS:
+            self._push_diag('S001', node, "String parameter '%s' is not allowlisted" % allowlist_key)
+            return _UNDEF
+        if node.get('type') != K.String:
+            self._push_diag('S001', node, '%s() %s requires a quoted string' % (
+                descriptor_name, field_name))
+            return _UNDEF
+        if len(node.get('value', '')) == 0:
+            self._push_diag('S001', node, '%s() %s must not be empty' % (
+                descriptor_name, field_name))
+            return _UNDEF
+        return _decode_json_string_literal_content(node['value'])
+
+    def _resolve_automation_number(self, node, descriptor_name, field_name, fallback,
+                                   *, allow_boolean=False, allow_automation=False,
+                                   allow_member=True, clamp01=False, integer=False,
+                                   minimum=None, maximum=None, depth=0, invalid_flag=None):
+        def reject(code, message):
+            if invalid_flag is not None:
+                invalid_flag[0] = True
+            self._push_diag(code, node, message)
+            return fallback
+
+        if node is None:
+            return fallback
+        node_type = node.get('type')
+        if node_type == K.Number:
+            value = node.get('value')
+        elif allow_boolean and node_type == K.Boolean:
+            value = 1 if node.get('value') else 0
+        elif allow_member and node_type == K.Member:
+            value = self._resolve_enum_number(node.get('path'))
+        elif allow_automation and node_type in _AUTOMATION_FIELDS:
+            value = self._compile_automation_descriptor(node, depth + 1)
+            if isinstance(value, dict) and value.get('_invalid') and invalid_flag is not None:
+                invalid_flag[0] = True
+            return value
+        elif node_type == K.String:
+            return reject('S001', 'String literal not allowed for %s() %s' % (
+                descriptor_name, field_name))
+        elif node_type == K.Ident:
+            return reject('S003', "Undefined automation source '%s' for %s() %s" % (
+                node.get('name'), descriptor_name, field_name))
+        else:
+            suffix = ' or automation source' if allow_automation else ''
+            return reject('S002', '%s() %s must be a number%s' % (
+                descriptor_name, field_name, suffix))
+        if (not isinstance(value, (int, float)) or isinstance(value, bool)
+                or not math.isfinite(value)):
+            return reject('S002', '%s() %s must resolve to a finite number' % (
+                descriptor_name, field_name))
+        if integer and not float(value).is_integer():
+            return reject('S002', '%s() %s must be an integer' % (
+                descriptor_name, field_name))
+        if minimum is not None and value < minimum:
+            return reject('S002', '%s() %s must be at least %s (got %s)' % (
+                descriptor_name, field_name, minimum, value))
+        if maximum is not None and value > maximum:
+            return reject('S002', '%s() %s must be at most %s (got %s)' % (
+                descriptor_name, field_name, maximum, value))
+        return _clamp01(value) if clamp01 else value
+
+    def _compile_automation_descriptor(self, node, depth=0):
+        if depth > _MAX_AUTOMATION_DEPTH:
+            self._push_diag('S001', node, 'Automation nesting exceeds the maximum depth of %d'
+                            % _MAX_AUTOMATION_DEPTH)
+            return 0
+        node_type = node.get('type')
+        if node_type == K.Oscillator:
+            value = {
+                'type': 'Oscillator',
+                'oscType': self._resolve_automation_enum(
+                    node.get('oscType'), 'oscKind', 0, set(range(6)), 'osc', 'type'),
+                'min': self._resolve_automation_number(
+                    node.get('min'), 'osc', 'min', 0, allow_boolean=True,
+                    allow_automation=True, clamp01=True, depth=depth),
+                'max': self._resolve_automation_number(
+                    node.get('max'), 'osc', 'max', 1, allow_boolean=True,
+                    allow_automation=True, clamp01=True, depth=depth),
+                'speed': self._resolve_automation_number(
+                    node.get('speed'), 'osc', 'speed', 1, allow_boolean=True,
+                    allow_automation=True, depth=depth),
+                'offset': self._resolve_automation_number(
+                    node.get('offset'), 'osc', 'offset', 0, allow_boolean=True,
+                    allow_automation=True, depth=depth),
+                'seed': self._resolve_automation_number(
+                    node.get('seed'), 'osc', 'seed', 1, allow_boolean=True,
+                    allow_automation=True, depth=depth),
+                '_ast': node,
+            }
+        elif node_type == K.Midi:
+            value = {
+                'type': 'Midi',
+                'channel': self._resolve_automation_number(
+                    node.get('channel'), 'midi', 'channel', 1, allow_boolean=True,
+                    depth=depth),
+                'mode': self._resolve_automation_enum(
+                    node.get('mode'), 'midiMode', 4, set(range(5)), 'midi', 'mode'),
+                'min': self._resolve_automation_number(
+                    node.get('min'), 'midi', 'min', 0, allow_boolean=True,
+                    allow_automation=True, clamp01=True, depth=depth),
+                'max': self._resolve_automation_number(
+                    node.get('max'), 'midi', 'max', 1, allow_boolean=True,
+                    allow_automation=True, clamp01=True, depth=depth),
+                'sensitivity': self._resolve_automation_number(
+                    node.get('sensitivity'), 'midi', 'sensitivity', 1,
+                    allow_boolean=True, allow_automation=True, depth=depth),
+                '_ast': node,
+            }
+            for field_name in ('name', 'id'):
+                string_value = self._resolve_automation_string(
+                    node.get(field_name), 'midi', field_name)
+                if string_value is not _UNDEF:
+                    value[field_name] = string_value
+        elif node_type == K.Audio:
+            min_invalid = [False]
+            max_invalid = [False]
+            channel_invalid = [False]
+            band = self._resolve_automation_enum(
+                node.get('band'), 'audioBand', _UNDEF, set(range(5)), 'audio', 'band')
+            minimum_value = self._resolve_automation_number(
+                node.get('min'), 'audio', 'min', 0, allow_automation=True,
+                allow_member=False, clamp01=True, depth=depth, invalid_flag=min_invalid)
+            maximum_value = self._resolve_automation_number(
+                node.get('max'), 'audio', 'max', 1, allow_automation=True,
+                allow_member=False, clamp01=True, depth=depth, invalid_flag=max_invalid)
+            channel = _UNDEF
+            channel_node = node.get('channel')
+            if channel_node is not None:
+                channel_value = channel_node.get('value')
+                if (channel_node.get('type') == K.Number
+                        and isinstance(channel_value, (int, float))
+                        and not isinstance(channel_value, bool)
+                        and math.isfinite(channel_value)
+                        and float(channel_value).is_integer() and channel_value >= 1):
+                    channel = channel_value
+                else:
+                    channel_invalid[0] = True
+                    if channel_node.get('type') == K.String:
+                        self._push_diag('S001', channel_node,
+                                        'String literal not allowed for audio() channel')
+                    else:
+                        got = channel_node.get(
+                            'value', channel_node.get('name', channel_node.get('type')))
+                        self._push_diag('S002', channel_node,
+                                        'audio() channel must be a positive integer (got %s)' % got)
+            name = self._resolve_automation_string(node.get('name'), 'audio', 'name')
+            identity = self._resolve_automation_string(node.get('id'), 'audio', 'id')
+            value = {
+                'type': 'Audio',
+                'min': minimum_value,
+                'max': maximum_value,
+                '_invalid': (band is _UNDEF or min_invalid[0] or max_invalid[0]
+                             or channel_invalid[0]
+                             or (node.get('name') is not None and name is _UNDEF)
+                             or (node.get('id') is not None and identity is _UNDEF)),
+                '_ast': node,
+            }
+            if band is not _UNDEF:
+                value['band'] = band
+            if channel is not _UNDEF:
+                value['channel'] = channel
+            if name is not _UNDEF:
+                value['name'] = name
+            if identity is not _UNDEF:
+                value['id'] = identity
+        else:
+            return 0
+        if node.get('_varRef'):
+            value['_varRef'] = node['_varRef']
+        return value
 
     # --- helpers --------------------------------------------------------
 

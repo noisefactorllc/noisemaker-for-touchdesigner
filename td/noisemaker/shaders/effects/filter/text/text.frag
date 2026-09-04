@@ -23,7 +23,19 @@ void nm_main() {
     vec2 st = globalCoord / fullResolution;
 
     vec4 inputColor = texture(inputTex, gl_FragCoord.xy / vec2(textureSize(inputTex, 0)));
-    vec4 text = texture(textTex, gl_FragCoord.xy / vec2(textureSize(textTex, 0)));
+
+    // The text canvas is authored to cover the whole output, so sample it in
+    // normalized output space (`st`) rather than in textTex's own texel space.
+    // Dividing by textureSize(textTex) pinned the overlay to a 1:1 texel patch
+    // in the corner whenever the canvas size lagged the render size, and made
+    // every tile of a large-format export repeat the text.
+    //
+    // Untiled, `st` is gl_FragCoord.xy / resolution, matching the WGSL
+    // variant's global output-space coordinate.
+    // Tiled, this places the text once across the whole image rather than once
+    // per tile; the host still rasterizes the canvas at tile size, so its scale
+    // is approximate there.
+    vec4 text = texture(textTex, st);
 
     // Text presence from canvas alpha
     float textPresence = text.a;

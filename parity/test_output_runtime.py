@@ -296,6 +296,20 @@ class FakeOutput:
 
 
 class PipelineAndRendererTests(unittest.TestCase):
+    def test_pipeline_rebinds_in_place_when_automated_repeat_changes(self):
+        pipeline = Pipeline.__new__(Pipeline)
+        pipeline._time = 0
+        pipeline._external_state = {"midi": None, "audio": None}
+        pipeline.backend = mock.Mock()
+
+        pipeline.set_time(0.25)
+        pipeline.set_time(0.5)
+
+        self.assertEqual([
+            mock.call(0.25, pipeline._external_state),
+            mock.call(0.5, pipeline._external_state),
+        ], pipeline.backend.refresh_uniforms.call_args_list)
+
     def test_pipeline_configures_and_submits_output_and_render_to_preserves_save(self):
         pipeline = Pipeline.__new__(Pipeline)
         pipeline.width = 4
@@ -334,6 +348,29 @@ class PipelineAndRendererTests(unittest.TestCase):
         self.assertIs(renderer.create_frame_export_queue(slots=2), queue)
         pipeline.add_sink.assert_called_once_with(sink)
         pipeline.create_frame_export_queue.assert_called_once_with(slots=2, on_error=None)
+
+    def test_renderer_persists_and_delegates_external_input_and_time_controls(self):
+        renderer = NMRenderer.__new__(NMRenderer)
+        renderer.pipeline = mock.Mock()
+        renderer._midi_state = None
+        renderer._audio_state = None
+        renderer.time = 0.25
+        midi = object()
+        audio = object()
+        requirements = {"needsLegacy": True, "needsLegacyRaw": False, "selected": []}
+        renderer.pipeline.get_audio_input_requirements.return_value = requirements
+
+        renderer.set_midi_state(midi)
+        renderer.set_audio_state(audio)
+        renderer.set_time(0.75)
+
+        self.assertIs(renderer._midi_state, midi)
+        self.assertIs(renderer._audio_state, audio)
+        self.assertEqual(0.75, renderer.time)
+        self.assertEqual(requirements, renderer.get_audio_input_requirements())
+        renderer.pipeline.set_midi_state.assert_called_once_with(midi)
+        renderer.pipeline.set_audio_state.assert_called_once_with(audio)
+        renderer.pipeline.set_time.assert_called_once_with(0.75)
 
 
 if __name__ == "__main__":

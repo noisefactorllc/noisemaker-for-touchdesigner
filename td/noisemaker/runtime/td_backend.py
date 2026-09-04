@@ -12,8 +12,9 @@ Touches the TouchDesigner Python API — only runs inside a TD process.
 Coverage:
   * Single-pass path: effect passes (single output), blit passes, pooled-texture wiring,
     per-pass define overrides, named-input -> sTD2DInputs ordering, custom resolution/format,
-    uniform binding, `repeat` unrolled into N chained GLSL TOPs (TD's Passes param has unreliable
-    previous-pass feedback semantics — deliberately not used).
+    uniform binding, `repeat` unrolled into chained GLSL TOPs (automated counts pre-unroll their
+    bounded maximum and select a stage without rebuilding; TD's Passes param has unreliable
+    previous-pass feedback semantics and is deliberately not used).
   * MRT / agents / 3D: MRT outputs (draw_buffers>1) get a Render Select TOP per extra buffer;
     `drawMode:"points"` scatter via a Geometry COMP + GLSL MAT + Render TOP; std140 UBO effects
     (remap) via the Arrays page; cross-frame surface feedback via surface_manager.
@@ -45,6 +46,7 @@ def _in_td():
 
 
 from . import dim as _dim
+from . import automation
 from . import uniform_binder
 from .engine_uniforms import engine_uniforms
 
@@ -123,12 +125,13 @@ def _parse_input_order(frag_text):
 
 class TDBackend:
     def __init__(self, parent_comp, shaders_root, *, width=256, height=256, time=0.25,
-                 surface_manager=None):
+                 surface_manager=None, external_state=None):
         self.parent = parent_comp
         self.shaders_root = shaders_root           # .../td/noisemaker/shaders/effects
         self.width = width
         self.height = height
         self.time = time                           # normalized 0..1 baked into engine uniforms
+        self.external_state = external_state or {}
         self.surfaces = surface_manager            # optional SurfaceManager for feedback
         self.tex_top = {}                          # texId -> producing TOP (LAST writer so far)
         self.ops = []                              # everything we created (for teardown)
@@ -138,6 +141,9 @@ class TDBackend:
         self._feedback = {}                        # cross-frame texId -> Feedback TOP (lazy)
         self._effect_uniforms = []                 # [(glslTOP, {declared uniform: value})] for set_time
         self._effect_arrays = []                   # [(glslTOP, layout, merged, {arr: info})] for set_time
+        self._dynamic_uniforms = []                # source descriptors retained for per-frame binding
+        self._dynamic_arrays = []                  # source descriptors retained for packed arrays
+        self._repeat_selectors = []                # stable Switch TOPs for automated iteration counts
         self._layout_cache = {}                    # (namespace, func) -> std140 uniformLayout | None
         self._prog_tops = {}                       # progName -> [TOPs] (debug: dump a specific pass)
         self._mrt_diag_done = False                 # one-time Render Select param introspection log
@@ -166,13 +172,23 @@ class TDBackend:
             elif p.is_scatter:
                 self._build_points(p, graph)
             else:
-                # `repeat=N` is an intra-frame iterative solve (e.g. nsPressure Jacobi x40): each
-                # iteration reads the previous one's output. UNROLL into N chained TOPs — building
-                # the same pass N times in a row chains automatically through the last-writer
-                # `tex_top` (iteration k reads iteration k-1). This sidesteps TD's GLSL TOP `Passes`
-                # (whose previous-pass feedback semantics are unreliable) and is deterministic.
-                for _ in range(self._resolve_repeat(p)):
-                    self._build_effect(p, graph)
+                # Iteration k reads iteration k-1 through tex_top. Automated counts pre-build the
+                # bounded maximum and use stable Switch TOPs for the selected stage, preserving
+                # feedback state and downstream connections as the requested count changes.
+                if self._has_dynamic_repeat(p):
+                    resolved_uniforms = automation.resolve_uniforms(
+                        p.uniforms, p.uniform_specs, self.time, self.external_state)
+                    stage_outputs = {tex_id: [] for tex_id in p.outputs.values()}
+                    for _ in range(self._repeat_stage_count(p, resolved_uniforms)):
+                        self._build_effect(p, graph, resolved_uniforms)
+                        for tex_id in stage_outputs:
+                            stage_outputs[tex_id].append(self.tex_top.get(tex_id))
+                    self._build_repeat_selectors(p, stage_outputs, resolved_uniforms)
+                else:
+                    resolved_uniforms = automation.resolve_uniforms(
+                        p.uniforms, p.uniform_specs, self.time, self.external_state)
+                    for _ in range(self._resolve_repeat(p)):
+                        self._build_effect(p, graph, resolved_uniforms)
         # Wire each Feedback TOP's Target to the LAST writer of its texId (built after the first
         # reader, so only resolvable now). Output = that producer's PREVIOUS frame, which breaks
         # the cross-frame cycle and gives the reference's frame-to-frame state persistence.
@@ -243,18 +259,105 @@ class TDBackend:
                     self._feedback.setdefault(tid, None)
         self.has_feedback = bool(self._feedback)
 
-    def _resolve_repeat(self, p):
+    def _resolve_repeat(self, p, resolved_uniforms=None):
         """Concrete iteration count for an unrolled pass. `repeat` is an int or a uniform NAME
         (e.g. 'iterations' -> p.uniforms['iterations'] == 40 for navierStokes pressure)."""
         r = getattr(p, 'repeat', None)
         if r is None or isinstance(r, bool):
             return 1
         if isinstance(r, str):
-            r = p.uniforms.get(r)
+            if resolved_uniforms is not None and r in resolved_uniforms:
+                r = resolved_uniforms[r]
+            else:
+                r = automation.resolve_uniform_value(
+                    p.uniforms.get(r), self.time, p.uniform_specs.get(r), self.external_state)
         try:
             return max(1, int(r))
         except (TypeError, ValueError):
             return 1
+
+    @staticmethod
+    def _has_dynamic_repeat(p):
+        return (isinstance(getattr(p, 'repeat', None), str)
+                and automation.automation_type(p.uniforms.get(p.repeat)) is not None)
+
+    def _repeat_stage_count(self, p, resolved_uniforms=None):
+        """Maximum pre-unrolled stage count for a bounded automated repeat."""
+        if not self._has_dynamic_repeat(p):
+            return self._resolve_repeat(p)
+        spec = p.uniform_specs.get(p.repeat) or {}
+        maximum = spec.get('max')
+        if isinstance(maximum, (int, float)) and not isinstance(maximum, bool):
+            try:
+                return max(1, int(maximum))
+            except (OverflowError, ValueError):
+                pass
+        return self._resolve_repeat(p, resolved_uniforms)
+
+    def _build_repeat_selectors(self, p, stage_outputs, resolved_uniforms):
+        selected_index = self._resolve_repeat(p, resolved_uniforms) - 1
+        for tex_id, stages in stage_outputs.items():
+            stages = [stage for stage in stages if stage is not None]
+            if not stages:
+                continue
+            selector = self.parent.create(
+                _td('switchTOP'), self._unique_name(p.id + '_repeat'))
+            self.ops.append(selector)
+            for index, stage in enumerate(stages):
+                _try(lambda index=index, stage=stage:
+                     selector.inputConnectors[index].connect(stage))
+            _try(lambda: setattr(selector.par, 'index', min(selected_index, len(stages) - 1)))
+            self.tex_top[tex_id] = selector
+            if self.surfaces is not None:
+                self.surfaces.note_write(tex_id, selector)
+            self._repeat_selectors.append({
+                'op': selector, 'pass': p, 'stage_count': len(stages),
+            })
+
+    def refresh_uniforms(self, normalized_time, external_state=None):
+        """Re-evaluate descriptor uniforms and bind the complete declared uniform sets."""
+        self.time = float(normalized_time)
+        if external_state is not None:
+            self.external_state = external_state
+        engine = engine_uniforms(self.width, self.height, self.time)
+        resolved_cache = {}
+
+        def resolved_for(record):
+            source_pass = record['pass']
+            key = id(source_pass)
+            if key not in resolved_cache:
+                source = record['source'] if 'source' in record else source_pass.uniforms
+                specs = record['specs'] if 'specs' in record else source_pass.uniform_specs
+                resolved_cache[key] = automation.resolve_uniforms(
+                    source, specs, self.time, self.external_state)
+            return resolved_cache[key]
+
+        for record in self._dynamic_uniforms:
+            resolved = resolved_for(record)
+            merged = dict(engine) if record['engine'] else {}
+            merged.update(resolved)
+            bound = record['bound']
+            bound.clear()
+            bound.update({key: value for key, value in merged.items()
+                          if key in record['declared']})
+            uniform_binder.bind_uniforms(record['op'], bound)
+        for record in self._dynamic_arrays:
+            resolved = resolved_for(record)
+            merged = dict(engine)
+            merged.update(resolved)
+            record['merged'].clear()
+            record['merged'].update(merged)
+            packed = uniform_binder.pack_uniforms_with_layout(merged, record['layout'])
+            for array_name, info in record['arrays'].items():
+                length = info['length'] * 4
+                uniform_binder.bind_uniform_array(
+                    record['op'], array_name, (packed + [0.0] * length)[:length])
+        for record in self._repeat_selectors:
+            index = min(
+                self._resolve_repeat(record['pass'], resolved_for(record)),
+                record['stage_count']) - 1
+            _try(lambda record=record, index=index:
+                 setattr(record['op'].par, 'index', index))
 
     def teardown(self):
         for o in self.ops:
@@ -322,7 +425,7 @@ class TDBackend:
                        'NM_MAX_VOLUME_SIZE on a Commercial license)' % cap)
 
     # -- effect pass -------------------------------------------------------
-    def _build_effect(self, p, graph):
+    def _build_effect(self, p, graph, resolved_uniforms=None):
         frag_path = os.path.join(self.shaders_root, p.namespace, p.func, '%s.frag' % p.prog_name)
         if not os.path.exists(frag_path):
             self._warn('missing frag %s for pass %s' % (frag_path, p.id))
@@ -379,8 +482,11 @@ class TDBackend:
         # uniforms: bind ONLY what the shader declares (engine globals ∪ pass uniforms), in one
         # pass — the binder sets the Vectors slot count. Binding undeclared names wastes slots
         # and (pre-fix) silently truncated many-uniform effects.
+        if resolved_uniforms is None:
+            resolved_uniforms = automation.resolve_uniforms(
+                p.uniforms, p.uniform_specs, self.time, self.external_state)
         merged = dict(engine_uniforms(self.width, self.height, self.time))
-        merged.update(p.uniforms)
+        merged.update(resolved_uniforms)
         declared = uniform_binder.declared_uniform_names(frag)
         bound = {k: v for k, v in merged.items() if k in declared}
         uniform_binder.bind_uniforms(g, bound)
@@ -388,6 +494,11 @@ class TDBackend:
         # WITHOUT dropping the per-effect uniforms (re-binding engine-only would reset the Vectors
         # slot count and silently wipe speed/dyeDecay/zoom/... — black/garbage output).
         self._effect_uniforms.append((g, bound))
+        self._dynamic_uniforms.append({
+            'op': g, 'bound': bound, 'pass': p,
+            'source': p.uniforms, 'specs': p.uniform_specs,
+            'declared': declared, 'engine': True,
+        })
 
         # std140 UNIFORM ARRAY (synth/remap `vec4 data[267]`): the frag declares a uniform array and
         # the program carries a uniformLayout — pack the FULL flat uniforms (zone config etc., which
@@ -401,7 +512,13 @@ class TDBackend:
                 n4 = info['length'] * 4
                 buf = (packed + [0.0] * n4)[:n4]
                 uniform_binder.bind_uniform_array(g, arr_name, buf)
-            self._effect_arrays.append((g, layout, dict(merged), arrays))
+            stored_merged = dict(merged)
+            self._effect_arrays.append((g, layout, stored_merged, arrays))
+            self._dynamic_arrays.append({
+                'op': g, 'layout': layout, 'merged': stored_merged, 'arrays': arrays,
+                'pass': p,
+                'source': p.uniforms, 'specs': p.uniform_specs,
+            })
 
         # wire inputs in NM_INPUTS order. A declared sampler with no/`none` texId binds the default
         # 1x1 black TOP — reference parity (unbound samplers read [0,0,0,0]) AND it makes TD declare
@@ -501,6 +618,8 @@ class TDBackend:
         # 2D deposits name the agent-state inputs xyzTex/rgbaTex; filter3d/flow3d's volume deposit
         # names them stateTex1/stateTex2 (position carries a 3D voxel, scattered into the trail
         # ATLAS) — same Geo/MAT/Render mechanism, different vertex math (deposit_shaders 'points3d').
+        resolved_uniforms = automation.resolve_uniforms(
+            p.uniforms, p.uniform_specs, self.time, self.external_state)
         is_volume = 'stateTex1' in p.inputs
         xyz_id = p.inputs.get('xyzTex') or p.inputs.get('stateTex1')
         rgba_id = p.inputs.get('rgbaTex') or p.inputs.get('stateTex2')
@@ -521,7 +640,7 @@ class TDBackend:
             except Exception:
                 ss = None
         if not ss:
-            for k, v in p.uniforms.items():
+            for k, v in resolved_uniforms.items():
                 if k.startswith('stateSize') and v:
                     ss = int(v)
                     break
@@ -532,8 +651,8 @@ class TDBackend:
         trail_id = p.outputs.get('fragColor') or next(iter(p.outputs.values()), None)
         spec = graph.spec_for(trail_id)
         if spec is not None:
-            tw = int(_dim.resolve_dimension(spec.width, self.width, p.uniforms))
-            th = int(_dim.resolve_dimension(spec.height, self.height, p.uniforms))
+            tw = int(_dim.resolve_dimension(spec.width, self.width, resolved_uniforms))
+            th = int(_dim.resolve_dimension(spec.height, self.height, resolved_uniforms))
             fmt = FORMAT_MAP.get(spec.fmt, 'rgba16float')
         else:
             tw, th, fmt = self.width, self.height, 'rgba16float'
@@ -587,8 +706,14 @@ class TDBackend:
                        ('blendop', 'add'), ('depthtest', False), ('depthwriting', False)):
             _try(lambda _p=_p, _v=_v: setattr(mat.par, _p, _v))
         declared = uniform_binder.declared_uniform_names(vsrc + '\n' + fsrc)
-        bound = {k: v for k, v in p.uniforms.items() if k in declared}
+        bound = {k: v for k, v in resolved_uniforms.items() if k in declared}
         uniform_binder.bind_uniforms(mat, bound)
+        self._effect_uniforms.append((mat, bound))
+        self._dynamic_uniforms.append({
+            'op': mat, 'bound': bound, 'pass': p,
+            'source': p.uniforms, 'specs': p.uniform_specs,
+            'declared': declared, 'engine': False,
+        })
         _try(lambda: setattr(geo.par, 'material', mat))
 
         # -- render the scatter (transparent bg; clears, then accumulates onto prior) --
