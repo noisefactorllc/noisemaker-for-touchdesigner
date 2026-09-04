@@ -10,6 +10,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "td"))
 
 from noisemaker.compiler import compile_dsl  # noqa: E402
+from noisemaker.compiler.lang.validator import UnsupportedDsl  # noqa: E402
 
 
 class ValidatorContractTests(unittest.TestCase):
@@ -27,6 +28,16 @@ class ValidatorContractTests(unittest.TestCase):
             if render_pass["effectKey"] == "filter.text"
         )
         self.assertEqual(text_pass["uniforms"]["style"], "font-weight: bold")
+
+    def test_selected_external_inputs_remain_outside_the_runtime_boundary(self):
+        cases = (
+            'solid(alpha: midi(1, name: "Controller")).write(o0)',
+            'solid(alpha: audio(audioBand.raw, channel: 1, name: "Interface")).write(o0)',
+        )
+
+        for call in cases:
+            with self.subTest(call=call), self.assertRaises(UnsupportedDsl):
+                compile_dsl("search synth\n" + call + "\nrender(o0)\n")
 
 
 if __name__ == "__main__":

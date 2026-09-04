@@ -52,7 +52,9 @@ def _build_std():
         'noteChange': leaf(0), 'gateNote': leaf(1), 'gateVelocity': leaf(2),
         'triggerNote': leaf(3), 'velocity': leaf(4),
     }
-    root['audioBand'] = {'low': leaf(0), 'mid': leaf(1), 'high': leaf(2), 'vol': leaf(3)}
+    root['audioBand'] = {
+        'low': leaf(0), 'mid': leaf(1), 'high': leaf(2), 'vol': leaf(3), 'raw': leaf(4),
+    }
     root['palette'] = {key: leaf(idx) for idx, key in enumerate(PALETTE_KEYS)}
     return root
 

@@ -451,31 +451,29 @@ class _Parser:
                         "' at the start of the program instead,", name_token.line, name_token.col)
         self._expect(T.LPAREN, "Expect '('")
         args = []
-        kwargs = None
+        kwargs = {}
         keyword = False
+        positional = False
+        allow_mixed = name_token.lexeme in ("midi", "audio")
         if self._peek().type != T.RPAREN:
-            if self._peek().type == T.IDENT and self._kw_colon(self._current + 1):
-                keyword = True
-                kwargs = {}
-                self._parse_kwarg(kwargs)
-                while self._peek().type == T.COMMA:
-                    self._advance()
-                    if self._peek().type == T.RPAREN:
-                        break
-                    if not (self._peek().type == T.IDENT and self._kw_colon(self._current + 1)):
+            while True:
+                if self._peek().type == T.IDENT and self._kw_colon(self._current + 1):
+                    if positional and not allow_mixed:
                         t = self._peek()
                         raise DslSyntaxError.at("Cannot mix positional and keyword arguments", t.line, t.col)
+                    keyword = True
                     self._parse_kwarg(kwargs)
-            else:
-                args.append(self._parse_arg())
-                while self._peek().type == T.COMMA:
-                    self._advance()
-                    if self._peek().type == T.RPAREN:
-                        break
-                    if self._peek().type == T.IDENT and self._kw_colon(self._current + 1):
+                else:
+                    if keyword and not allow_mixed:
                         t = self._peek()
                         raise DslSyntaxError.at("Cannot mix positional and keyword arguments", t.line, t.col)
+                    positional = True
                     args.append(self._parse_arg())
+                if self._peek().type != T.COMMA:
+                    break
+                self._advance()
+                if self._peek().type == T.RPAREN:
+                    break
         self._expect(T.RPAREN, "Expect ')'")
 
         call = {'type': K.Call, 'name': name_token.lexeme, 'args': args}
@@ -602,31 +600,130 @@ class _Parser:
 
     def _transform_midi(self, call, name_token):
         order = ["channel", "mode", "min", "max", "sensitivity"]
-        channel = self._resolve_param(call, order[0], 0, None)
+        keyword_only = ["name", "id"]
+        valid = order + keyword_only
+        args = call['args']
+        kwargs = call.get('kwargs') or {}
+        if len(args) > len(order):
+            raise DslSyntaxError.at("midi() name and id are keyword-only", name_token.line, name_token.col)
+        for key in kwargs:
+            if key not in valid:
+                raise DslSyntaxError(
+                    "midi() unknown parameter '%s' at line %d col %d. Valid: %s" %
+                    (key, name_token.line, name_token.col, ", ".join(valid)),
+                    name_token.line, name_token.col)
+
+        defaults = {
+            'mode': ast.member_of("midiMode", "velocity"),
+            'min': ast.number(0),
+            'max': ast.number(1),
+            'sensitivity': ast.number(1),
+        }
+        resolved = {}
+        pos_cursor = 0
+        for param_name in order:
+            if param_name in kwargs:
+                resolved[param_name] = kwargs[param_name]
+            elif pos_cursor < len(args):
+                resolved[param_name] = args[pos_cursor]
+                pos_cursor += 1
+            elif param_name in defaults:
+                resolved[param_name] = defaults[param_name]
+        if pos_cursor < len(args):
+            raise DslSyntaxError.at("midi() has an excess positional argument", name_token.line,
+                                    name_token.col)
+
+        channel = resolved.get('channel')
         if channel is None:
             raise DslSyntaxError.at("midi() requires 'channel' argument", name_token.line, name_token.col)
-        return {
+        if 'id' in kwargs and 'name' not in kwargs:
+            raise DslSyntaxError.at("midi() 'id' requires readable 'name'", name_token.line, name_token.col)
+        for param_name in keyword_only:
+            if param_name not in kwargs:
+                continue
+            value = kwargs[param_name]
+            if value.get('type') != K.String:
+                raise DslSyntaxError.at("midi() '%s' requires a quoted string" % param_name,
+                                        name_token.line, name_token.col)
+            if not value.get('value'):
+                raise DslSyntaxError.at("midi() '%s' must not be empty" % param_name,
+                                        name_token.line, name_token.col)
+
+        node = {
             'type': K.Midi,
             'channel': channel,
-            'mode': self._resolve_param(call, order[1], 1, ast.member_of("midiMode", "velocity")),
-            'min': self._resolve_param(call, order[2], 2, ast.number(0)),
-            'max': self._resolve_param(call, order[3], 3, ast.number(1)),
-            'sensitivity': self._resolve_param(call, order[4], 4, ast.number(1)),
+            'mode': resolved['mode'],
+            'min': resolved['min'],
+            'max': resolved['max'],
+            'sensitivity': resolved['sensitivity'],
             'loc': ast.loc(name_token.line, name_token.col),
         }
+        for param_name in keyword_only:
+            if param_name in kwargs:
+                node[param_name] = kwargs[param_name]
+        return node
 
     def _transform_audio(self, call, name_token):
         order = ["band", "min", "max"]
-        band = self._resolve_param(call, order[0], 0, None)
+        keyword_only = ["channel", "name", "id"]
+        valid = order + keyword_only
+        args = call['args']
+        kwargs = call.get('kwargs') or {}
+        if len(args) > len(order):
+            raise DslSyntaxError.at("audio() channel, name and id are keyword-only", name_token.line,
+                                    name_token.col)
+        for key in kwargs:
+            if key not in valid:
+                raise DslSyntaxError(
+                    "audio() unknown parameter '%s' at line %d col %d. Valid: %s" %
+                    (key, name_token.line, name_token.col, ", ".join(valid)),
+                    name_token.line, name_token.col)
+
+        defaults = {'min': ast.number(0), 'max': ast.number(1)}
+        resolved = {}
+        pos_cursor = 0
+        for param_name in order:
+            if param_name in kwargs:
+                resolved[param_name] = kwargs[param_name]
+            elif pos_cursor < len(args):
+                resolved[param_name] = args[pos_cursor]
+                pos_cursor += 1
+            elif param_name in defaults:
+                resolved[param_name] = defaults[param_name]
+        if pos_cursor < len(args):
+            raise DslSyntaxError.at("audio() has an excess positional argument", name_token.line,
+                                    name_token.col)
+
+        band = resolved.get('band')
         if band is None:
             raise DslSyntaxError.at("audio() requires 'band' argument", name_token.line, name_token.col)
-        return {
+        if 'id' in kwargs and 'name' not in kwargs:
+            raise DslSyntaxError.at("audio() 'id' requires readable 'name'", name_token.line, name_token.col)
+        if ('channel' in kwargs) != ('name' in kwargs):
+            raise DslSyntaxError.at("audio() selected device requires both 'name' and 'channel'",
+                                    name_token.line, name_token.col)
+        for param_name in ("name", "id"):
+            if param_name not in kwargs:
+                continue
+            value = kwargs[param_name]
+            if value.get('type') != K.String:
+                raise DslSyntaxError.at("audio() '%s' requires a quoted string" % param_name,
+                                        name_token.line, name_token.col)
+            if not value.get('value'):
+                raise DslSyntaxError.at("audio() '%s' must not be empty" % param_name,
+                                        name_token.line, name_token.col)
+
+        node = {
             'type': K.Audio,
             'band': band,
-            'min': self._resolve_param(call, order[1], 1, ast.number(0)),
-            'max': self._resolve_param(call, order[2], 2, ast.number(1)),
+            'min': resolved['min'],
+            'max': resolved['max'],
             'loc': ast.loc(name_token.line, name_token.col),
         }
+        for param_name in keyword_only:
+            if param_name in kwargs:
+                node[param_name] = kwargs[param_name]
+        return node
 
     @staticmethod
     def _resolve_param(call, name, index, dflt):

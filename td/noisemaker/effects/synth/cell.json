@@ -7,7 +7,7 @@
     "noise",
     "geometric"
   ],
-  "description": "Cellular/Voronoi noise with distance metrics",
+  "description": "Cellular/Voronoi noise with selectable cell shapes",
   "paramAliases": {
     "cellVariation": "variation",
     "loopAmp": "speed"
