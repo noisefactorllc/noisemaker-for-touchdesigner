@@ -48,8 +48,8 @@ no internet, no Node.js, no separate engine to install.
 ## Install
 
 1. `brew install --cask touchdesigner`
-2. One time only: create a **Derivative account** and **activate the license through the GUI**. A
-   fresh install stops at the activation modal until you do.
+2. One time only: create a **Derivative account**. **Activate the license through the GUI**.
+   A fresh install stops at the activation modal until activation is complete.
 
 That is everything needed to render. The effect data (210 JSON definitions) and shaders (297
 translated `.frag` files) are **committed**, and the runtime imports only Python's standard library
@@ -68,16 +68,20 @@ parity/present_screenshot.sh            # a few minutes at 1024²; set NM_FRAMES
 
 It compiles the DSL with the in-engine compiler (no reference engine required), writes the rendered
 frame to `parity/out/<prog>.f1800.candidate.png`, and saves a screenshot to
-`parity/out/<prog>.tdshot.png`. On a successful capture it closes TouchDesigner; if the screen grab is
-blank (see the Screen-Recording note below) it leaves TouchDesigner open so you can view the result.
+`parity/out/<prog>.tdshot.png`. On a successful capture it closes TouchDesigner.
+If the screenshot is blank (see the Screen-Recording note below), it leaves TouchDesigner open so you can view the result.
 
 > **Note:** The on-screen screenshot needs macOS Screen Recording permission for your terminal
 > (System Settings → Privacy & Security → Screen Recording) and numpy + Pillow
-> (`python3 -m venv parity/.venv && parity/.venv/bin/pip install -r requirements.txt`); without them the
-> render still saves to `parity/out/<prog>.f1800.candidate.png` but the screenshot step reports BLACK.
+> (`python3 -m venv parity/.venv && parity/.venv/bin/pip install -r requirements.txt`). Without them, the
+> render still saves to `parity/out/<prog>.f1800.candidate.png`, but the screenshot step reports BLACK.
 
-**Every DSL program has the same shape:** name the namespaces it uses (`search synth, filter`), chain
-effects, write the result to an output surface (`.write(o0)`), then pick one to show (`render(o0)`).
+**Every DSL program has the same shape:**
+
+- Name the namespaces it uses (`search synth, filter`).
+- Chain the effects.
+- Write the result to an output surface (`.write(o0)`).
+- Select a surface to show (`render(o0)`).
 
 ## Use it in your own TouchDesigner project
 
@@ -108,7 +112,7 @@ def onStart():
 | `resize(width, height)` | Re-cook at a new resolution. |
 | `render_to(path, time=0.25)` | Cook one frame and save a PNG. |
 
-A couple of things worth knowing:
+Integration constraints:
 
 - **3D-volume effects** are clamped by `NM_MAX_VOLUME_SIZE` (default **32**) so the volume stays under
   the free tier's 1280×1280 cook limit. It is applied when the network is built. Raise it on a

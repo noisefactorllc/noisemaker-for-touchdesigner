@@ -18,15 +18,14 @@ module. No Node, no pip.
 ## Run it
 
 1. Unzip this folder somewhere you can find again.
-2. Open TouchDesigner and create a **new project**.
+2. Open TouchDesigner. Create a **new project**.
 3. **Save the `.toe` into this folder**, beside `program.dsl`. Everything resolves relative to
    `project.folder`, so this step is what makes the paths work.
 4. Add an **Execute DAT** (`Tab` → DAT → Execute).
-5. Point it at `integrate.py`: set the DAT's **File** parameter to `integrate.py` and click
-   **Sync to File** — or just open `integrate.py` and paste its contents over the DAT's default
-   text.
-6. Turn on the DAT's **Start** toggle, then **File ▸ Save** and reopen the project. `onStart` runs
-   on load, which is what builds the network.
+5. Point the DAT at `integrate.py`. Set the DAT's **File** parameter to `integrate.py`.
+   Click **Sync to File**. Alternatively, open `integrate.py`. Replace the DAT's default text with the file contents.
+6. Enable the DAT's **Start** toggle. Select **File ▸ Save**. Reopen the project.
+   `onStart` runs on load and builds the network.
 
 You get a Base COMP named `noisemaker` holding the built network. Its output TOP is `nm.Output`; add
 a **Null TOP** named `out` beside the Base COMP and `integrate.py` wires it up for you.
@@ -39,8 +38,7 @@ Open the **Textport** (`Alt`+`T`, or *Dialogs ▸ Textport and DATs*) and call:
 op('execute1').module.rebuild()
 ```
 
-using the name of your Execute DAT. `rebuild()` re-reads `program.dsl`, tears the old network down
-and puts a new one up.
+using the name of your Execute DAT. `rebuild()` reads `program.dsl` again, removes the old network, and builds a new one.
 
 Right-click ▸ **Run Script** on the DAT is not a rebuild. It re-executes the module body, which only
 defines these functions — nothing is built and nothing changes on screen. Use it after editing
@@ -80,16 +78,15 @@ so in the Textport when it notices.
 
 ## The engine
 
-Left **include engine code** checked? The port is here, at `engine/noisemaker/`. `integrate.py`
+If you kept **include engine code** checked, the port is at `engine/noisemaker/`. `integrate.py`
 finds it and builds offline.
 
-Already have the port installed? Then you only need `program.dsl`, plus `shaders/` if you kept
+If the port is already installed, you only need `program.dsl`, plus `shaders/` if you kept
 **include shader code** checked. Point `ENGINE_DIR_NAME` in `integrate.py` at your copy's `td/`
 directory.
 
-Do not have it at all? Get it from
-<https://github.com/noisefactorllc/noisemaker-for-touchdesigner> and point `ENGINE_DIR_NAME` at its
-`td/` directory.
+If you do not have the port, get it from
+<https://github.com/noisefactorllc/noisemaker-for-touchdesigner>. Point `ENGINE_DIR_NAME` at its `td/` directory.
 
 This export targets Noisemaker `{{NM_ENGINE_VERSION}}`. Pinning is deliberate: the network keeps
 building the same way after the engine moves on.
@@ -106,7 +103,7 @@ render(o0)
 ```
 
 **The first line must be a `search` directive.** Without it the effects never resolve and the
-compiler reports an unknown op. Noisedeck always writes one; keep it when you edit.
+compiler reports an unknown op. Noisedeck always writes one. Keep it when you edit.
 
 ## Effects used by this program
 
@@ -121,5 +118,5 @@ which is inherent to the simulation rather than a porting defect.
 
 ## License
 
-The Noisemaker engine and its TouchDesigner port are MIT licensed; see `LICENSES/`. Your program and
+The Noisemaker engine and its TouchDesigner port are MIT licensed. See `LICENSES/`. Your program and
 the imagery it renders are yours.
