@@ -28,6 +28,15 @@ from . import enums
 from .ast import NodeKind as K
 
 
+def _literal_text(value):
+    """Match JavaScript's literal display in automation diagnostics."""
+    if isinstance(value, bool):
+        return 'true' if value else 'false'
+    if isinstance(value, float) and math.isfinite(value) and value.is_integer():
+        return str(int(value))
+    return str(value)
+
+
 class UnsupportedDsl(Exception):
     """A DSL feature not implemented in this first-cut frontend. Never silently wrong."""
 
@@ -39,7 +48,7 @@ _STATE_VALUES = frozenset([
 ])
 _AUTOMATION_FIELDS = {
     K.Oscillator: ('oscType', 'min', 'max', 'speed', 'offset', 'seed'),
-    K.Midi: ('channel', 'mode', 'min', 'max', 'sensitivity', 'name', 'id'),
+    K.Midi: ('channel', 'mode', 'min', 'max', 'sensitivity', 'name', 'id', 'cc', 'nrpn', 'zone', 'members'),
     K.Audio: ('band', 'min', 'max', 'channel', 'name', 'id'),
 }
 _MAX_AUTOMATION_DEPTH = 8
@@ -141,6 +150,10 @@ class _Validator:
         if t == K.Func and node.get('src') is not None:
             s = node['src']
             return "{" + s[:30] + ("..." if len(s) > 30 else "") + "}"
+        if node.get('name'):
+            return node['name']
+        if node.get('value'):
+            return _literal_text(node['value'])
         return "[" + str(t) + "]"
 
     # --- vars / symbols (reference/02 §3) -------------------------------
@@ -1025,10 +1038,10 @@ class _Validator:
                 descriptor_name, field_name))
         if minimum is not None and value < minimum:
             return reject('S002', '%s() %s must be at least %s (got %s)' % (
-                descriptor_name, field_name, minimum, value))
+                descriptor_name, field_name, _literal_text(minimum), _literal_text(value)))
         if maximum is not None and value > maximum:
             return reject('S002', '%s() %s must be at most %s (got %s)' % (
-                descriptor_name, field_name, maximum, value))
+                descriptor_name, field_name, _literal_text(maximum), _literal_text(value)))
         return _clamp01(value) if clamp01 else value
 
     def _compile_automation_descriptor(self, node, depth=0):
@@ -1059,28 +1072,80 @@ class _Validator:
                     allow_automation=True, depth=depth),
                 '_ast': node,
             }
-        elif node_type == K.Midi:
+        elif node_type == "Midi":
+            mode = self._resolve_automation_enum(
+                node.get("mode"), "midiMode", 4, set(range(11)), "midi", "mode",
+            )
+            has_zone = node.get("zone") is not None
+            zone = self._resolve_automation_enum(
+                node.get("zone"), "midiZone", _UNDEF, {0, 1}, "midi", "zone",
+            ) if has_zone else _UNDEF
+            selection_invalid = [has_zone and zone is _UNDEF]
+            members = _UNDEF
+            if node.get("members") is not None:
+                members = self._resolve_automation_number(
+                    node["members"], "midi", "members", _UNDEF,
+                    integer=True, minimum=1, maximum=15, allow_member=False,
+                    invalid_flag=selection_invalid, depth=depth,
+                )
+                if not has_zone:
+                    selection_invalid[0] = True
+            if has_zone and node.get("channel") is not None:
+                selection_invalid[0] = True
+            channel_invalid = [False]
+            channel = _UNDEF if has_zone else self._resolve_automation_number(
+                node.get("channel"), "midi", "channel", 1,
+                **({"integer": True, "minimum": 1, "maximum": 16,
+                    "allow_member": False, "invalid_flag": channel_invalid}
+                   if mode >= 5 else {"allow_boolean": True}), depth=depth,
+            )
+            cc_invalid = [False]
+            cc = _UNDEF
+            if node.get("cc") is not None or mode in (5, 6):
+                cc = self._resolve_automation_number(
+                    node.get("cc"), "midi", "cc", 1,
+                    integer=True, minimum=0, maximum=31 if mode == 6 else 127,
+                    allow_member=False, invalid_flag=cc_invalid, depth=depth,
+                )
+            nrpn = _UNDEF
+            if node.get("nrpn") is not None or mode == 7:
+                if node.get("nrpn") is None:
+                    self._push_diag("S002", node, "midi() nrpn mode requires a parameter number")
+                    selection_invalid[0] = True
+                nrpn = self._resolve_automation_number(
+                    node.get("nrpn"), "midi", "nrpn", _UNDEF,
+                    integer=True, minimum=0, maximum=16382, allow_member=False,
+                    invalid_flag=selection_invalid, depth=depth,
+                )
             value = {
-                'type': 'Midi',
-                'channel': self._resolve_automation_number(
-                    node.get('channel'), 'midi', 'channel', 1, allow_boolean=True,
-                    depth=depth),
-                'mode': self._resolve_automation_enum(
-                    node.get('mode'), 'midiMode', 4, set(range(5)), 'midi', 'mode'),
-                'min': self._resolve_automation_number(
-                    node.get('min'), 'midi', 'min', 0, allow_boolean=True,
-                    allow_automation=True, clamp01=True, depth=depth),
-                'max': self._resolve_automation_number(
-                    node.get('max'), 'midi', 'max', 1, allow_boolean=True,
-                    allow_automation=True, clamp01=True, depth=depth),
-                'sensitivity': self._resolve_automation_number(
-                    node.get('sensitivity'), 'midi', 'sensitivity', 1,
-                    allow_boolean=True, allow_automation=True, depth=depth),
-                '_ast': node,
+                "type": "Midi",
+                "mode": mode,
+                "min": self._resolve_automation_number(
+                    node.get("min"), "midi", "min", 0,
+                    allow_boolean=True, allow_automation=True, clamp01=True, depth=depth,
+                ),
+                "max": self._resolve_automation_number(
+                    node.get("max"), "midi", "max", 1,
+                    allow_boolean=True, allow_automation=True, clamp01=True, depth=depth,
+                ),
+                "sensitivity": self._resolve_automation_number(
+                    node.get("sensitivity"), "midi", "sensitivity", 1,
+                    allow_boolean=True, allow_automation=True,
+                    depth=depth,
+                ),
+                "_ast": node,
             }
-            for field_name in ('name', 'id'):
+            for field_name, field_value in (("channel", channel), ("cc", cc),
+                                            ("nrpn", nrpn), ("zone", zone),
+                                            ("members", members)):
+                if field_value is not _UNDEF:
+                    value[field_name] = field_value
+            if selection_invalid[0] or channel_invalid[0] or cc_invalid[0]:
+                value["_invalid"] = True
+            for field_name in ("name", "id"):
                 string_value = self._resolve_automation_string(
-                    node.get(field_name), 'midi', field_name)
+                    node.get(field_name), "midi", field_name
+                )
                 if string_value is not _UNDEF:
                     value[field_name] = string_value
         elif node_type == K.Audio:
@@ -1103,7 +1168,7 @@ class _Validator:
                         and isinstance(channel_value, (int, float))
                         and not isinstance(channel_value, bool)
                         and math.isfinite(channel_value)
-                        and float(channel_value).is_integer() and channel_value >= 1):
+                        and float(channel_value).is_integer() and 1 <= channel_value <= 32):
                     channel = channel_value
                 else:
                     channel_invalid[0] = True
@@ -1113,8 +1178,10 @@ class _Validator:
                     else:
                         got = channel_node.get(
                             'value', channel_node.get('name', channel_node.get('type')))
+                        if isinstance(got, bool):
+                            got = 'true' if got else 'false'
                         self._push_diag('S002', channel_node,
-                                        'audio() channel must be a positive integer (got %s)' % got)
+                                        'audio() channel must be a positive integer from 1 to 32 (got %s)' % _literal_text(got))
             name = self._resolve_automation_string(node.get('name'), 'audio', 'name')
             identity = self._resolve_automation_string(node.get('id'), 'audio', 'id')
             value = {

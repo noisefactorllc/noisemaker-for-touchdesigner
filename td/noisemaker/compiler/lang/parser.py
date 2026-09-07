@@ -600,12 +600,12 @@ class _Parser:
 
     def _transform_midi(self, call, name_token):
         order = ["channel", "mode", "min", "max", "sensitivity"]
-        keyword_only = ["name", "id"]
+        keyword_only = ["name", "id", "cc", "nrpn", "zone", "members"]
         valid = order + keyword_only
         args = call['args']
         kwargs = call.get('kwargs') or {}
         if len(args) > len(order):
-            raise DslSyntaxError.at("midi() name and id are keyword-only", name_token.line, name_token.col)
+            raise DslSyntaxError.at("midi() name, id, cc, nrpn, zone and members are keyword-only", name_token.line, name_token.col)
         for key in kwargs:
             if key not in valid:
                 raise DslSyntaxError(
@@ -634,11 +634,15 @@ class _Parser:
                                     name_token.col)
 
         channel = resolved.get('channel')
-        if channel is None:
-            raise DslSyntaxError.at("midi() requires 'channel' argument", name_token.line, name_token.col)
+        if channel is None and "zone" not in kwargs:
+            raise DslSyntaxError.at("midi() requires 'channel' or 'zone' argument", name_token.line, name_token.col)
+        if channel is not None and 'zone' in kwargs:
+            raise DslSyntaxError.at("midi() 'channel' and 'zone' are mutually exclusive", name_token.line, name_token.col)
+        if 'members' in kwargs and 'zone' not in kwargs:
+            raise DslSyntaxError.at("midi() 'members' requires 'zone'", name_token.line, name_token.col)
         if 'id' in kwargs and 'name' not in kwargs:
             raise DslSyntaxError.at("midi() 'id' requires readable 'name'", name_token.line, name_token.col)
-        for param_name in keyword_only:
+        for param_name in ("name", "id"):
             if param_name not in kwargs:
                 continue
             value = kwargs[param_name]
@@ -651,13 +655,14 @@ class _Parser:
 
         node = {
             'type': K.Midi,
-            'channel': channel,
             'mode': resolved['mode'],
             'min': resolved['min'],
             'max': resolved['max'],
             'sensitivity': resolved['sensitivity'],
             'loc': ast.loc(name_token.line, name_token.col),
         }
+        if channel is not None:
+            node["channel"] = channel
         for param_name in keyword_only:
             if param_name in kwargs:
                 node[param_name] = kwargs[param_name]
@@ -699,7 +704,7 @@ class _Parser:
             raise DslSyntaxError.at("audio() requires 'band' argument", name_token.line, name_token.col)
         if 'id' in kwargs and 'name' not in kwargs:
             raise DslSyntaxError.at("audio() 'id' requires readable 'name'", name_token.line, name_token.col)
-        if ('channel' in kwargs) != ('name' in kwargs):
+        if 'name' in kwargs and 'channel' not in kwargs:
             raise DslSyntaxError.at("audio() selected device requires both 'name' and 'channel'",
                                     name_token.line, name_token.col)
         for param_name in ("name", "id"):

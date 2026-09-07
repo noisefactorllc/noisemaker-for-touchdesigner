@@ -1,4 +1,12 @@
-"""Deterministic recursive oscillator, MIDI, and audio uniform automation."""
+"""Deterministic recursive oscillator, MIDI, and audio uniform automation.
+
+The host owns MIDI/audio capture and resets. MPE state supplies get_zone_voice
+(or getZoneVoice), returning the selected held note and its channel. MIDI
+expression arrays accept integer or string-keyed dictionaries. Default audio
+channels come from get_device_channel_state (or getDeviceChannelState), or a
+snapshot's defaultChannels dictionary/one-based-channel list. Unavailable
+selected inputs return the descriptor minimum rather than aggregate state.
+"""
 
 import json
 import math
@@ -285,14 +293,63 @@ def _midi_channel(state, channel_number):
     return None
 
 
-def _evaluate_midi(config, state, wall_time_ms, minimum, maximum, sensitivity):
-    channel = _midi_channel(state, config.get('channel')) if state is not None else None
+def _evaluate_midi(config, midi_state, wall_time_ms, minimum, maximum, sensitivity):
+    if config.get("_invalid") or midi_state is None:
+        return minimum
+
+    def integer_in(value, low, high):
+        return _finite_number(value) and float(value).is_integer() and low <= value <= high
+
+    def indexed(values, key, default=0):
+        if _finite_number(key) and float(key).is_integer():
+            key = int(key)
+        if isinstance(values, dict):
+            return values.get(key, values.get(str(key), default))
+        if isinstance(values, (list, tuple)) and integer_in(key, 0, len(values) - 1):
+            return values[int(key)]
+        return default
+
+    mode = config.get("mode", 4)
+    has_zone = "zone" in config
+    if has_zone and ("channel" in config or not integer_in(config["zone"], 0, 1)):
+        return minimum
+    if "members" in config and (not has_zone or not integer_in(config["members"], 1, 15)):
+        return minimum
+    if not has_zone and mode >= 5 and not integer_in(config.get("channel"), 1, 16):
+        return minimum
+    voice = None
+    if has_zone:
+        get_voice = _method(midi_state, "get_zone_voice", "getZoneVoice")
+        voice = get_voice(config) if get_voice else None
+        if voice is None:
+            return minimum
+        channel = _member(voice, "channel")
+    else:
+        channel = _midi_channel(midi_state, config.get("channel"))
     if channel is None:
         return minimum
-    gate = _member(channel, 'gate', 0)
-    key = _member(channel, 'key', 0)
-    velocity = _member(channel, 'velocity', 0)
-    mode = config.get('mode')
+    note = voice if voice is not None else channel
+    gate = 1 if voice is not None else _member(note, "gate", 0)
+    key = _member(note, "key", 0)
+    velocity = _member(note, "velocity", 0)
+    if mode in (5, 6):
+        cc = config.get("cc", 1)
+        if not integer_in(cc, 0, 31 if mode == 6 else 127):
+            return minimum
+        raw = indexed(_member(channel, "cc14" if mode == 6 else "cc"), cc)
+        return minimum + raw / (16383 if mode == 6 else 127) * (maximum - minimum)
+    if mode == 7:
+        parameter = config.get("nrpn")
+        if not integer_in(parameter, 0, 16382):
+            return minimum
+        raw = indexed(_member(channel, "nrpn"), parameter)
+        return minimum + raw / 16383 * (maximum - minimum)
+    if mode == 8:
+        return minimum + _member(channel, "pitchBend", 8192) / 16383 * (maximum - minimum)
+    if mode == 9:
+        return minimum + _member(channel, "pressure", 0) / 127 * (maximum - minimum)
+    if mode == 10:
+        return minimum + indexed(_member(channel, "polyPressure"), key) / 127 * (maximum - minimum)
     raw = 0
     if mode == 0:
         raw = key
@@ -302,26 +359,48 @@ def _evaluate_midi(config, state, wall_time_ms, minimum, maximum, sensitivity):
         raw = velocity
     elif mode in (3, 4) and gate == 1:
         raw = key if mode == 3 else velocity
-        decay = min(1, (wall_time_ms - _member(channel, 'time', wall_time_ms))
-                    * sensitivity * 0.001)
+        elapsed = wall_time_ms - _member(note, "time", wall_time_ms)
+        decay = min(1, elapsed * sensitivity * 0.001)
         raw *= 1 - decay
     return minimum + (raw / 127) * (maximum - minimum)
 
 
+def _has_audio_selector(config):
+    source = config.get('_ast')
+    if not isinstance(source, dict) or source.get('type') != 'Audio':
+        source = config
+    return any(field in config or field in source for field in ('name', 'id', 'channel'))
+
+
+def _valid_audio_selector(config):
+    source = config.get('_ast')
+    if not isinstance(source, dict) or source.get('type') != 'Audio':
+        source = config
+    if any(field in source and field not in config for field in ('name', 'id', 'channel')):
+        return False
+    for field in ('name', 'id'):
+        if field in config and (not isinstance(config[field], str) or not config[field]):
+            return False
+    if 'id' in config and 'name' not in config:
+        return False
+    channel = config.get('channel')
+    return _finite_number(channel) and float(channel).is_integer() and 1 <= channel <= 32
+
+
 def _selected_audio_state(config, audio_state):
-    has_selector = any(field in config for field in ('name', 'id', 'channel'))
-    if not has_selector:
+    if not _has_audio_selector(config):
         return audio_state
+    if not _valid_audio_selector(config):
+        return None
     get_selected = _method(audio_state, 'get_device_channel_state', 'getDeviceChannelState')
     if get_selected:
         return get_selected(config)
-    entry = _selected_entry(audio_state, config, 'devices')
-    channel_number = config.get('channel')
-    if (entry is None or not _finite_number(channel_number)
-            or not float(channel_number).is_integer() or channel_number < 1):
-        return None
-    channel_number = int(channel_number)
-    channels = _member(entry, 'channels')
+    channel_number = int(config['channel'])
+    if 'name' not in config:
+        channels = _member(audio_state, 'defaultChannels')
+    else:
+        entry = _selected_entry(audio_state, config, 'devices')
+        channels = _member(entry, 'channels')
     if isinstance(channels, dict):
         return channels.get(str(channel_number), channels.get(channel_number))
     if isinstance(channels, (list, tuple)) and channel_number <= len(channels):
@@ -424,11 +503,7 @@ def get_audio_input_requirements(graph, effects_root):
             return
         visited.add(id(value))
         if isinstance(value, dict) and automation_type(value) == 'Audio':
-            source = value.get('_ast')
-            if not isinstance(source, dict) or source.get('type') != 'Audio':
-                source = value
-            selector_intent = any(field in value or field in source
-                                  for field in ('name', 'id', 'channel'))
+            selector_intent = _has_audio_selector(value)
             band = value.get('band')
             valid_band = (value.get('_invalid') is not True and _finite_number(band)
                           and float(band).is_integer() and 0 <= band <= 4)
@@ -437,8 +512,7 @@ def get_audio_input_requirements(graph, effects_root):
             visit(value.get('min'))
             visit(value.get('max'))
             name, channel = value.get('name'), value.get('channel')
-            if (isinstance(name, str) and name and _finite_number(channel)
-                    and float(channel).is_integer() and channel >= 1):
+            if _valid_audio_selector(value):
                 requirement = {
                     'id': value.get('id') if isinstance(value.get('id'), str)
                     and value.get('id') else None,

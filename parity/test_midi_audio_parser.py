@@ -56,7 +56,6 @@ class MidiAudioParserTests(unittest.TestCase):
             'midi(1, name: Controller)',
             'midi(1, name: "")',
             'audio(audioBand.low, name: "Interface")',
-            'audio(audioBand.low, channel: 1)',
             'audio(audioBand.low, id: "device-b")',
             'audio(audioBand.low, 0, 1, 2)',
             'audio(audioBand.low, bogus: 1)',
@@ -73,7 +72,7 @@ class MidiAudioParserTests(unittest.TestCase):
             (
                 'midi(1, zzz: 1, aaa: 2)',
                 "midi() unknown parameter 'zzz' at line 2 col 13. Valid: "
-                "channel, mode, min, max, sensitivity, name, id",
+                "channel, mode, min, max, sensitivity, name, id, cc, nrpn, zone, members",
             ),
             (
                 'audio(audioBand.low, zzz: 1, aaa: 2)',
