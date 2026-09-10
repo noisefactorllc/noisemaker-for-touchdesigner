@@ -7,6 +7,10 @@
 
 > Run **Noisemaker**'s procedural visuals inside **Derivative TouchDesigner**.
 
+> This package supports the "Export Shader Pipeline" feature in Noisedeck.app. The
+> feature runs shader compositions on other platforms. Noise Factor derives this package
+> from the upstream Noisemaker Engine project and tests it for pixel-level parity.
+
 ## What is this?
 
 **Noisemaker** is a procedural visual engine. You write tiny text programs — chains of
