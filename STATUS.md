@@ -64,6 +64,62 @@ no transpiler safety net, no local render capability to catch a mistake before a
 does); the 3 new effects' auto-transpiled shaders and the premultiplied-alpha/remap fixes carry much
 less (byte-identical reference GLSL, same low-risk class as the cables/babylonjs/qt ports).
 
+*GPU-verified 2026-09-16 (TouchDesigner on Apple Silicon / Metal, license-activated). Tier-1 smoke
+set 8/8 PASS (unchanged from before this round). `remap`/`remap_zone` (zone-compositor rewrite):
+both PASS, max-abs-diff=1 — confirms the rewrite is correct.*
+
+**Real bug found + fixed:** `_build_effect()`'s shader-compile injection used `p.defines` directly,
+but that field is (correctly, by reference design) always effect-level-only — the reference and this
+port's own `expander.py` both bake a pass-clone's actual compile-time defines (`VIEW_MODE`/
+`BLEND_MODE`/`BLUR_LAYER`) ONLY into the `__KEY_VALUE` suffix of the pass's `program` name, never
+into `pass.defines` itself (`expander.py` says as much in its own comment: "a consumer that needs
+the actual per-clone value... recovers it from the `__KEY_val` suffix" — but nothing did). This is
+not test-only: `set_graph()` (the documented "build from a golden graph JSON" product API, used by
+default whenever `NM_LIVE_DSL` isn't set) hits it identically to the live-DSL-compile path, since
+neither ever populated `p.defines` with the per-clone value. Result: any `pointsBillboardRender`
+pass selected by `conditions` on `viewMode`/`blendMode` (i.e. `depthKeys`, `depthMerge`) failed to
+compile — `heightGrid_billboard_alpha`'s `depthKeys` clone hit exactly this: `ERROR: 'VIEW_MODE' :
+undeclared identifier`, and the failed compile left the whole render near-blank (ssim 0.00002).
+Fixed by adding `_defines_for_pass()` (parses the same `__KEY_VALUE` suffix back off `p.program`,
+merged on top of `p.defines`) and using it at the one call site. Verified: the compile error is
+gone, `heightGrid_billboard_alpha` now renders the correct terrain shape/colors (ssim 0.00002 ->
+0.50), the existing 32-case local unittest suite and the Tier-1 smoke set are unaffected, and
+`physical.dsl` (an existing corpus program using `pointsRender`) fails identically with or without
+the fix (pre-existing, unrelated — confirmed by reverting and re-testing).
+
+**Two of the three still-failing new fixtures are known, pre-existing limitations, not new bugs:**
+- `heightmap3d_landscape`: FAILS pixel-parity (ssim 0.867) but the render log shows why — `"3D
+  volume atlas clamped to volumeSize<=32 (TD cook-resolution cap; raise NM_MAX_VOLUME_SIZE on a
+  Commercial license)"`. This is `_cap_volume_size()`'s documented, intentional Non-Commercial-license
+  platform adaptation (reference uses volumeSize 64); the blockier voxel look is exactly what a 32
+  vs 64 atlas predicts. Would pass on a Commercial license. Not a port bug.
+- `heightGrid_pointsRender_perspective`: FAILS (ssim 0.693) but `NM_DIAG=1` shows `out-mean` is
+  byte-identical across all 8 stepped "frames" (0.3966 every time) — confirming the pre-existing,
+  already-documented Phase-5.5 limitation that a TD Feedback TOP only latches on a real engine frame
+  tick, which this offline `force-cook` driver never generates, so accumulation-dependent effects
+  always render frame-0's state. Not a new bug, not fixable without an async realTime/Movie-File-Out
+  driver (bigger work than this verification pass).
+
+**One real, NOT-yet-fixed finding — the aperture defocus path itself (not just its documented
+missing blur):** `heightGrid_billboard` (blendMode default/additive, `aperture: 1.5` — the one
+fixture that actually exercises the defocus precompute chain, unlike `heightGrid_billboard_alpha`
+whose `aperture` defaults to 0 and skips it entirely) still renders badly wrong after the fix above
+— correct terrain silhouette only in a thin band near the top, everything below washed to white
+(ssim 0.671). Traced (not fully confirmed or fixed) to `diffuse.frag`: `fragColor +=
+sampleDefocus(uv)` adds the raw `node_7_defocus` accumulation-buffer content directly onto the trail
+with no normalization, and that buffer is scattered into at only **64x64** (`points node_7_pass_28:
+billboards ss=256 -> trail node_7_defocus 64x64`) — 16x the per-pixel agent density of the main
+256x256 trail — plus the same frame-0-only accumulation limitation above likely compounds it
+further. Ruled out as red herrings along the way: the `"unresolved texId
+node_7_spriteMeanTiles"`/`"node_7_defocus"` warnings for both billboard fixtures (confirmed benign —
+`spriteMean.frag` explicitly branches `if (shapeMode != 0) { fragColor =
+vec4(proceduralCoverage()); return; }` before ever touching `tilesTex`, and our fixtures use
+`shapeMode` defaulting to 1/circle, so the unresolved input is never read); and `_default_input_top()`
+(confirmed to already bind reference-matching transparent-black `(0,0,0,0)`, same as upstream).
+This needs someone with more time on the hand-written defocus vertex/fragment math (the peer's own
+flagged highest-risk surface) than this verification pass had — I did not want to guess further at
+shader math I could not fully confirm.
+
 This file holds the detailed coverage and parity numbers. For what the project is and how to use it,
 see the [README](README.md).
 

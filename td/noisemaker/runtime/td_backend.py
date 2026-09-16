@@ -456,7 +456,7 @@ class TDBackend:
         # #version 460 core rejects a non-bool `if` condition (the curl `if (RIDGES)` compile error).
         tag = self._unique_name(p.id)
         dat = self.parent.create(_td('textDAT'), tag + '_src')
-        dat.text = _assemble_effect_source(frag, p.defines)
+        dat.text = _assemble_effect_source(frag, _defines_for_pass(p))
         self.ops.append(dat)
 
         n_inputs = len(input_order)
@@ -934,6 +934,36 @@ def _truthy(v):
     if isinstance(v, str):
         return v.strip().lower() not in ('0', 'false', '', 'none')
     return bool(v)
+
+
+def _defines_for_pass(p):
+    """Recover a pass-clone's compile-time defines (VIEW_MODE/BLEND_MODE/BLUR_LAYER) from the
+    `__KEY_VALUE` suffix baked into `p.program` (expander.py / reference export-graph.mjs, both
+    0ed489ec's per-viewMode/blendMode deposit clones). The reference deliberately never puts
+    these on the serialized `pass.defines` itself — it stays effect-level only — so a consumer
+    that needs the actual per-clone value has to parse it back out of the program name, same as
+    the program-name lookup itself (see expander.py's own comment on this). Without this, a
+    clone whose shader references e.g. `VIEW_MODE` compiles with it undeclared."""
+    out = dict(p.defines)
+    if not p.program or not p.node_id or not p.prog_name:
+        return out
+    prefix = '%s_%s' % (p.node_id, p.prog_name)
+    if not p.program.startswith(prefix):
+        return out
+    for chunk in p.program[len(prefix):].split('__'):
+        if not chunk:
+            continue
+        key, sep, value = chunk.rpartition('_')
+        if not sep:
+            continue
+        try:
+            out[key] = int(value)
+        except ValueError:
+            try:
+                out[key] = float(value)
+            except ValueError:
+                out[key] = value
+    return out
 
 
 def _assemble_effect_source(frag_text, defines):
