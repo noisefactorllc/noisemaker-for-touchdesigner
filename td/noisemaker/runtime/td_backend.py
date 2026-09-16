@@ -735,6 +735,14 @@ class TDBackend:
         merged = dict(engine_uniforms(self.width, self.height, self.time))
         merged.update(resolved_uniforms)
         bound = {k: v for k, v in merged.items() if k in declared}
+        if 'outputAreaScale' in declared:
+            # See deposit_shaders.py's comment on this uniform: 1.0 for the ordinary deposit (its
+            # target matches the main canvas), smaller for a pass whose resolved output (tw, th) is
+            # a downscaled sub-buffer (e.g. pointsBillboardRender's `defocus` precompute at 25%
+            # linear resolution) — compensates for the un-ported gaussian defocus kernel's missing
+            # energy normalization so a dense scatter doesn't clip to white once diffuse.frag adds
+            # it back onto the main trail.
+            bound['outputAreaScale'] = (tw * th) / float(self.width * self.height)
         uniform_binder.bind_uniforms(mat, bound)
         self._effect_uniforms.append((mat, bound))
         self._dynamic_uniforms.append({

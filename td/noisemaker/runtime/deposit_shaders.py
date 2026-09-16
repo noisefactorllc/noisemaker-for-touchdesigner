@@ -151,6 +151,18 @@ uniform float sizeDistance;
 uniform float brightnessDistance;
 uniform float aperture;
 uniform float focalDistance;
+// Area ratio of THIS pass's actual render target vs the main canvas (1.0 for the ordinary
+// deposit -> main trail; ~0.0625 for depositDefocus -> the `defocus` precompute buffer, which
+// pointsBillboardRender.json declares at 25% linear resolution = 1/16 the area). Bound per-pass
+// in td_backend.py from the resolved output texture size. The reference's aperture-defocus
+// contribution is a wide, low-peak gaussian whose integral is normalized regardless of overlap
+// (deposit.frag's blurWeight()); TD's un-ported fallback is a plain full-peak sharp scatter (see
+// module docstring), so without this the SAME agent density lands 16x more concentrated per
+// output pixel in the smaller defocus buffer than in the main trail, additively clipping to white
+// once diffuse.frag adds it back in unweighted. Not a reproduction of the true per-point gaussian
+// energy distribution — just enough compensation to keep the accumulated brightness in the same
+// ballpark as the main trail's own, out of visibly-broken territory.
+uniform float outputAreaScale;
 out vec4 vColor;
 uint nm_hash_uint(uint s) {
     uint state = s * 747796405u + 2891336453u;
@@ -208,7 +220,7 @@ void main() {
     }
     gl_PointSize = finalSize;
     gl_Position = vec4(clipPos, 0.0, 1.0);
-    vColor = col * brightnessFade;
+    vColor = col * brightnessFade * clamp(outputAreaScale, 0.0, 1.0);
 }
 """
 

@@ -101,24 +101,46 @@ the fix (pre-existing, unrelated — confirmed by reverting and re-testing).
   driver (bigger work than this verification pass).
 
 **One real, NOT-yet-fixed finding — the aperture defocus path itself (not just its documented
-missing blur):** `heightGrid_billboard` (blendMode default/additive, `aperture: 1.5` — the one
-fixture that actually exercises the defocus precompute chain, unlike `heightGrid_billboard_alpha`
-whose `aperture` defaults to 0 and skips it entirely) still renders badly wrong after the fix above
-— correct terrain silhouette only in a thin band near the top, everything below washed to white
-(ssim 0.671). Traced (not fully confirmed or fixed) to `diffuse.frag`: `fragColor +=
-sampleDefocus(uv)` adds the raw `node_7_defocus` accumulation-buffer content directly onto the trail
-with no normalization, and that buffer is scattered into at only **64x64** (`points node_7_pass_28:
-billboards ss=256 -> trail node_7_defocus 64x64`) — 16x the per-pixel agent density of the main
-256x256 trail — plus the same frame-0-only accumulation limitation above likely compounds it
-further. Ruled out as red herrings along the way: the `"unresolved texId
-node_7_spriteMeanTiles"`/`"node_7_defocus"` warnings for both billboard fixtures (confirmed benign —
-`spriteMean.frag` explicitly branches `if (shapeMode != 0) { fragColor =
+missing blur), FOUND + PARTIALLY FIXED:** `heightGrid_billboard` (blendMode default/additive,
+`aperture: 1.5` — the one fixture that actually exercises the defocus precompute chain, unlike
+`heightGrid_billboard_alpha` whose `aperture` defaults to 0 and skips it entirely) rendered badly
+wrong even after the compile fix above — correct terrain silhouette only in a thin band near the
+top, everything below washed to white (ssim 0.671). Root cause: `diffuse.frag`'s `fragColor +=
+sampleDefocus(uv)` (byte-identical to the reference — confirmed by diffing against
+`glsl/diffuse.glsl`) adds the `node_7_defocus` accumulation-buffer content directly onto the trail
+with no normalization, which is fine in the reference because its actual defocus contribution
+(`deposit.frag`'s `shadeParticle()`/`blurWeight()`) is a wide, LOW-PEAK gaussian whose integral is
+explicitly normalized (`1.0 / (0.19724318 * expansion * expansion)`) to stay bounded regardless of
+overlap. TD's un-ported fallback (documented, intentional — see `deposit_shaders.py`'s module
+docstring) is a plain FULL-PEAK sharp scatter instead, with no such normalization. Combined with the
+`defocus` buffer being declared at 25% linear resolution (`pointsBillboardRender.json`: `"defocus":
+{"width": "25%", "height": "25%"}`) — 1/16 the area of the main 256x256 trail — the SAME agent
+population (density:100) lands 16x more concentrated per output pixel than in the main trail,
+clipping straight past 1.0 once added back in.
+
+Ruled out as red herrings along the way (so a future session doesn't re-check them): the
+`"unresolved texId node_7_spriteMeanTiles"`/`"node_7_defocus"` warnings for both billboard fixtures
+are benign — `spriteMean.frag` explicitly branches `if (shapeMode != 0) { fragColor =
 vec4(proceduralCoverage()); return; }` before ever touching `tilesTex`, and our fixtures use
-`shapeMode` defaulting to 1/circle, so the unresolved input is never read); and `_default_input_top()`
-(confirmed to already bind reference-matching transparent-black `(0,0,0,0)`, same as upstream).
-This needs someone with more time on the hand-written defocus vertex/fragment math (the peer's own
-flagged highest-risk surface) than this verification pass had — I did not want to guess further at
-shader math I could not fully confirm.
+`shapeMode` defaulting to 1/circle, so the unresolved input is never read; and `_default_input_top()`
+already correctly binds reference-matching transparent-black `(0,0,0,0)`.
+
+**Fix:** added an `outputAreaScale` uniform to `BILLBOARD_VERT` (1.0 for the ordinary deposit whose
+target matches the main canvas; the resolved output texture's area ratio vs the main canvas
+otherwise — `(tw*th)/(width*height)`, bound per-pass in `td_backend.py`'s `_build_points()`),
+multiplied into `vColor` alongside the existing `brightnessFade`. This is a linear first-order
+compensation for the "same point density, 16x smaller target" effect — not a reproduction of the
+reference's true non-constant per-point gaussian energy distribution (that would need porting the
+actual oversized-quad multi-sample kernel, ruled out as out of scope for this pass, matching the
+already-documented "gaussian blur itself is not ported" limitation). Verified: `heightGrid_billboard`
+improves from ssim 0.671 (mean-abs-diff 64.97) to ssim 0.794 (mean-abs-diff 49.04) — most of the
+terrain now shows correct shape and color; the remaining oversaturation concentrates specifically
+where perspective projection creates the highest local point density and size (near-camera / bottom
+of frame), which a single constant compensation factor can't fully correct — a spatially-varying fix
+would need to actually port the reference's gaussian kernel, not a small follow-up. Confirmed zero
+effect on `heightGrid_billboard_alpha` (aperture=0, this pass never runs), on plain `pointsRender`
+(different shader, no `outputAreaScale` declared), on the Tier-1 smoke set (8/8 unchanged), and on
+`physical.dsl` (byte-identical failure numbers before/after — pre-existing, unrelated).
 
 This file holds the detailed coverage and parity numbers. For what the project is and how to use it,
 see the [README](README.md).
