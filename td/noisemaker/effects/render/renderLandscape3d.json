@@ -1,0 +1,192 @@
+{
+  "name": "Render Landscape 3D",
+  "namespace": "render",
+  "func": "renderLandscape3d",
+  "starter": false,
+  "tags": [
+    "3d"
+  ],
+  "description": "Isometric and perspective voxel renderer with face lighting",
+  "paramAliases": {},
+  "globals": {
+    "volumeSize": {
+      "type": "int",
+      "default": 64,
+      "uniform": "volumeSize"
+    },
+    "threshold": {
+      "type": "float",
+      "default": 0.5,
+      "uniform": "threshold",
+      "min": 0,
+      "max": 1
+    },
+    "densitySource": {
+      "type": "int",
+      "default": 0,
+      "choices": {
+        "geometry": 0
+      }
+    },
+    "zoom": {
+      "type": "float",
+      "default": 1,
+      "uniform": "zoom",
+      "min": 0.25,
+      "max": 4
+    },
+    "panX": {
+      "type": "float",
+      "default": 0,
+      "uniform": "panX",
+      "min": -1,
+      "max": 1
+    },
+    "panY": {
+      "type": "float",
+      "default": 0,
+      "uniform": "panY",
+      "min": -1,
+      "max": 1
+    },
+    "lightDirection": {
+      "type": "vec3",
+      "default": [
+        -0.4,
+        0.85,
+        0.6
+      ],
+      "uniform": "lightDirection",
+      "min": -1,
+      "max": 1
+    },
+    "ambient": {
+      "type": "float",
+      "default": 0.35,
+      "uniform": "ambient",
+      "min": 0,
+      "max": 1
+    },
+    "diffuseIntensity": {
+      "type": "float",
+      "default": 0.85,
+      "uniform": "diffuseIntensity",
+      "min": 0,
+      "max": 2
+    },
+    "specularIntensity": {
+      "type": "float",
+      "default": 0.12,
+      "uniform": "specularIntensity",
+      "min": 0,
+      "max": 1
+    },
+    "bgColor": {
+      "type": "color",
+      "default": [
+        0.025,
+        0.045,
+        0.075
+      ],
+      "uniform": "bgColor"
+    },
+    "bgAlpha": {
+      "type": "float",
+      "default": 1,
+      "uniform": "bgAlpha",
+      "min": 0,
+      "max": 1
+    },
+    "viewMode": {
+      "type": "int",
+      "default": 1,
+      "define": "VIEW_MODE",
+      "choices": {
+        "ortho": 1,
+        "perspective": 2
+      }
+    },
+    "rotateX": {
+      "type": "float",
+      "default": 0.3,
+      "uniform": "rotateX",
+      "min": 0,
+      "max": 6.283185
+    },
+    "rotateY": {
+      "type": "float",
+      "default": 0,
+      "uniform": "rotateY",
+      "min": 0,
+      "max": 6.283185
+    },
+    "rotateZ": {
+      "type": "float",
+      "default": 0,
+      "uniform": "rotateZ",
+      "min": 0,
+      "max": 6.283185
+    },
+    "viewScale": {
+      "type": "float",
+      "default": 0.8,
+      "uniform": "viewScale",
+      "min": 0.1,
+      "max": 10
+    },
+    "posX": {
+      "type": "float",
+      "default": 0,
+      "uniform": "posX",
+      "min": -50,
+      "max": 50
+    },
+    "posY": {
+      "type": "float",
+      "default": 0,
+      "uniform": "posY",
+      "min": -50,
+      "max": 50
+    },
+    "posZ": {
+      "type": "float",
+      "default": 0,
+      "uniform": "posZ",
+      "min": -200,
+      "max": 200
+    },
+    "fieldOfView": {
+      "type": "float",
+      "default": 60,
+      "uniform": "fieldOfView",
+      "min": 10,
+      "max": 150
+    }
+  },
+  "passes": [
+    {
+      "name": "render",
+      "program": "landscape",
+      "inputs": {
+        "volumeCache": "inputTex3d",
+        "analyticalGeo": "inputGeo"
+      },
+      "outputs": {
+        "color": "outputTex",
+        "geoOut": "screenGeoBuffer"
+      },
+      "drawBuffers": 2,
+      "type": "compute"
+    }
+  ],
+  "textures": {
+    "screenGeoBuffer": {
+      "width": "screen",
+      "height": "screen",
+      "format": "rgba16f"
+    }
+  },
+  "defaultProgram": "search synth, synth3d, render\n\nheightmap3d(heightTex: noise(scaleX: 90, scaleY: 90, colorMode: mono, speed: 0), tex: gradient(type: fourCorners, color1: #006e94, color2: #24e4ff, color3: #bcff46, color4: #efffff)).renderLandscape3d(panY: -0.18).write(o0)\nrender(o0)",
+  "outputTex3d": "inputTex3d",
+  "outputGeo": "screenGeoBuffer"
+}

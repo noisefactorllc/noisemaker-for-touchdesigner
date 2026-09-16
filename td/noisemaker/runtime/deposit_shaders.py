@@ -10,6 +10,23 @@ the fragment shading are mirrored verbatim from the reference.
 
 These are MAT vertex/pixel shaders (TDPos / TDPointCoord / TDOutputSwizzle, direct gl_Position NDC),
 not fullscreen TOP frags, so they live here rather than in the auto-transpiled shaders/ tree.
+
+Reference 0ed489ec adds to both deposit programs: a perspective VIEW_MODE (2), sharing a camera
+model at world Z=80 (posZ/fieldOfView). pointsBillboardRender additionally adds a depth-sorted
+alpha-blend path (BLEND_MODE 1 reindexes the scatter through `orderTex`, produced by depthKeys +
+depthMerge) and aperture defocus blur (spriteMeanTiles/spriteMean precompute + a blurred `defocus`
+composite). Perspective and the depth-sort reindex port cleanly onto TD's GL_POINT model (below).
+Aperture defocus does NOT: the reference technique renders each agent as an oversized QUAD whose UV
+range is padded beyond [0,1] so a multi-sample kernel against the spriteMean precompute can blend a
+wider footprint than the sprite itself — TD's point sprites have no equivalent (`TDPointCoord()` is
+always exactly [0,1]² over the point's fixed footprint, and TD has no bufferless quad draw to pad).
+This is the SAME class of limitation already documented for `rotationVar` (screen-aligned point
+sprites can't rotate per-vertex either). Aperture>0 still computes distance-based sizeFade/
+brightnessFade (portable — pure per-vertex math) and increases gl_PointSize with distance defocus,
+but does not blend the spriteMean kernel; the depositDefocus_1/2 passes and their `defocus` output
+still build (harmless — clearDefocus/spriteMeanTiles/spriteMean are ordinary auto-transpiled TOPs)
+but contribute a plain sharp scatter rather than the reference's wide gaussian footprint. Documented
+as a known limitation, not silently approximated as exact.
 """
 
 # Shared vertex prologue: recover the agent texel (x,y) and linear id from the grid point position,
@@ -18,6 +35,7 @@ not fullscreen TOP frags, so they live here rather than in the auto-transpiled s
 # golden-ratio density random matches.)
 _VERT_PROLOGUE = """uniform sampler2D xyzTex;
 uniform sampler2D rgbaTex;
+uniform vec2 resolution;
 uniform float density;
 uniform float viewMode;     // float (TD Vectors page is float-only); cast to int in-shader
 uniform float rotateX;
@@ -26,8 +44,10 @@ uniform float rotateZ;
 uniform float viewScale;
 uniform float posX;
 uniform float posY;
+uniform float posZ;
+uniform float fieldOfView;
 
-int nm_agentTexel(out int vid, out vec4 pos, out vec4 col) {
+int nm_agentTexel(out int vid, out int ax, out int ay) {
     int ss = textureSize(xyzTex, 0).x;   // agent grid width (reference reads stateSize from the tex)
     vec3 gp = TDPos();
     int x = int(floor((gp.x * 0.5 + 0.5) * float(ss - 1) + 0.5));
@@ -35,8 +55,7 @@ int nm_agentTexel(out int vid, out vec4 pos, out vec4 col) {
     x = clamp(x, 0, ss - 1);
     y = clamp(y, 0, ss - 1);
     vid = y * ss + x;
-    pos = texelFetch(xyzTex, ivec2(x, y), 0);
-    col = texelFetch(rgbaTex, ivec2(x, y), 0);
+    ax = x; ay = y;
     return ss;
 }
 
@@ -54,12 +73,19 @@ float nm_particleRandom(int vid) {
     return fract(pidHi * fract(4096.0 * 0.618033988749895) + pidLo * 0.618033988749895);
 }
 
-vec2 nm_clipPos(vec4 pos) {
-    if (int(viewMode + 0.5) == 0) {
+// Reference 0ed489ec: shared Z=80 camera model with renderLandscape3d/pointsBillboardRender.
+// `cameraDepth` (world depth in front of the camera) is always written; callers that don't need
+// perspective sizing (pointsRender) can ignore it. Returns vec2(2.0) (the existing off-screen
+// sentinel) when the near plane would be crossed, matching the reference's explicit cull.
+vec2 nm_clipPos(vec4 pos, out float cameraDepth, out vec2 worldXY) {
+    int vm = int(viewMode + 0.5);
+    cameraDepth = 80.0;
+    worldXY = vec2(0.0);
+    if (vm == 0) {
         return pos.xy * 2.0 - 1.0;
     }
     vec3 p = pos.xyz;
-    bool is2D = abs(p.z) < 1.0 && p.x >= 0.0 && p.x <= 1.0 && p.y >= 0.0 && p.y <= 1.0;
+    bool is2D = vm == 1 && abs(p.z) < 1.0 && p.x >= 0.0 && p.x <= 1.0 && p.y >= 0.0 && p.y <= 1.0;
     if (is2D) { p.xy = p.xy - 0.5; p.z = 0.0; }
     float cx = cos(rotateX), sx = sin(rotateX);
     p = vec3(p.x, p.y * cx - p.z * sx, p.y * sx + p.z * cx);
@@ -67,8 +93,20 @@ vec2 nm_clipPos(vec4 pos) {
     p = vec3(p.x * cy + p.z * sy, p.y, -p.x * sy + p.z * cy);
     float cz = cos(rotateZ), sz = sin(rotateZ);
     p = vec3(p.x * cz - p.y * sz, p.x * sz + p.y * cz, p.z);
-    p.x += posX; p.y += posY;
-    return is2D ? p.xy * 3.5 * viewScale : p.xy / 40.0 * viewScale;
+    p.x += posX; p.y += posY; p.z += posZ;
+    cameraDepth = 80.0 - p.z;
+    worldXY = p.xy;
+    if (vm == 2) {
+        if (cameraDepth <= 0.1) { return vec2(2.0, 2.0); }
+        float focalLength = 1.0 / tan(clamp(fieldOfView, 10.0, 150.0) * 0.00872664626);
+        vec2 clipPos = p.xy * focalLength * viewScale / cameraDepth;
+        clipPos.x *= resolution.y / resolution.x;
+        return clipPos;
+    } else if (is2D) {
+        return p.xy * 3.5 * viewScale;
+    } else {
+        return p.xy / 40.0 * viewScale;
+    }
 }
 """
 
@@ -76,15 +114,18 @@ vec2 nm_clipPos(vec4 pos) {
 POINTS_VERT = _VERT_PROLOGUE + """
 out vec4 vColor;
 void main() {
-    int vid; vec4 pos; vec4 col;
-    nm_agentTexel(vid, pos, col);
+    int vid, ax, ay;
+    nm_agentTexel(vid, ax, ay);
+    vec4 pos = texelFetch(xyzTex, ivec2(ax, ay), 0);
+    vec4 col = texelFetch(rgbaTex, ivec2(ax, ay), 0);
     float cullThreshold = density / 100.0;
     float particleRandom = nm_particleRandom(vid);
     if (particleRandom > cullThreshold || pos.w < 0.5) {
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0); gl_PointSize = 0.0; vColor = vec4(0.0); return;
     }
+    float cameraDepth; vec2 worldXY;
     gl_PointSize = 1.0;
-    gl_Position = vec4(nm_clipPos(pos), 0.0, 1.0);
+    gl_Position = vec4(nm_clipPos(pos, cameraDepth, worldXY), 0.0, 1.0);
     vColor = vec4(col.rgb, col.a);
 }
 """
@@ -101,9 +142,15 @@ void main() {
 # point sprites are screen-aligned (TD can't rotate them per-vertex). The flagship uses rotationVar:0
 # so this is exact for it; rotationVar>0 would need real quad geometry (documented limitation).
 BILLBOARD_VERT = _VERT_PROLOGUE + """
+uniform sampler2D orderTex;   // depthKeys+depthMerge output; read only when blendMode==1
+uniform float blendMode;      // float (TD Vectors page is float-only); cast to int in-shader
 uniform float pointSize;
 uniform float sizeVariation;
 uniform float seed;
+uniform float sizeDistance;
+uniform float brightnessDistance;
+uniform float aperture;
+uniform float focalDistance;
 out vec4 vColor;
 uint nm_hash_uint(uint s) {
     uint state = s * 747796405u + 2891336453u;
@@ -112,25 +159,63 @@ uint nm_hash_uint(uint s) {
 }
 float nm_hash(float n) { return float(nm_hash_uint(floatBitsToUint(n + seed))) / 4294967295.0; }
 void main() {
-    int vid; vec4 pos; vec4 col;
-    nm_agentTexel(vid, pos, col);
+    int vid, ax, ay;
+    int ss = nm_agentTexel(vid, ax, ay);
+    // Depth-sorted alpha-blend path (reference 0ed489ec): redirect to the agent at this DRAW
+    // position's rank in the depthKeys/depthMerge back-to-front order, exactly as the reference's
+    // per-vertex reindex (gl_VertexID -> orderTex[...].g). Grid draw order stays row-major; only
+    // WHICH agent's state each grid point samples changes.
+    if (int(blendMode + 0.5) == 1 && int(viewMode + 0.5) != 0) {
+        vid = int(texelFetch(orderTex, ivec2(vid % ss, vid / ss), 0).g);
+        ax = vid % ss; ay = vid / ss;
+    }
+    vec4 pos = texelFetch(xyzTex, ivec2(ax, ay), 0);
+    vec4 col = texelFetch(rgbaTex, ivec2(ax, ay), 0);
     float cullThreshold = density / 100.0;
     float particleRandom = nm_particleRandom(vid);
     if (particleRandom > cullThreshold || pos.w < 0.5) {
         gl_Position = vec4(2.0, 2.0, 0.0, 1.0); gl_PointSize = 0.0; vColor = vec4(0.0); return;
     }
+    float cameraDepth; vec2 worldXY;
+    vec2 clipPos = nm_clipPos(pos, cameraDepth, worldXY);
+    int vm = int(viewMode + 0.5);
+    float projectedScale = 1.0;
+    if (vm == 2) {
+        float focalLength = 1.0 / tan(clamp(fieldOfView, 10.0, 150.0) * 0.00872664626);
+        projectedScale = 80.0 * focalLength * viewScale / (1.732050808 * max(cameraDepth, 0.1));
+    }
+    float sizeFade = 1.0;
+    float brightnessFade = 1.0;
+    if (vm != 0) {
+        float cameraDistance = length(vec3(worldXY, cameraDepth));
+        if (sizeDistance > 0.0) sizeFade = 1.0 - smoothstep(0.0, sizeDistance, cameraDistance);
+        if (brightnessDistance > 0.0) brightnessFade = 1.0 - smoothstep(0.0, brightnessDistance, cameraDistance);
+    }
     float sizeNoise = nm_hash(float(vid));
     float sizeMultiplier = 1.0 - (sizeVariation / 100.0) * (sizeNoise - 0.5);
-    float finalSize = pointSize * sizeMultiplier;
-    gl_PointSize = max(finalSize, 0.0);
-    gl_Position = vec4(nm_clipPos(pos), 0.0, 1.0);
-    vColor = vec4(col.rgb, col.a);
+    float baseSize = pointSize * sizeMultiplier * projectedScale;
+    // Aperture defocus is NOT ported (see module docstring): point sprites can't pad their UV
+    // range past their own footprint the way the reference's oversized quad does. We still grow
+    // gl_PointSize with distance-from-focus so an out-of-focus cluster reads as "bigger/softer"
+    // even though the exact gaussian kernel isn't reproduced.
+    float finalSize = baseSize * sizeFade;
+    if (vm != 0 && aperture > 0.0) {
+        float blurPixels = min(32.0, aperture * abs(cameraDepth - focalDistance) / max(abs(cameraDepth), 0.1));
+        finalSize += blurPixels;
+    }
+    if (finalSize <= 0.0 || brightnessFade <= 0.0) {
+        gl_Position = vec4(2.0, 2.0, 0.0, 1.0); gl_PointSize = 0.0; vColor = vec4(0.0); return;
+    }
+    gl_PointSize = finalSize;
+    gl_Position = vec4(clipPos, 0.0, 1.0);
+    vColor = col * brightnessFade;
 }
 """
 
 # Fragment mirrors render/pointsBillboardRender/glsl/deposit.frag, with vSpriteUV -> TDPointCoord()
 # (point-sprite auto texcoord, (0,0) bottom-left .. (1,1) top-right — same convention as the
-# reference quad's offset*0.5+0.5).
+# reference quad's offset*0.5+0.5). Aperture defocus blending against spriteMean is not ported
+# (see module docstring) — shading is always the sharp SDF/sprite path.
 BILLBOARD_FRAG = """uniform sampler2D spriteTex;
 uniform float shapeMode;     // float (TD Vectors page is float-only); cast to int in-shader
 uniform float depositOpacity;

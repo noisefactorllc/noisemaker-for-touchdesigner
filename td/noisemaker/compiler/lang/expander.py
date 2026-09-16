@@ -495,8 +495,19 @@ class _Expander:
                             or has_param_ref)
             scope_suffix = self._current_particle_pipeline_id if particle_scoped else chain_scope_id
             if should_scope:
-                spec['width'] = dimmod.scope_dim(spec['width'], scope_suffix, scoped_param_map)
-                spec['height'] = dimmod.scope_dim(spec['height'], scope_suffix, scoped_param_map)
+                # A `{param: 'stateSize'}` dim on a non-global texture that still references it
+                # (e.g. a non-agent effect reading a particle-pipeline state texture) is scoped to
+                # the PARTICLE PIPELINE, not the chain — a stateSize override further down the same
+                # chain (e.g. pointsEmit's own re-declared stateSize) must not leak backward into
+                # an earlier producer's texture. Reference 0ed489ec expander.js scopeDimSpec.
+                def _dim_scope(d):
+                    if (isinstance(d, dict) and d.get('param') == 'stateSize'
+                            and self._current_particle_pipeline_id is not None
+                            and not tex_name.startswith("global_")):
+                        return self._current_particle_pipeline_id
+                    return scope_suffix
+                spec['width'] = dimmod.scope_dim(spec['width'], _dim_scope(spec['width']), scoped_param_map)
+                spec['height'] = dimmod.scope_dim(spec['height'], _dim_scope(spec['height']), scoped_param_map)
             self._texture_specs[virtual_tex_id] = spec
 
     def _collect_textures3d(self, effect_def, node_id, chain_scope_id):
@@ -576,8 +587,35 @@ class _Expander:
                 if un is not None:
                     define_keys.add(un)
 
+        # A conditional selector (reference/03: reference 0ed489ec) is any uniform referenced by
+        # a pass's `conditions.runIf`/`skipIf` — collected across ALL of this effect's passes so
+        # every pass gets a consistent uniformSpecs entry regardless of which pass declared the
+        # condition (mirrors expander.js's per-effect `conditionalUniforms` Set).
+        conditional_uniforms = set()
+        for cond_pass_def in pass_defs:
+            conditions = cond_pass_def.get('conditions')
+            if not isinstance(conditions, dict):
+                continue
+            for cond in list(conditions.get('runIf') or []) + list(conditions.get('skipIf') or []):
+                if isinstance(cond, dict) and 'uniform' in cond:
+                    conditional_uniforms.add(cond['uniform'])
+
         for i, pass_def in enumerate(pass_defs):
             program_name = node_id + "_" + _str_of(pass_def, 'program') + define_suffix
+            pass_defines = pass_def.get('defines')
+            if isinstance(pass_defines, dict) and pass_defines:
+                # Conditional passes (pointsRender/pointsBillboardRender's per-viewMode deposit
+                # clones, reference 0ed489ec) select precompiled variants without freezing an
+                # animated selector into a global define. Reference expander.js bakes this ONLY
+                # into the program-name suffix — NOT into pass.defines, which stays effect-level
+                # (graph-parity-verified against export-graph.mjs). A consumer that needs the
+                # actual per-clone define value (e.g. td_backend's shader-compile injection)
+                # recovers it from the `__KEY_val` suffix, same as the program-name lookup itself.
+                pass_suffix = "".join(
+                    "__" + str(k) + "_" + str(pass_defines[k])
+                    for k in sorted(pass_defines.keys())
+                )
+                program_name += pass_suffix
             p = {
                 'id': node_id + "_pass_" + str(i),
                 'passType': 'effect',
@@ -599,6 +637,7 @@ class _Expander:
                 'blend': None,
                 'repeat': None,
                 'defines': dict(defines),
+                'conditions': pass_def.get('conditions'),
                 'uniforms': {},
                 'uniformSpecs': {},
                 'inputs': {},
@@ -656,6 +695,15 @@ class _Expander:
                     has_choices = isinstance(def_.get('choices'), dict)
                     if (type_ == "float" or type_ == "int") and not has_choices:
                         p['uniformSpecs'][uniform] = {'min': _num_or(def_, 'min', 0), 'max': _num_or(def_, 'max', 100)}
+                    elif type_ == "int" and has_choices and uniform in conditional_uniforms:
+                        # A conditional selector (e.g. viewMode) must use the same integer in
+                        # every shader pass and in pass-selection — reference 0ed489ec.
+                        spec = {'type': 'int'}
+                        min_v, max_v = def_.get('min'), def_.get('max')
+                        if _is_number(min_v) and _is_number(max_v):
+                            spec['min'] = min_v
+                            spec['max'] = max_v
+                        p['uniformSpecs'][uniform] = spec
 
             # args -> uniforms (step 7)
             for arg_name, arg in step['args'].items():
@@ -679,6 +727,12 @@ class _Expander:
             pass_uniforms = pass_def.get('uniforms')
             if isinstance(pass_uniforms, dict):
                 for uniform_name, ref_val in pass_uniforms.items():
+                    # A literal number (e.g. depthMerge's per-clone `runLength`, deposit's
+                    # `blurLayer`) specializes a draw that shares a program, without exposing
+                    # internal pass selection as a DSL arg — reference 0ed489ec.
+                    if _is_number(ref_val):
+                        p['uniforms'][uniform_name] = ref_val
+                        continue
                     global_ref = ref_val if isinstance(ref_val, str) else None
                     if uniform_name in pipe:
                         p['uniforms'][uniform_name] = pipe[uniform_name]

@@ -103,6 +103,8 @@ def _normalize_pass(p):
         out['blend'] = p['blend']
     if p['repeat'] is not None:
         out['repeat'] = p['repeat']
+    if p.get('conditions') is not None:
+        out['conditions'] = p['conditions']
     out['effectKey'] = p['effectKey']          # always (null when absent)
     out['nodeId'] = p['nodeId']                  # always (null when absent)
     if p['stepIndex'] is not None:

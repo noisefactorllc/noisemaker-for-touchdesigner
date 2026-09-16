@@ -160,13 +160,8 @@ class TDBackend:
         self._detect_feedback(graph)
         self._cap_volume_size(graph)
         for p in graph.passes:
-            # NO runIf/skipIf pass gating. The reference attaches `conditions` only on the effect
-            # DEFINITION, but its expander (shaders/src/runtime/expander.js) builds graph passes from
-            # an explicit field list that OMITS `conditions`, so `pass.conditions` is undefined at
-            # runtime and Pipeline.shouldSkipPass always returns false. Both deposit passes of
-            # pointsBillboardRender (`deposit` additive ONE/ONE + `deposit_alpha` ONE/ONE_MINUS_SRC_ALPHA)
-            # therefore ALWAYS run, regardless of blendMode. We mirror that: build every pass. The
-            # `conditions` field may still ride along in the effect JSON (harmless metadata).
+            if self._should_skip_pass(p):
+                continue
             if p.is_blit:
                 self._build_blit(p, graph)
             elif p.is_scatter:
@@ -397,11 +392,32 @@ class TDBackend:
                 self._layout_cache[key] = None
         return self._layout_cache[key]
 
-    # NOTE: there is deliberately NO _should_skip_pass / _pass_conditions here. The reference does
-    # NOT gate passes on `conditions` at runtime — its expander omits the field when building graph
-    # passes, so Pipeline.shouldSkipPass always returns false and BOTH pointsBillboardRender deposit
-    # passes run every frame (see the comment in build()). Reintroducing gating would skip one
-    # deposit and diverge from the reference, so we intentionally build every pass unconditionally.
+    def _should_skip_pass(self, p):
+        """Reference 0ed489ec: expander.js now attaches `conditions: passDef.conditions` to every
+        graph pass, and Pipeline.shouldSkipPass gates on it (pass.uniforms checked before the
+        pipeline-wide default). pointsRender/pointsBillboardRender's per-viewMode `deposit` clones
+        and pointsBillboardRender's blendMode-gated `deposit`/`deposit_alpha`/defocus-precompute
+        passes rely on this to build only the ONE variant matching the DSL program's actual
+        viewMode/blendMode/aperture choice — without it, e.g. all three viewMode clones would try
+        to scatter into the same trail (double/triple deposit).
+
+        TD builds its network ONCE (no per-frame re-cook of the pass list), so this gate runs at
+        BUILD time against each pass's own resolved (literal, non-automated) uniform value — the
+        static choice the DSL program made, not a per-frame decision like the reference's Pipeline.
+        """
+        conditions = p.conditions
+        if not conditions:
+            return False
+        skip_if = conditions.get('skipIf') or []
+        for cond in skip_if:
+            if p.uniforms.get(cond.get('uniform')) == cond.get('equals'):
+                return True
+        run_if = conditions.get('runIf') or []
+        if run_if:
+            for cond in run_if:
+                if p.uniforms.get(cond.get('uniform')) != cond.get('equals'):
+                    return True
+        return False
 
     def _cap_volume_size(self, graph):
         """Clamp the 3D-volume atlas size to fit TD's cook-resolution limit.
@@ -695,6 +711,12 @@ class TDBackend:
             sprite = self._resolve_read(p.inputs.get('spriteTex')) or self._default_input_top()
             _try(lambda: setattr(mat.par, 'sampler2name', 'spriteTex'))
             _try(lambda s=sprite: setattr(mat.par, 'sampler2top', s))
+            # orderTex (reference 0ed489ec): depthKeys+depthMerge's back-to-front agent order,
+            # read by the BLEND_MODE==1 reindex in BILLBOARD_VERT. Bound even for additive-mode
+            # clones (harmless — that branch never executes when blendMode!=1).
+            order = self._resolve_read(p.inputs.get('orderTex')) or self._default_input_top()
+            _try(lambda: setattr(mat.par, 'sampler3name', 'orderTex'))
+            _try(lambda s=order: setattr(mat.par, 'sampler3top', s))
         # Deposit blend from the pass spec: True -> additive ONE/ONE (default), or an explicit
         # factor pair like ['ONE','ONE_MINUS_SRC_ALPHA'] (premultiplied OVER, pointsBillboardRender
         # alpha mode). Map reference GL factor names -> TD MAT blend enum values. blendop stays 'add'
@@ -706,7 +728,13 @@ class TDBackend:
                        ('blendop', 'add'), ('depthtest', False), ('depthwriting', False)):
             _try(lambda _p=_p, _v=_v: setattr(mat.par, _p, _v))
         declared = uniform_binder.declared_uniform_names(vsrc + '\n' + fsrc)
-        bound = {k: v for k, v in resolved_uniforms.items() if k in declared}
+        # Reference 0ed489ec's perspective viewMode needs the engine-global `resolution` (aspect
+        # correction) — no prior deposit shader declared an engine global, so this merge (already
+        # standard for every other GLSL TOP pass, see engine_uniforms() call above) was never
+        # needed here before.
+        merged = dict(engine_uniforms(self.width, self.height, self.time))
+        merged.update(resolved_uniforms)
+        bound = {k: v for k, v in merged.items() if k in declared}
         uniform_binder.bind_uniforms(mat, bound)
         self._effect_uniforms.append((mat, bound))
         self._dynamic_uniforms.append({

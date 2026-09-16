@@ -1,0 +1,78 @@
+{
+  "name": "Height Grid",
+  "namespace": "points",
+  "func": "heightGrid",
+  "starter": false,
+  "tags": [
+    "agents"
+  ],
+  "description": "Arrange every particle in a landscape grid with separate height and diffuse surfaces",
+  "paramAliases": {},
+  "globals": {
+    "heightTex": {
+      "type": "surface",
+      "default": "inputTex"
+    },
+    "diffuseTex": {
+      "type": "surface",
+      "default": "inputTex"
+    },
+    "gridScale": {
+      "type": "float",
+      "default": 80,
+      "uniform": "gridScale",
+      "min": 1,
+      "max": 400
+    },
+    "heightScale": {
+      "type": "float",
+      "default": 20,
+      "uniform": "heightScale",
+      "min": -100,
+      "max": 100
+    },
+    "heightOffset": {
+      "type": "float",
+      "default": 0,
+      "uniform": "heightOffset",
+      "min": -100,
+      "max": 100
+    }
+  },
+  "passes": [
+    {
+      "name": "agent",
+      "program": "agent",
+      "inputs": {
+        "xyzTex": "global_xyz",
+        "velTex": "global_vel",
+        "heightTex": "heightTex",
+        "diffuseTex": "diffuseTex"
+      },
+      "uniforms": {
+        "gridScale": "gridScale",
+        "heightScale": "heightScale",
+        "heightOffset": "heightOffset"
+      },
+      "outputs": {
+        "outXYZ": "global_xyz",
+        "outVel": "global_vel",
+        "outRGBA": "global_rgba"
+      },
+      "drawBuffers": 3,
+      "type": "compute"
+    },
+    {
+      "name": "passthrough",
+      "program": "passthrough",
+      "inputs": {
+        "inputTex": "inputTex"
+      },
+      "outputs": {
+        "fragColor": "outputTex"
+      }
+    }
+  ],
+  "textures": {},
+  "defaultProgram": "search synth, points, render\n\nperlin(scale: 35, colorMode: rgb)\n  .write(o1)\n\nperlin(scale: 22, octaves: 4, colorMode: mono)\n  .write(o2)\n\nsolid()\n  .pointsEmit(stateSize: x256)\n  .heightGrid(heightTex: read(o2), diffuseTex: read(o1), heightScale: 25)\n  .pointsBillboardRender(viewMode: perspective, rotateX: 0.55, posY: -12, posZ: 22, pointSize: 2, density: 100, intensity: 0, inputIntensity: 0, depositOpacity: 65, sizeDistance: 150, brightnessDistance: 180, aperture: 1.5, focalDistance: 65)\n  .write(o0)\n\nrender(o0)"
+}

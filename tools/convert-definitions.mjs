@@ -113,12 +113,14 @@ function projectPass (pass) {
   if (pass.clear !== undefined) out.clear = pass.clear
   if (pass.type !== undefined) out.type = pass.type
   if (pass.entryPoint !== undefined) out.entryPoint = pass.entryPoint
-  // Per-pass runIf/skipIf gating (reference Pipeline.shouldSkipPass). The reference normalized
-  // GRAPH drops this (the expander never serializes it), so it never reaches the render-graph
-  // diff; the TD backend reads it straight off the effect JSON to gate build-time pass emission
-  // (mirrors how uniformLayout is read here, not from the graph). Only pointsBillboardRender's
-  // two deposit passes carry it today.
+  // Per-pass runIf/skipIf gating (reference Pipeline.shouldSkipPass). Reference 0ed489ec now
+  // DOES serialize this onto the compiled graph pass (expander.js's `conditions: passDef.conditions`),
+  // so it flows through both the graph diff AND the TD backend's build-time pass-emission gate.
   if (pass.conditions !== undefined) out.conditions = pass.conditions
+  // Per-pass compile-time defines (reference 0ed489ec's `.flatMap()` per-viewMode-clone pattern,
+  // e.g. pointsRender/pointsBillboardRender's deposit passes): baked into the program name suffix
+  // by the expander, same as an effect-level define, but scoped to just this ONE pass.
+  if (pass.defines !== undefined) out.defines = pass.defines
   return out
 }
 

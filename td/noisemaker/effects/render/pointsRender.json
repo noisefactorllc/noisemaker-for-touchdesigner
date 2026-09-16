@@ -34,9 +34,12 @@
       "type": "int",
       "default": 0,
       "uniform": "viewMode",
+      "min": 0,
+      "max": 2,
       "choices": {
         "flat": 0,
-        "ortho": 1
+        "ortho": 1,
+        "perspective": 2
       }
     },
     "rotateX": {
@@ -81,6 +84,20 @@
       "min": -50,
       "max": 50
     },
+    "posZ": {
+      "type": "float",
+      "default": 0,
+      "uniform": "posZ",
+      "min": -200,
+      "max": 200
+    },
+    "fieldOfView": {
+      "type": "float",
+      "default": 60,
+      "uniform": "fieldOfView",
+      "min": 10,
+      "max": 150
+    },
     "matteOpacity": {
       "type": "float",
       "default": 1,
@@ -114,7 +131,7 @@
       }
     },
     {
-      "name": "deposit",
+      "name": "deposit_0",
       "program": "deposit",
       "inputs": {
         "xyzTex": "global_xyz",
@@ -128,14 +145,101 @@
         "rotateZ": "rotateZ",
         "viewScale": "viewScale",
         "posX": "posX",
-        "posY": "posY"
+        "posY": "posY",
+        "posZ": "posZ",
+        "fieldOfView": "fieldOfView"
       },
       "outputs": {
         "fragColor": "global_points_trail"
       },
       "drawMode": "points",
       "count": "input",
-      "blend": true
+      "blend": true,
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      },
+      "defines": {
+        "VIEW_MODE": 0
+      }
+    },
+    {
+      "name": "deposit_1",
+      "program": "deposit",
+      "inputs": {
+        "xyzTex": "global_xyz",
+        "rgbaTex": "global_rgba"
+      },
+      "uniforms": {
+        "density": "density",
+        "viewMode": "viewMode",
+        "rotateX": "rotateX",
+        "rotateY": "rotateY",
+        "rotateZ": "rotateZ",
+        "viewScale": "viewScale",
+        "posX": "posX",
+        "posY": "posY",
+        "posZ": "posZ",
+        "fieldOfView": "fieldOfView"
+      },
+      "outputs": {
+        "fragColor": "global_points_trail"
+      },
+      "drawMode": "points",
+      "count": "input",
+      "blend": true,
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 1
+          }
+        ]
+      },
+      "defines": {
+        "VIEW_MODE": 1
+      }
+    },
+    {
+      "name": "deposit_2",
+      "program": "deposit",
+      "inputs": {
+        "xyzTex": "global_xyz",
+        "rgbaTex": "global_rgba"
+      },
+      "uniforms": {
+        "density": "density",
+        "viewMode": "viewMode",
+        "rotateX": "rotateX",
+        "rotateY": "rotateY",
+        "rotateZ": "rotateZ",
+        "viewScale": "viewScale",
+        "posX": "posX",
+        "posY": "posY",
+        "posZ": "posZ",
+        "fieldOfView": "fieldOfView"
+      },
+      "outputs": {
+        "fragColor": "global_points_trail"
+      },
+      "drawMode": "points",
+      "count": "input",
+      "blend": true,
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 2
+          }
+        ]
+      },
+      "defines": {
+        "VIEW_MODE": 2
+      }
     },
     {
       "name": "blend",

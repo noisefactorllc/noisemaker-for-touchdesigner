@@ -252,6 +252,7 @@ function normalizePass (pass, programs, defineMap) {
   if (pass.blend !== undefined) out.blend = pass.blend
   if (pass.repeat !== undefined) out.repeat = pass.repeat
   if (pass.clear !== undefined) out.clear = pass.clear
+  if (pass.conditions !== undefined) out.conditions = pass.conditions
 
   // Metadata.
   out.effectKey = pass.effectKey ?? null

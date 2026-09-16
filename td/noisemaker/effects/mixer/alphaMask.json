@@ -15,6 +15,10 @@
       "type": "surface",
       "default": "none"
     },
+    "baseTex": {
+      "type": "surface",
+      "default": "none"
+    },
     "mix": {
       "type": "float",
       "default": 0,
@@ -34,7 +38,8 @@
       "program": "alphaMask",
       "inputs": {
         "inputTex": "inputTex",
-        "tex": "tex"
+        "tex": "tex",
+        "baseTex": "baseTex"
       },
       "uniforms": {
         "mixAmt": "mix",

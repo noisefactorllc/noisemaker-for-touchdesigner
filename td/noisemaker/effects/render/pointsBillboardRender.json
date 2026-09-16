@@ -15,6 +15,8 @@
       "type": "int",
       "default": 1,
       "uniform": "shapeMode",
+      "min": 0,
+      "max": 7,
       "choices": {
         "texture": 0,
         "circle": 1,
@@ -99,9 +101,12 @@
       "type": "int",
       "default": 0,
       "uniform": "viewMode",
+      "min": 0,
+      "max": 2,
       "choices": {
         "flat": 0,
-        "ortho": 1
+        "ortho": 1,
+        "perspective": 2
       }
     },
     "rotateX": {
@@ -145,17 +150,982 @@
       "uniform": "posY",
       "min": -50,
       "max": 50
+    },
+    "posZ": {
+      "type": "float",
+      "default": 0,
+      "uniform": "posZ",
+      "min": -200,
+      "max": 200
+    },
+    "fieldOfView": {
+      "type": "float",
+      "default": 60,
+      "uniform": "fieldOfView",
+      "min": 10,
+      "max": 150
+    },
+    "sizeDistance": {
+      "type": "float",
+      "default": 0,
+      "uniform": "sizeDistance",
+      "min": 0,
+      "max": 500
+    },
+    "brightnessDistance": {
+      "type": "float",
+      "default": 0,
+      "uniform": "brightnessDistance",
+      "min": 0,
+      "max": 500
+    },
+    "aperture": {
+      "type": "float",
+      "default": 0,
+      "uniform": "aperture",
+      "min": 0,
+      "max": 20
+    },
+    "focalDistance": {
+      "type": "float",
+      "default": 80,
+      "uniform": "focalDistance",
+      "min": 1,
+      "max": 500
     }
   },
   "passes": [
     {
+      "name": "depthKeys_1",
+      "program": "depthKeys",
+      "inputs": {
+        "xyzTex": "global_xyz"
+      },
+      "uniforms": {
+        "viewMode": "viewMode",
+        "rotateX": "rotateX",
+        "rotateY": "rotateY",
+        "posZ": "posZ"
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      },
+      "defines": {
+        "VIEW_MODE": 1
+      }
+    },
+    {
+      "name": "depthKeys_2",
+      "program": "depthKeys",
+      "inputs": {
+        "xyzTex": "global_xyz"
+      },
+      "uniforms": {
+        "viewMode": "viewMode",
+        "rotateX": "rotateX",
+        "rotateY": "rotateY",
+        "posZ": "posZ"
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 2
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      },
+      "defines": {
+        "VIEW_MODE": 2
+      }
+    },
+    {
+      "name": "depthMerge0",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderA"
+      },
+      "uniforms": {
+        "runLength": 1
+      },
+      "outputs": {
+        "fragColor": "depthOrderB"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge1",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderB"
+      },
+      "uniforms": {
+        "runLength": 2
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge2",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderA"
+      },
+      "uniforms": {
+        "runLength": 4
+      },
+      "outputs": {
+        "fragColor": "depthOrderB"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge3",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderB"
+      },
+      "uniforms": {
+        "runLength": 8
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge4",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderA"
+      },
+      "uniforms": {
+        "runLength": 16
+      },
+      "outputs": {
+        "fragColor": "depthOrderB"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge5",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderB"
+      },
+      "uniforms": {
+        "runLength": 32
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge6",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderA"
+      },
+      "uniforms": {
+        "runLength": 64
+      },
+      "outputs": {
+        "fragColor": "depthOrderB"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge7",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderB"
+      },
+      "uniforms": {
+        "runLength": 128
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge8",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderA"
+      },
+      "uniforms": {
+        "runLength": 256
+      },
+      "outputs": {
+        "fragColor": "depthOrderB"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge9",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderB"
+      },
+      "uniforms": {
+        "runLength": 512
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge10",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderA"
+      },
+      "uniforms": {
+        "runLength": 1024
+      },
+      "outputs": {
+        "fragColor": "depthOrderB"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge11",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderB"
+      },
+      "uniforms": {
+        "runLength": 2048
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge12",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderA"
+      },
+      "uniforms": {
+        "runLength": 4096
+      },
+      "outputs": {
+        "fragColor": "depthOrderB"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge13",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderB"
+      },
+      "uniforms": {
+        "runLength": 8192
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge14",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderA"
+      },
+      "uniforms": {
+        "runLength": 16384
+      },
+      "outputs": {
+        "fragColor": "depthOrderB"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge15",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderB"
+      },
+      "uniforms": {
+        "runLength": 32768
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge16",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderA"
+      },
+      "uniforms": {
+        "runLength": 65536
+      },
+      "outputs": {
+        "fragColor": "depthOrderB"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge17",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderB"
+      },
+      "uniforms": {
+        "runLength": 131072
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge18",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderA"
+      },
+      "uniforms": {
+        "runLength": 262144
+      },
+      "outputs": {
+        "fragColor": "depthOrderB"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge19",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderB"
+      },
+      "uniforms": {
+        "runLength": 524288
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge20",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderA"
+      },
+      "uniforms": {
+        "runLength": 1048576
+      },
+      "outputs": {
+        "fragColor": "depthOrderB"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depthMerge21",
+      "program": "depthMerge",
+      "inputs": {
+        "orderTex": "depthOrderB"
+      },
+      "uniforms": {
+        "runLength": 2097152
+      },
+      "outputs": {
+        "fragColor": "depthOrderA"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "spriteMeanTiles",
+      "program": "spriteMeanTiles",
+      "inputs": {
+        "spriteTex": "tex"
+      },
+      "uniforms": {
+        "shapeMode": "shapeMode",
+        "aperture": "aperture",
+        "viewMode": "viewMode"
+      },
+      "outputs": {
+        "fragColor": "spriteMeanTiles"
+      },
+      "type": "compute",
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "shapeMode",
+            "equals": 0
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "aperture",
+            "equals": 0
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "spriteMean",
+      "program": "spriteMean",
+      "inputs": {
+        "tilesTex": "spriteMeanTiles"
+      },
+      "uniforms": {
+        "shapeMode": "shapeMode",
+        "aperture": "aperture",
+        "viewMode": "viewMode"
+      },
+      "outputs": {
+        "fragColor": "spriteMean"
+      },
+      "type": "compute",
+      "conditions": {
+        "skipIf": [
+          {
+            "uniform": "aperture",
+            "equals": 0
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "clearDefocus",
+      "program": "clearDefocus",
+      "inputs": {},
+      "uniforms": {
+        "clearValue": 0
+      },
+      "outputs": {
+        "fragColor": "defocus"
+      },
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 0
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "aperture",
+            "equals": 0
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "depositDefocus_1",
+      "program": "deposit",
+      "inputs": {
+        "xyzTex": "global_xyz",
+        "rgbaTex": "global_rgba",
+        "orderTex": "depthOrderA",
+        "spriteTex": "tex",
+        "spriteMeanTex": "spriteMean"
+      },
+      "uniforms": {
+        "shapeMode": "shapeMode",
+        "blendMode": "blendMode",
+        "blurLayer": 1,
+        "depositOpacity": "depositOpacity",
+        "density": "density",
+        "pointSize": "pointSize",
+        "sizeVariation": "sizeVariation",
+        "rotationVar": "rotationVar",
+        "seed": "seed",
+        "viewMode": "viewMode",
+        "rotateX": "rotateX",
+        "rotateY": "rotateY",
+        "rotateZ": "rotateZ",
+        "viewScale": "viewScale",
+        "posX": "posX",
+        "posY": "posY",
+        "posZ": "posZ",
+        "fieldOfView": "fieldOfView",
+        "sizeDistance": "sizeDistance",
+        "brightnessDistance": "brightnessDistance",
+        "aperture": "aperture",
+        "focalDistance": "focalDistance"
+      },
+      "outputs": {
+        "fragColor": "defocus"
+      },
+      "drawMode": "billboards",
+      "count": "input",
+      "blend": true,
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 0
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 1
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "aperture",
+            "equals": 0
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      },
+      "defines": {
+        "VIEW_MODE": 1,
+        "BLEND_MODE": 0,
+        "BLUR_LAYER": 1
+      }
+    },
+    {
+      "name": "depositDefocus_2",
+      "program": "deposit",
+      "inputs": {
+        "xyzTex": "global_xyz",
+        "rgbaTex": "global_rgba",
+        "orderTex": "depthOrderA",
+        "spriteTex": "tex",
+        "spriteMeanTex": "spriteMean"
+      },
+      "uniforms": {
+        "shapeMode": "shapeMode",
+        "blendMode": "blendMode",
+        "blurLayer": 1,
+        "depositOpacity": "depositOpacity",
+        "density": "density",
+        "pointSize": "pointSize",
+        "sizeVariation": "sizeVariation",
+        "rotationVar": "rotationVar",
+        "seed": "seed",
+        "viewMode": "viewMode",
+        "rotateX": "rotateX",
+        "rotateY": "rotateY",
+        "rotateZ": "rotateZ",
+        "viewScale": "viewScale",
+        "posX": "posX",
+        "posY": "posY",
+        "posZ": "posZ",
+        "fieldOfView": "fieldOfView",
+        "sizeDistance": "sizeDistance",
+        "brightnessDistance": "brightnessDistance",
+        "aperture": "aperture",
+        "focalDistance": "focalDistance"
+      },
+      "outputs": {
+        "fragColor": "defocus"
+      },
+      "drawMode": "billboards",
+      "count": "input",
+      "blend": true,
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 0
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 2
+          }
+        ],
+        "skipIf": [
+          {
+            "uniform": "aperture",
+            "equals": 0
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 0
+          }
+        ]
+      },
+      "defines": {
+        "VIEW_MODE": 2,
+        "BLEND_MODE": 0,
+        "BLUR_LAYER": 1
+      }
+    },
+    {
       "name": "diffuse",
       "program": "diffuse",
       "inputs": {
-        "trailTex": "global_billboard_trail"
+        "trailTex": "global_billboard_trail",
+        "defocusTex": "defocus"
       },
       "uniforms": {
-        "intensity": "intensity"
+        "intensity": "intensity",
+        "aperture": "aperture",
+        "viewMode": "viewMode",
+        "blendMode": "blendMode"
       },
       "outputs": {
         "fragColor": "global_billboard_trail"
@@ -172,15 +1142,19 @@
       }
     },
     {
-      "name": "deposit",
+      "name": "deposit_0",
       "program": "deposit",
       "inputs": {
         "xyzTex": "global_xyz",
         "rgbaTex": "global_rgba",
-        "spriteTex": "tex"
+        "orderTex": "depthOrderA",
+        "spriteTex": "tex",
+        "spriteMeanTex": "spriteMean"
       },
       "uniforms": {
         "shapeMode": "shapeMode",
+        "blendMode": "blendMode",
+        "blurLayer": 0,
         "depositOpacity": "depositOpacity",
         "density": "density",
         "pointSize": "pointSize",
@@ -193,7 +1167,13 @@
         "rotateZ": "rotateZ",
         "viewScale": "viewScale",
         "posX": "posX",
-        "posY": "posY"
+        "posY": "posY",
+        "posZ": "posZ",
+        "fieldOfView": "fieldOfView",
+        "sizeDistance": "sizeDistance",
+        "brightnessDistance": "brightnessDistance",
+        "aperture": "aperture",
+        "focalDistance": "focalDistance"
       },
       "outputs": {
         "fragColor": "global_billboard_trail"
@@ -206,20 +1186,33 @@
           {
             "uniform": "blendMode",
             "equals": 0
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 0
           }
         ]
+      },
+      "defines": {
+        "VIEW_MODE": 0,
+        "BLEND_MODE": 0,
+        "BLUR_LAYER": 0
       }
     },
     {
-      "name": "deposit_alpha",
+      "name": "deposit_1",
       "program": "deposit",
       "inputs": {
         "xyzTex": "global_xyz",
         "rgbaTex": "global_rgba",
-        "spriteTex": "tex"
+        "orderTex": "depthOrderA",
+        "spriteTex": "tex",
+        "spriteMeanTex": "spriteMean"
       },
       "uniforms": {
         "shapeMode": "shapeMode",
+        "blendMode": "blendMode",
+        "blurLayer": 0,
         "depositOpacity": "depositOpacity",
         "density": "density",
         "pointSize": "pointSize",
@@ -232,7 +1225,129 @@
         "rotateZ": "rotateZ",
         "viewScale": "viewScale",
         "posX": "posX",
-        "posY": "posY"
+        "posY": "posY",
+        "posZ": "posZ",
+        "fieldOfView": "fieldOfView",
+        "sizeDistance": "sizeDistance",
+        "brightnessDistance": "brightnessDistance",
+        "aperture": "aperture",
+        "focalDistance": "focalDistance"
+      },
+      "outputs": {
+        "fragColor": "global_billboard_trail"
+      },
+      "drawMode": "billboards",
+      "count": "input",
+      "blend": true,
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 0
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 1
+          }
+        ]
+      },
+      "defines": {
+        "VIEW_MODE": 1,
+        "BLEND_MODE": 0,
+        "BLUR_LAYER": 0
+      }
+    },
+    {
+      "name": "deposit_2",
+      "program": "deposit",
+      "inputs": {
+        "xyzTex": "global_xyz",
+        "rgbaTex": "global_rgba",
+        "orderTex": "depthOrderA",
+        "spriteTex": "tex",
+        "spriteMeanTex": "spriteMean"
+      },
+      "uniforms": {
+        "shapeMode": "shapeMode",
+        "blendMode": "blendMode",
+        "blurLayer": 0,
+        "depositOpacity": "depositOpacity",
+        "density": "density",
+        "pointSize": "pointSize",
+        "sizeVariation": "sizeVariation",
+        "rotationVar": "rotationVar",
+        "seed": "seed",
+        "viewMode": "viewMode",
+        "rotateX": "rotateX",
+        "rotateY": "rotateY",
+        "rotateZ": "rotateZ",
+        "viewScale": "viewScale",
+        "posX": "posX",
+        "posY": "posY",
+        "posZ": "posZ",
+        "fieldOfView": "fieldOfView",
+        "sizeDistance": "sizeDistance",
+        "brightnessDistance": "brightnessDistance",
+        "aperture": "aperture",
+        "focalDistance": "focalDistance"
+      },
+      "outputs": {
+        "fragColor": "global_billboard_trail"
+      },
+      "drawMode": "billboards",
+      "count": "input",
+      "blend": true,
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 0
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 2
+          }
+        ]
+      },
+      "defines": {
+        "VIEW_MODE": 2,
+        "BLEND_MODE": 0,
+        "BLUR_LAYER": 0
+      }
+    },
+    {
+      "name": "deposit_alpha_0",
+      "program": "deposit",
+      "inputs": {
+        "xyzTex": "global_xyz",
+        "rgbaTex": "global_rgba",
+        "orderTex": "depthOrderA",
+        "spriteTex": "tex",
+        "spriteMeanTex": "spriteMean"
+      },
+      "uniforms": {
+        "shapeMode": "shapeMode",
+        "blendMode": "blendMode",
+        "blurLayer": 0,
+        "depositOpacity": "depositOpacity",
+        "density": "density",
+        "pointSize": "pointSize",
+        "sizeVariation": "sizeVariation",
+        "rotationVar": "rotationVar",
+        "seed": "seed",
+        "viewMode": "viewMode",
+        "rotateX": "rotateX",
+        "rotateY": "rotateY",
+        "rotateZ": "rotateZ",
+        "viewScale": "viewScale",
+        "posX": "posX",
+        "posY": "posY",
+        "posZ": "posZ",
+        "fieldOfView": "fieldOfView",
+        "sizeDistance": "sizeDistance",
+        "brightnessDistance": "brightnessDistance",
+        "aperture": "aperture",
+        "focalDistance": "focalDistance"
       },
       "outputs": {
         "fragColor": "global_billboard_trail"
@@ -248,8 +1363,139 @@
           {
             "uniform": "blendMode",
             "equals": 1
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 0
           }
         ]
+      },
+      "defines": {
+        "VIEW_MODE": 0,
+        "BLEND_MODE": 1,
+        "BLUR_LAYER": 0
+      }
+    },
+    {
+      "name": "deposit_alpha_1",
+      "program": "deposit",
+      "inputs": {
+        "xyzTex": "global_xyz",
+        "rgbaTex": "global_rgba",
+        "orderTex": "depthOrderA",
+        "spriteTex": "tex",
+        "spriteMeanTex": "spriteMean"
+      },
+      "uniforms": {
+        "shapeMode": "shapeMode",
+        "blendMode": "blendMode",
+        "blurLayer": 0,
+        "depositOpacity": "depositOpacity",
+        "density": "density",
+        "pointSize": "pointSize",
+        "sizeVariation": "sizeVariation",
+        "rotationVar": "rotationVar",
+        "seed": "seed",
+        "viewMode": "viewMode",
+        "rotateX": "rotateX",
+        "rotateY": "rotateY",
+        "rotateZ": "rotateZ",
+        "viewScale": "viewScale",
+        "posX": "posX",
+        "posY": "posY",
+        "posZ": "posZ",
+        "fieldOfView": "fieldOfView",
+        "sizeDistance": "sizeDistance",
+        "brightnessDistance": "brightnessDistance",
+        "aperture": "aperture",
+        "focalDistance": "focalDistance"
+      },
+      "outputs": {
+        "fragColor": "global_billboard_trail"
+      },
+      "drawMode": "billboards",
+      "count": "input",
+      "blend": [
+        "ONE",
+        "ONE_MINUS_SRC_ALPHA"
+      ],
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 1
+          }
+        ]
+      },
+      "defines": {
+        "VIEW_MODE": 1,
+        "BLEND_MODE": 1,
+        "BLUR_LAYER": 0
+      }
+    },
+    {
+      "name": "deposit_alpha_2",
+      "program": "deposit",
+      "inputs": {
+        "xyzTex": "global_xyz",
+        "rgbaTex": "global_rgba",
+        "orderTex": "depthOrderA",
+        "spriteTex": "tex",
+        "spriteMeanTex": "spriteMean"
+      },
+      "uniforms": {
+        "shapeMode": "shapeMode",
+        "blendMode": "blendMode",
+        "blurLayer": 0,
+        "depositOpacity": "depositOpacity",
+        "density": "density",
+        "pointSize": "pointSize",
+        "sizeVariation": "sizeVariation",
+        "rotationVar": "rotationVar",
+        "seed": "seed",
+        "viewMode": "viewMode",
+        "rotateX": "rotateX",
+        "rotateY": "rotateY",
+        "rotateZ": "rotateZ",
+        "viewScale": "viewScale",
+        "posX": "posX",
+        "posY": "posY",
+        "posZ": "posZ",
+        "fieldOfView": "fieldOfView",
+        "sizeDistance": "sizeDistance",
+        "brightnessDistance": "brightnessDistance",
+        "aperture": "aperture",
+        "focalDistance": "focalDistance"
+      },
+      "outputs": {
+        "fragColor": "global_billboard_trail"
+      },
+      "drawMode": "billboards",
+      "count": "input",
+      "blend": [
+        "ONE",
+        "ONE_MINUS_SRC_ALPHA"
+      ],
+      "conditions": {
+        "runIf": [
+          {
+            "uniform": "blendMode",
+            "equals": 1
+          },
+          {
+            "uniform": "viewMode",
+            "equals": 2
+          }
+        ]
+      },
+      "defines": {
+        "VIEW_MODE": 2,
+        "BLEND_MODE": 1,
+        "BLUR_LAYER": 0
       }
     },
     {
@@ -269,6 +1515,43 @@
     }
   ],
   "textures": {
+    "depthOrderA": {
+      "width": {
+        "param": "stateSize",
+        "default": 256
+      },
+      "height": {
+        "param": "stateSize",
+        "default": 256
+      },
+      "format": "rgba32f"
+    },
+    "depthOrderB": {
+      "width": {
+        "param": "stateSize",
+        "default": 256
+      },
+      "height": {
+        "param": "stateSize",
+        "default": 256
+      },
+      "format": "rgba32f"
+    },
+    "spriteMeanTiles": {
+      "width": 160,
+      "height": 160,
+      "format": "rgba32f"
+    },
+    "spriteMean": {
+      "width": 5,
+      "height": 5,
+      "format": "rgba32f"
+    },
+    "defocus": {
+      "width": "25%",
+      "height": "25%",
+      "format": "rgba16f"
+    },
     "global_billboard_trail": {
       "width": "100%",
       "height": "100%",

@@ -11,6 +11,59 @@ and the machine-readable per-(effect,mode) ledger `parity/ledger.tsv`.*
 control, the only port-affecting change in that range. Re-swept in full: **279/279 PASS** (6 via
 `accumulate.sh`), including two new animated fixtures. Numbers below are refreshed accordingly.*
 
+*Incrementally synced 2026-09-15 to reference `0ed489ec4684` (range `246ff57f43cc..0ed489ec4684`,
+the same range ported into the sibling blender/cables/cpu/godot/qt/three.js ports this round;
+catalog now 213 effects — +`synth3d/heightmap3d`, +`render/renderLandscape3d`, +`points/heightGrid`,
+an isometric/perspective voxel landscape renderer). `render/pointsRender` + `render/pointsBillboardRender`
+gain a perspective `viewMode` (2); billboard additionally gains a depth-sorted alpha-blend path
+(`depthKeys`+`depthMerge`) and aperture defocus blur (`spriteMeanTiles`/`spriteMean`/`clearDefocus`).
+`synth/remap`'s zone compositor was fully rewritten (UBO 267→275 std140 slots). Premultiplied-alpha
+fixes landed in `filter/invert`, `filter/tint`, `filter/adjust`, `filter/grade`, `mixer/alphaMask`,
+`mixer/blendMode`, `synth/media`, plus a gradient-normalization fix in `filter/chrome`.
+
+Three real compiler bugs were found and fixed along the way (none specific to this round's new
+effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
+the first to actually exercise): (1) pass-level `defines`/`conditions` (the clone pattern itself) had
+NO propagation path in `expander.py` at all — every corpus program using `pointsRender`/
+`pointsBillboardRender` compiled with only ONE deposit variant instead of the reference's 2-8 clones,
+a ~30-50-pass-per-program gap on affected corpus files; (2) `tools/convert-definitions.mjs`'s
+`projectPass()` captured `conditions` but not `defines` per pass (same class of gap independently
+found in the blender/godot/cpu/qt ports this round); (3) `stateSize` texture-dimension scoping
+preferred chain scope over the originating particle-pipeline id for a non-global texture that still
+references it — matches a same-round reference fix, found via a real corpus diff not a guess. Also
+implemented `TDBackend._should_skip_pass()`, which **did not exist before this round**: every pass
+built unconditionally regardless of `conditions`, which was harmless pre-round (no effect had a
+conditions-gated pass yet) but would have built ALL of pointsRender's/pointsBillboardRender's clone
+variants simultaneously post-round — a double/triple-deposit bug of the same class independently
+found and fixed in the cables and three.js sibling ports this session.
+
+**Local verification only — no TouchDesigner session.** All four Python/Node compiler-parity gates
+are clean: `check_lex.py`/`check_parse.py`/`check_validate.py` 324/324, `check_graph.py` 323/323 (1
+skip, unrelated to this round). All app-free `parity/test_*.py` suites (12 files) pass. The
+auto-transpiled shader corpus (`tools/convert-shaders.mjs`) regenerated cleanly for all 3 new effects
+with no manual MRT finishing needed (output layouts/swizzle already matched the established
+convention). `render/pointsRender`+`render/pointsBillboardRender`'s hand-maintained `deposit`
+GL_POINT shaders (`td/noisemaker/runtime/deposit_shaders.py`, not part of the auto-transpiled
+`shaders/` tree — TD has no bufferless draw) were extended for perspective mode and the depth-sort
+reindex.
+
+**Known limitation, newly introduced this round, NOT ported:** aperture defocus blur. The reference
+renders each billboard as an oversized quad whose UV range is padded past `[0,1]` so a multi-sample
+kernel against the `spriteMean` precompute can blend a wider footprint than the sprite itself. TD's
+`deposit` shaders use `GL_POINTS` + `gl_PointSize` (a pre-existing architectural choice, already the
+reason `rotationVar` is a documented gap) — `TDPointCoord()` is always exactly `[0,1]²` over the
+point's own fixed footprint, with no way to pad it. `sizeDistance`/`brightnessDistance` fades and a
+`gl_PointSize` growth with distance-from-focus ARE ported (pure per-vertex math, no quad needed);
+the exact gaussian defocus blend is not. `depositDefocus_1`/`depositDefocus_2` and their `defocus`
+precompute chain still build without erroring — they just contribute a plain sharp scatter rather
+than the reference's wide footprint. **No pixel-parity evidence exists for ANY of this round's
+changes** — this needs a TouchDesigner+GPU session to render and grade against fresh goldens
+(`parity/run.sh <name>` per PORTING-GUIDE.md; NM_REFERENCE_ROOT + GODOT-equivalent TD binary path).
+The billboard perspective+depth-sort+defocus path carries the most risk (hand-written GL_POINT GLSL,
+no transpiler safety net, no local render capability to catch a mistake before a human/peer session
+does); the 3 new effects' auto-transpiled shaders and the premultiplied-alpha/remap fixes carry much
+less (byte-identical reference GLSL, same low-risk class as the cables/babylonjs/qt ports).
+
 This file holds the detailed coverage and parity numbers. For what the project is and how to use it,
 see the [README](README.md).
 
