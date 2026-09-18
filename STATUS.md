@@ -23,6 +23,8 @@ fixes landed in `filter/invert`, `filter/tint`, `filter/adjust`, `filter/grade`,
 
 *Incrementally synced 2026-09-17 to reference `688c5146` (range `5a14256732b5..688c514655d3`) — audited upstream WebGPU frame export row-inversion changes. TouchDesignerFrameExportAdapter in `td/noisemaker/runtime/td_frame_export.py` already applies `output[::-1]` on TOP.numpyArray() readback, correctly translating TouchDesigner bottom-row-first arrays to top-down row orientation. Verified via parity unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`, all 63 tests PASS).*
 
+*Incrementally synced 2026-09-18 to reference `ead42a5d` (`688c514655d3..ead42a5df110a7f04d732cb200a1a39629db8a67`) — regenerated effect definitions via `tools/convert-definitions.mjs` (213/213 effects). Updated `defaultProgram` in `td/noisemaker/effects/synth3d/heightmap3d.json`, `td/noisemaker/effects/render/renderLandscape3d.json`, and `parity/programs/heightmap3d_landscape.dsl` to use discrete write/read chains. Verified compiler parity gates: check_lex (329/329 PASS), check_parse (329/329 PASS), check_validate (329/329 PASS), check_graph (328 PASS / 0 DIFF / 0 STAGE / 1 SKIP), and unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`, 63/63 PASS).*
+
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
 the first to actually exercise): (1) pass-level `defines`/`conditions` (the clone pattern itself) had
