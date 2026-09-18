@@ -21,6 +21,8 @@ gain a perspective `viewMode` (2); billboard additionally gains a depth-sorted a
 fixes landed in `filter/invert`, `filter/tint`, `filter/adjust`, `filter/grade`, `mixer/alphaMask`,
 `mixer/blendMode`, `synth/media`, plus a gradient-normalization fix in `filter/chrome`.
 
+*Incrementally synced 2026-09-17 to reference `688c5146` (range `5a14256732b5..688c514655d3`) — audited upstream WebGPU frame export row-inversion changes. TouchDesignerFrameExportAdapter in `td/noisemaker/runtime/td_frame_export.py` already applies `output[::-1]` on TOP.numpyArray() readback, correctly translating TouchDesigner bottom-row-first arrays to top-down row orientation. Verified via parity unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`, all 63 tests PASS).*
+
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
 the first to actually exercise): (1) pass-level `defines`/`conditions` (the clone pattern itself) had
