@@ -113,6 +113,34 @@ class ValidatorContractTests(unittest.TestCase):
                 )
                 self.assertEqual(r'''Keys "Left" Controller's \ Main''', descriptor["name"])
 
+    def test_chained_variable_alias_compiles_to_terminal_write_blit(self):
+        source = (
+            'search synth, filter\n'
+            'let gen = noise()\n'
+            'let eff = rotate(1, 0.1)\n'
+            'gen().eff().write(o0)\n'
+            'render(o0)\n'
+        )
+        validated = validate_dsl(source)
+        self.assertEqual(len(validated.get("plans", [])), 1)
+        chain = validated["plans"][0]["chain"]
+        self.assertEqual(len(chain), 3)
+        self.assertEqual(chain[0].get("op"), "synth.noise")
+        self.assertEqual(chain[1].get("op"), "filter.rotate")
+        self.assertEqual(chain[2].get("op"), "_write")
+
+        graph = compile_dsl(source)
+        self.assertEqual(len(graph["passes"]), 3)
+        self.assertEqual(graph["passes"][0]["id"], "node_0_pass_0")
+        self.assertEqual(graph["passes"][1]["id"], "node_1_pass_0")
+        terminal_pass = graph["passes"][2]
+        self.assertEqual(terminal_pass["id"], "node_2_write_blit")
+        self.assertEqual(terminal_pass["program"], "blit")
+        self.assertEqual(terminal_pass["passType"], "blit")
+        self.assertEqual(terminal_pass["inputs"].get("src"), "node_1_out")
+        self.assertEqual(terminal_pass["outputs"].get("color"), "global_o0")
+
+
 
 if __name__ == "__main__":
     unittest.main()

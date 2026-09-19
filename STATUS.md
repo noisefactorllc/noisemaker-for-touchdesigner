@@ -25,6 +25,9 @@ fixes landed in `filter/invert`, `filter/tint`, `filter/adjust`, `filter/grade`,
 
 *Incrementally synced 2026-09-18 to reference `ead42a5d` (`688c514655d3..ead42a5df110a7f04d732cb200a1a39629db8a67`) — regenerated effect definitions via `tools/convert-definitions.mjs` (213/213 effects). Updated `defaultProgram` in `td/noisemaker/effects/synth3d/heightmap3d.json`, `td/noisemaker/effects/render/renderLandscape3d.json`, and `parity/programs/heightmap3d_landscape.dsl` to use discrete write/read chains. Verified compiler parity gates: check_lex (329/329 PASS), check_parse (329/329 PASS), check_validate (329/329 PASS), check_graph (328 PASS / 0 DIFF / 0 STAGE / 1 SKIP), and unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`, 63/63 PASS).*
 
+*Incrementally synced 2026-09-19 to reference `f1d2b46a` (`ead42a5df110..f1d2b46a277333413160f9f5693b93a286153612`) — regenerated effect definitions via `tools/convert-definitions.mjs` (213/213 effects byte-identical). Upstream closed compiler phase-2 harness exit-status gap (GAP-023) and updated chained variable test plan; unified agent documentation. Added unit test in `parity/test_validator_contract.py` asserting chained variable alias plan compiles into a terminal write blit pass (`node_2_write_blit`) reading `node_1_out` and writing `global_o0`. Added `AGENTS.md` codifying repo conventions and strict symlink bans. Verified compiler parity gates: check_lex (329/329 PASS), check_parse (329/329 PASS), check_validate (329/329 PASS), check_graph (328 PASS / 0 DIFF / 0 STAGE / 1 SKIP), and unit test suite (64/64 PASS).*
+
+
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
 the first to actually exercise): (1) pass-level `defines`/`conditions` (the clone pattern itself) had
