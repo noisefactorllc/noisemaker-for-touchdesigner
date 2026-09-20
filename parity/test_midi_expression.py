@@ -39,6 +39,31 @@ class MidiExpressionTests(unittest.TestCase):
                 self.assertTrue(value['_invalid'])
                 self.assertTrue(diagnostics)
 
+    def test_legacy_midi_note_mode_channels_must_be_static_integers(self):
+        modes = ('noteChange', 'gateNote', 'gateVelocity', 'triggerNote', 'velocity')
+        for mode in modes:
+            for channel in ('0', '17', '1.5', 'true', '"1"', 'osc()'):
+                with self.subTest(mode=mode, channel=channel):
+                    value, diagnostics = compile_expression(
+                        'midi(channel: %s, mode: midiMode.%s)' % (channel, mode)
+                    )
+                    self.assertTrue(
+                        any(d.get('code') in ('S001', 'S002') for d in diagnostics),
+                        '%s channel %s should produce a validation diagnostic' % (mode, channel),
+                    )
+                    self.assertTrue(
+                        value.get('_invalid'),
+                        '%s channel %s should keep the descriptor inert' % (mode, channel),
+                    )
+            for channel in (1, 16):
+                with self.subTest(mode=mode, channel=channel):
+                    value, diagnostics = compile_expression(
+                        'midi(channel: %d, mode: midiMode.%s)' % (channel, mode)
+                    )
+                    self.assertEqual([], diagnostics)
+                    self.assertEqual(channel, value.get('channel'))
+                    self.assertFalse(value.get('_invalid', False))
+
     def test_expression_runtime_and_mpe(self):
         channel = dict(key=60, gate=1, cc={1:64}, cc14={1:8193}, nrpn={42:12000},
                        pitchBend=4096, pressure=90, polyPressure={60:80})

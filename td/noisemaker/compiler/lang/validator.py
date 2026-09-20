@@ -1095,9 +1095,8 @@ class _Validator:
             channel_invalid = [False]
             channel = _UNDEF if has_zone else self._resolve_automation_number(
                 node.get("channel"), "midi", "channel", 1,
-                **({"integer": True, "minimum": 1, "maximum": 16,
-                    "allow_member": False, "invalid_flag": channel_invalid}
-                   if mode >= 5 else {"allow_boolean": True}), depth=depth,
+                integer=True, minimum=1, maximum=16,
+                allow_member=False, invalid_flag=channel_invalid, depth=depth,
             )
             cc_invalid = [False]
             cc = _UNDEF
