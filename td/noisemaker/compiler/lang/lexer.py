@@ -133,8 +133,17 @@ def lex(src):
             j = i + 1
             while j < n and _is_digit(src[j]):
                 j += 1
+            lexeme = src[i:j]
             t = T.OUTPUT_REF if ch == 'o' else T.SOURCE_REF
-            tokens.append(Token(t, src[i:j], start_line, start_col))
+            is_member_segment = bool(tokens and tokens[-1].type == T.DOT)
+            if t == T.OUTPUT_REF and not is_member_segment:
+                if not (len(lexeme) == 2 and '0' <= lexeme[1] <= '7'):
+                    raise DslSyntaxError.at(
+                        f"Output surface reference '{lexeme}' is out of range; expected o0-o7",
+                        start_line,
+                        start_col,
+                    )
+            tokens.append(Token(t, lexeme, start_line, start_col))
             col += j - i
             i = j
             continue

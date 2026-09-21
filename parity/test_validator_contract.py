@@ -10,6 +10,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "td"))
 
 from noisemaker.compiler import compile_dsl  # noqa: E402
+from noisemaker.compiler.lang.dsl_syntax_error import DslSyntaxError  # noqa: E402
 from noisemaker.compiler.lang.effect_registry import EffectRegistry  # noqa: E402
 from noisemaker.compiler.lang.lexer import lex  # noqa: E402
 from noisemaker.compiler.lang.parser import parse  # noqa: E402
@@ -161,6 +162,50 @@ class ValidatorContractTests(unittest.TestCase):
                     any(d.get("code") == "S001" for d in bad_val.get("diagnostics", [])),
                     f"expected diagnostic S001 for expired effect {expired}"
                 )
+
+    def test_output_surface_range_enforcement(self):
+        # valid boundaries
+        toks = lex("o0 o7 s3 output0")
+        self.assertEqual(len(toks), 5)
+        self.assertEqual(toks[0].type, "OUTPUT_REF")
+        self.assertEqual(toks[0].lexeme, "o0")
+        self.assertEqual(toks[1].type, "OUTPUT_REF")
+        self.assertEqual(toks[1].lexeme, "o7")
+        self.assertEqual(toks[2].type, "SOURCE_REF")
+        self.assertEqual(toks[2].lexeme, "s3")
+
+        # invalid references throw DslSyntaxError
+        cases = [
+            ("render(o8)", "Output surface reference 'o8' is out of range; expected o0-o7 at line 1 col 8"),
+            ("read(o99).write(o0)", "Output surface reference 'o99' is out of range; expected o0-o7 at line 1 col 6"),
+            ("read(o0).write(o10)", "Output surface reference 'o10' is out of range; expected o0-o7 at line 1 col 16"),
+        ]
+        for src, expected_msg in cases:
+            with self.subTest(src=src):
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    lex(src)
+                self.assertEqual(str(ctx.exception), expected_msg)
+
+        # member segments foo.o8 and foo.o99 are allowed
+        member_toks = lex("foo.o0 foo.o7 foo.o8 foo.o99")
+        output_refs = [t for t in member_toks if t.type == "OUTPUT_REF"]
+        self.assertEqual([t.lexeme for t in output_refs], ["o0", "o7", "o8", "o99"])
+
+        # other surface reference families preserve multi-digit numbers
+        other_toks = lex("s99 vol99 geo99 xyz99 vel99 rgba99 mesh99")
+        ref_tokens = [(t.type, t.lexeme) for t in other_toks[:-1]]
+        self.assertEqual(
+            ref_tokens,
+            [
+                ("SOURCE_REF", "s99"),
+                ("VOL_REF", "vol99"),
+                ("GEO_REF", "geo99"),
+                ("XYZ_REF", "xyz99"),
+                ("VEL_REF", "vel99"),
+                ("RGBA_REF", "rgba99"),
+                ("MESH_REF", "mesh99"),
+            ],
+        )
 
 
 

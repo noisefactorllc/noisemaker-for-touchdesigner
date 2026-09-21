@@ -73,7 +73,7 @@ surface refs before identifiers).
 1. **Whitespace**: ` `, `\t`, `\r` → skip, `col++`. `\n` → `line++`, `col=1`.
 2. **Line comment** `//…`: scan to `\n` (exclusive). Emit `COMMENT` with full lexeme including `//`. `col += len`.
 3. **Block comment** `/*…*/`: scan to `*/`. Tracks `endLine`/`endCol` across newlines. Unterminated → `throw SyntaxError("Unterminated comment at line L col C")`. Emit `COMMENT` with full lexeme including delimiters. Final `col = endCol + 2`.
-4. **Output/Source ref**: char is `o` or `s` AND `src[i+1]` is a digit. Greedily consume following digits. `o`→`OUTPUT_REF`, `s`→`SOURCE_REF`. Lexeme e.g. `o0`, `s3`, `o12`. **NOTE**: any number of digits is consumed; validation of range (0..7) is downstream.
+4. **Output/Source ref**: char is `o` or `s` AND `src[i+1]` is a digit. Greedily consume following digits. `o`→`OUTPUT_REF`, `s`→`SOURCE_REF`. Lexeme e.g. `o0`, `s3`. An `OUTPUT_REF` must fall in `o0`..`o7` unless preceded by a `DOT` token (member segment access, e.g. `foo.o8`); out-of-range references throw `SyntaxError`.
 5. **`vol` ref**: `v o l` + digit at `i..i+3` → `VOL_REF`, consume digits from `i+3`.
 6. **`geo` ref**: `g e o` + digit → `GEO_REF`.
 7. **`xyz` ref**: `x y z` + digit → `XYZ_REF` (agent position surface).
