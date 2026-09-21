@@ -3,7 +3,6 @@ _vs32probe	DEFER	-	-	-	-	3d/mrt/points	(no single-frame golden — validated via
 adjust	PASS	1.000003695487976	0.9999804496765137	2.001	0.98	sweep	parity/out/adjust.golden.png
 alphaMask	PASS	1.000003695487976	0.9999801516532898	2.001	0.98	sweep	parity/out/alphaMask.golden.png
 applyMode	PASS	1.000003695487976	0.9999861717224121	2.001	0.98	sweep	parity/out/applyMode.golden.png
-bc	PASS	1.000003695487976	0.9999801516532898	2.001	0.98	sweep	parity/out/bc.golden.png
 bitwise	PASS	0.0	1.0	2.001	0.98	sweep	parity/out/bitwise.golden.png
 blendMode	PASS	1.000003695487976	0.9999857544898987	2.001	0.98	sweep	parity/out/blendMode.golden.png
 bloom	PASS	2.0	0.9999799728393555	2.001	0.98	sweep	parity/out/bloom.golden.png
@@ -36,7 +35,6 @@ cnd_shapes	PASS	1.000003695487976	0.9999852180480957	2.001	0.98	sweep	parity/out
 coalesce	PASS	1.000003695487976	0.9999122023582458	2.001	0.98	sweep	parity/out/coalesce.golden.png
 colorLab	PASS	1.000003695487976	0.9999802112579346	2.001	0.98	sweep	parity/out/colorLab.golden.png
 colorReplace	PASS	1.000003695487976	0.9999878406524658	2.001	0.98	sweep	parity/out/colorReplace.golden.png
-colorspace	PASS	1.000003695487976	0.9999822974205017	2.001	0.98	sweep	parity/out/colorspace.golden.png
 composite	PASS	1.000003695487976	0.9999140501022339	2.001	0.98	sweep	parity/out/composite.golden.png
 convolutionFeedback	DEFER	-	-	-	-	accumulate.sh	multi-frame feedback — driven + graded by parity/accumulate.sh (8/8 gated checks pass)
 convolutionFeedback.f0001	PASS	1.0	0.99958	2.001	0.98	accumulate	parity/out/convolutionFeedback.f0001.golden.png
@@ -109,7 +107,6 @@ hatch_mode_crosshatch	PASS	1.000003695487976	0.9999750256538391	2.001	0.98	sweep
 hatch_mode_pen	PASS	0.9999999403953552	1.0	2.001	0.98	sweep	parity/out/hatch_mode_pen.golden.png
 highPass	PASS	1.000003695487976	0.9999724626541138	2.001	0.98	sweep	parity/out/highPass.golden.png
 historicPalette	PASS	0.0	1.0	2.001	0.98	sweep	parity/out/historicPalette.golden.png
-hs	PASS	1.000003695487976	0.9999801516532898	2.001	0.98	sweep	parity/out/hs.golden.png
 invert	PASS	1.000003695487976	0.9999827742576599	2.001	0.98	sweep	parity/out/invert.golden.png
 invert_mode_full	PASS	1.000003695487976	0.9999827742576599	2.001	0.98	sweep	parity/out/invert_mode_full.golden.png
 invert_mode_solarize	PASS	1.000003695487976	0.9999397397041321	2.001	0.98	sweep	parity/out/invert_mode_solarize.golden.png

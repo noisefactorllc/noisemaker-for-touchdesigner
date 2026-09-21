@@ -140,7 +140,30 @@ class ValidatorContractTests(unittest.TestCase):
         self.assertEqual(terminal_pass["inputs"].get("src"), "node_1_out")
         self.assertEqual(terminal_pass["outputs"].get("color"), "global_o0")
 
+    def test_filter_adjust_resolves_and_expired_effects_are_rejected(self):
+        source = (
+            'search synth, filter\n'
+            'noise().adjust(rotation: 45).write(o0)\n'
+            'render(o0)\n'
+        )
+        validated = validate_dsl(source)
+        chain = validated["plans"][0]["chain"]
+        self.assertEqual(chain[1].get("op"), "filter.adjust")
+
+        graph = compile_dsl(source)
+        self.assertTrue(any(p.get("effectKey") == "filter.adjust" for p in graph["passes"]))
+
+        for expired in ("bc", "colorspace", "hs"):
+            with self.subTest(expired=expired):
+                bad_source = f"search synth, filter\nnoise().{expired}().write(o0)\nrender(o0)\n"
+                bad_val = validate_dsl(bad_source)
+                self.assertTrue(
+                    any(d.get("code") == "S001" for d in bad_val.get("diagnostics", [])),
+                    f"expected diagnostic S001 for expired effect {expired}"
+                )
+
 
 
 if __name__ == "__main__":
     unittest.main()
+
