@@ -131,9 +131,16 @@ class _Validator:
             enriched = message + ": '" + ident_name + "'"
         d = {'code': code, 'message': enriched, 'severity': _diag.severity(code),
              'identifier': ident_name}
-        if node is not None and isinstance(node, dict) and node.get('loc'):
-            d['line'] = node['loc'].get('line')
-            d['column'] = node['loc'].get('col')
+        if node is not None and isinstance(node, dict) and isinstance(node.get('loc'), dict):
+            loc = node['loc']
+            line = loc.get('line')
+            col = loc.get('column') if loc.get('column') is not None else loc.get('col')
+            if line is not None:
+                d['line'] = line
+            if col is not None:
+                d['column'] = col
+            if line is not None and col is not None:
+                d['location'] = {'line': line, 'column': col}
         self._diagnostics.append(d)
 
     @staticmethod

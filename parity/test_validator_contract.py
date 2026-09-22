@@ -15,6 +15,7 @@ from noisemaker.compiler.lang.effect_registry import EffectRegistry  # noqa: E40
 from noisemaker.compiler.lang.lexer import lex  # noqa: E402
 from noisemaker.compiler.lang.parser import parse  # noqa: E402
 from noisemaker.compiler.lang.validator import validate  # noqa: E402
+from noisemaker.compiler.lang import diagnostics as lang_diag  # noqa: E402
 
 
 def validate_dsl(source):
@@ -207,6 +208,39 @@ class ValidatorContractTests(unittest.TestCase):
             ],
         )
 
+    def test_diagnostic_source_columns_and_locations(self):
+        result = validate_dsl('search synth\n  read(123).write(o0)')
+        diagnostics = result.get('diagnostics', [])
+        diag_summary = [(d.get('code'), d.get('line'), d.get('column'), d.get('location')) for d in diagnostics]
+        self.assertEqual(
+            diag_summary,
+            [
+                ('S001', 2, 3, {'line': 2, 'column': 3}),
+                ('S005', 2, 13, {'line': 2, 'column': 13}),
+            ],
+        )
+
+        # explicit column on caller-supplied AST locations takes precedence over col
+        registry = EffectRegistry.load_from_directory()
+        ast_tree = parse(lex('search synth\n  read(123).write(o0)'), registry)
+        ast_tree['plans'][0]['chain'][0]['loc']['column'] = 9
+        res2 = validate(ast_tree, registry)
+        self.assertEqual(res2['diagnostics'][0].get('column'), 9)
+        self.assertEqual(res2['diagnostics'][0].get('location'), {'line': 2, 'column': 9})
+
+        # unlocated AST node does not invent location
+        missing_res = validate_dsl('search synth\n  missing().write(o0)')
+        missing_diag = next(d for d in missing_res.get('diagnostics', []) if d.get('identifier') == 'missing')
+        self.assertEqual(missing_diag.get('code'), 'S001')
+        self.assertNotIn('location', missing_diag)
+        self.assertNotIn('line', missing_diag)
+        self.assertNotIn('column', missing_diag)
+
+        # diagnostics.make helper populates location when line and column are present
+        diag_record = lang_diag.make('S001', line=3, column=5)
+        self.assertEqual(diag_record.get('location'), {'line': 3, 'column': 5})
+        self.assertEqual(diag_record.get('line'), 3)
+        self.assertEqual(diag_record.get('column'), 5)
 
 
 if __name__ == "__main__":

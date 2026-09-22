@@ -40,6 +40,8 @@ def make(code, message=None, line=None, column=None, identifier=None):
         d['line'] = line
     if column is not None:
         d['column'] = column
+    if line is not None and column is not None:
+        d['location'] = {'line': line, 'column': column}
     if identifier is not None:
         d['identifier'] = identifier
     return d
