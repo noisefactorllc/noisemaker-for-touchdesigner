@@ -8,16 +8,28 @@ severities are the contract (severity strings 'error'/'warning' match the refere
 SEVERITY_ERROR = 'error'
 SEVERITY_WARNING = 'warning'
 
-# code -> (default message, severity). reference/02 §7 / reference/01 §8.7.
+STAGE_LEXER = 'lexer'
+STAGE_PARSER = 'parser'
+STAGE_SEMANTIC = 'semantic'
+STAGE_RUNTIME = 'runtime'
+
+# code -> (default message, severity, stage). reference/02 §7 / reference/01 §8.7 / diagnostics.js
 _TABLE = {
-    'S001': ("Unknown identifier", SEVERITY_ERROR),
-    'S002': ("Argument out of range", SEVERITY_WARNING),
-    'S003': ("Variable used before assignment", SEVERITY_ERROR),
-    'S004': ("Cannot assign null or undefined", SEVERITY_ERROR),
-    'S005': ("Illegal chain structure", SEVERITY_ERROR),
-    'S006': ("Starter chain missing write() call", SEVERITY_ERROR),
-    'S007': ("Deprecated parameter alias", SEVERITY_WARNING),
-    'S008': ("Deprecated effect", SEVERITY_WARNING),
+    'L001': ("Unexpected character", SEVERITY_ERROR, STAGE_LEXER),
+    'L002': ("Unterminated string literal", SEVERITY_ERROR, STAGE_LEXER),
+    'L003': ("Unterminated comment", SEVERITY_ERROR, STAGE_LEXER),
+    'L004': ("Output surface reference out of range", SEVERITY_ERROR, STAGE_LEXER),
+    'P001': ("Unexpected token", SEVERITY_ERROR, STAGE_PARSER),
+    'P002': ("Expected closing parenthesis", SEVERITY_ERROR, STAGE_PARSER),
+    'S001': ("Unknown identifier", SEVERITY_ERROR, STAGE_SEMANTIC),
+    'S002': ("Argument out of range", SEVERITY_WARNING, STAGE_SEMANTIC),
+    'S003': ("Variable used before assignment", SEVERITY_ERROR, STAGE_SEMANTIC),
+    'S004': ("Cannot assign null or undefined", SEVERITY_ERROR, STAGE_SEMANTIC),
+    'S005': ("Illegal chain structure", SEVERITY_ERROR, STAGE_SEMANTIC),
+    'S006': ("Starter chain missing write() call", SEVERITY_ERROR, STAGE_SEMANTIC),
+    'S007': ("Deprecated parameter alias", SEVERITY_WARNING, STAGE_SEMANTIC),
+    'S008': ("Deprecated effect", SEVERITY_WARNING, STAGE_SEMANTIC),
+    'R001': ("Runtime error", SEVERITY_ERROR, STAGE_RUNTIME),
 }
 
 
@@ -27,6 +39,10 @@ def default_message(code):
 
 def severity(code):
     return _TABLE[code][1]
+
+
+def stage(code):
+    return _TABLE[code][2]
 
 
 def make(code, message=None, line=None, column=None, identifier=None):

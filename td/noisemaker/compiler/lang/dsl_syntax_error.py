@@ -9,13 +9,14 @@ caret, so the text format is parity-critical — do not change it.
 class DslSyntaxError(Exception):
     """A lexer/parser error. `message` carries the full `"... at line L col C"` text."""
 
-    def __init__(self, message, line=None, col=None):
+    def __init__(self, message, line=None, col=None, diagnostic=None):
         super().__init__(message)
         self.message = message
         self.line = line
         self.col = col
+        self.diagnostic = diagnostic
 
     @staticmethod
-    def at(core, line, col):
+    def at(core, line, col, diagnostic=None):
         """Build `"<core> at line L col C"` (mirrors C# DslSyntaxError.At)."""
-        return DslSyntaxError("%s at line %d col %d" % (core, line, col), line, col)
+        return DslSyntaxError("%s at line %d col %d" % (core, line, col), line, col, diagnostic=diagnostic)

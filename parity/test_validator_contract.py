@@ -242,6 +242,60 @@ class ValidatorContractTests(unittest.TestCase):
         self.assertEqual(diag_record.get('line'), 3)
         self.assertEqual(diag_record.get('column'), 5)
 
+    def test_lexer_structured_diagnostics(self):
+        cases = [
+            (
+                '@noise()',
+                'L001',
+                "Unexpected character '@' at line 1 col 1",
+                {'line': 1, 'column': 1},
+                {'start': 0, 'end': 1},
+            ),
+            (
+                'noise("unterminated)',
+                'L002',
+                'Unterminated string literal at line 1 col 7',
+                {'line': 1, 'column': 7},
+                {'start': 6, 'end': 20},
+            ),
+            (
+                '"""unterminated triple',
+                'L002',
+                'Unterminated triple-quoted string at line 1 col 1',
+                {'line': 1, 'column': 1},
+                {'start': 0, 'end': 22},
+            ),
+            (
+                '/* unclosed comment\nnoise()',
+                'L003',
+                'Unterminated comment at line 1 col 1',
+                {'line': 1, 'column': 1},
+                {'start': 0, 'end': 27},
+            ),
+            (
+                'search synth\nnoise().write(o8)',
+                'L004',
+                "Output surface reference 'o8' is out of range; expected o0-o7 at line 2 col 15",
+                {'line': 2, 'column': 15},
+                {'start': 27, 'end': 29},
+            ),
+        ]
+
+        for src, code, message, location, span in cases:
+            with self.subTest(code=code, src=src):
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    lex(src)
+                err = ctx.exception
+                self.assertEqual(str(err), message)
+                diag = err.diagnostic
+                self.assertIsNotNone(diag)
+                self.assertEqual(diag['code'], code)
+                self.assertEqual(diag['stage'], 'lexer')
+                self.assertEqual(diag['severity'], 'error')
+                self.assertEqual(diag['message'], message)
+                self.assertEqual(diag['location'], location)
+                self.assertEqual(diag['span'], span)
+
 
 if __name__ == "__main__":
     unittest.main()

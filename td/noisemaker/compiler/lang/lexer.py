@@ -16,6 +16,7 @@ PARITY-CRITICAL details replicated exactly:
 
 from .token import Token, TokenType as T
 from .dsl_syntax_error import DslSyntaxError
+from . import diagnostics as _diag
 
 # RESERVED_KEYWORDS (reference/01 §1.3 / lexer.js, frozen).
 _KEYWORDS = {
@@ -81,6 +82,27 @@ def lex(src):
     def at(k):
         return src[k] if 0 <= k < n else '\0'
 
+    # Only scan source coordinates on failure. Successful tokens and legacy
+    # error messages retain their existing position bookkeeping.
+    def fail(code, message, start, end):
+        error_line = 1
+        column = 1
+        for offset in range(start):
+            if src[offset] == '\n':
+                error_line += 1
+                column = 1
+            else:
+                column += 1
+        diag = {
+            'code': code,
+            'stage': _diag.stage(code),
+            'severity': _diag.severity(code),
+            'message': message,
+            'location': {'line': error_line, 'column': column},
+            'span': {'start': start, 'end': end},
+        }
+        raise DslSyntaxError(message, line=error_line, col=column, diagnostic=diag)
+
     while i < n:
         ch = src[i]
 
@@ -120,7 +142,7 @@ def lex(src):
                     end_col += 1
                 j += 1
             if j >= n:
-                raise DslSyntaxError.at("Unterminated comment", start_line, start_col)
+                fail('L003', f"Unterminated comment at line {start_line} col {start_col}", i, n)
             j += 2
             tokens.append(Token(T.COMMENT, src[i:j], start_line, start_col))
             line = end_line
@@ -138,10 +160,11 @@ def lex(src):
             is_member_segment = bool(tokens and tokens[-1].type == T.DOT)
             if t == T.OUTPUT_REF and not is_member_segment:
                 if not (len(lexeme) == 2 and '0' <= lexeme[1] <= '7'):
-                    raise DslSyntaxError.at(
-                        f"Output surface reference '{lexeme}' is out of range; expected o0-o7",
-                        start_line,
-                        start_col,
+                    fail(
+                        'L004',
+                        f"Output surface reference '{lexeme}' is out of range; expected o0-o7 at line {start_line} col {start_col}",
+                        i,
+                        j,
                     )
             tokens.append(Token(t, lexeme, start_line, start_col))
             col += j - i
@@ -282,7 +305,7 @@ def lex(src):
                     col = 0
                 j += 1
             if j >= n - 2 or not (at(j) == '"' and at(j + 1) == '"' and at(j + 2) == '"'):
-                raise DslSyntaxError.at("Unterminated triple-quoted string", start_line, start_col)
+                fail('L002', f"Unterminated triple-quoted string at line {start_line} col {start_col}", i, n)
             content = src[i + 3:j]
             tokens.append(Token(T.STRING, content, start_line, start_col))
             # multi-line col fixup (reference/01 §1.4 rule 15)
@@ -304,7 +327,7 @@ def lex(src):
                 else:
                     j += 1
             if j >= n or src[j] == '\n':
-                raise DslSyntaxError.at("Unterminated string literal", line, col)
+                fail('L002', f"Unterminated string literal at line {line} col {col}", i, j)
             content = src[i + 1:j]
             tokens.append(Token(T.STRING, content, start_line, start_col))
             col += j - i + 1
@@ -338,7 +361,7 @@ def lex(src):
             continue
 
         # 19. anything else
-        raise DslSyntaxError.at("Unexpected character '" + ch + "'", line, col)
+        fail('L001', f"Unexpected character '{ch}' at line {line} col {col}", i, i + 1)
 
     tokens.append(Token(T.EOF, "", line, col))
     return tokens
