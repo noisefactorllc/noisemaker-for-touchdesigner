@@ -81,17 +81,14 @@ class _Parser:
         self._current += 1
         return t
 
-    def _expect(self, type_, msg):
-        t = self._peek()
-        if t.type == type_:
-            return self._advance()
+    def _parser_error(self, code, msg, token=None, line=None, col=None):
+        if token is not None:
+            line_val = getattr(token, 'line', None)
+            col_val = getattr(token, 'col', None)
+        else:
+            line_val = line
+            col_val = col
 
-        line_val = getattr(t, 'line', None)
-        col_val = getattr(t, 'col', None)
-
-        msg_str = "%s at line %s col %s" % (msg, coord_str(line_val), coord_str(col_val))
-
-        code = "P002" if type_ == T.RPAREN else "P001"
         has_location = (
             isinstance(line_val, int)
             and not isinstance(line_val, bool)
@@ -104,16 +101,33 @@ class _Parser:
             "code": code,
             "stage": "parser",
             "severity": "error",
-            "message": msg_str,
+            "message": msg,
             "location": {"line": line_val, "column": col_val} if has_location else None,
             "span": None,
         }
-        raise DslSyntaxError(
-            msg_str,
+        return DslSyntaxError(
+            msg,
             line=line_val if has_location else None,
             col=col_val if has_location else None,
             diagnostic=diagnostic,
         )
+
+    def _parser_error_at(self, code, core, token, suffix=""):
+        line_val = getattr(token, 'line', None) if token is not None else None
+        col_val = getattr(token, 'col', None) if token is not None else None
+        msg = "%s at line %s col %s%s" % (core, coord_str(line_val), coord_str(col_val), suffix)
+        return self._parser_error(code, msg, token=token)
+
+    def _expect(self, type_, msg):
+        t = self._peek()
+        if t.type == type_:
+            return self._advance()
+
+        line_val = getattr(t, 'line', None)
+        col_val = getattr(t, 'col', None)
+        msg_str = "%s at line %s col %s" % (msg, coord_str(line_val), coord_str(col_val))
+        code = "P002" if type_ == T.RPAREN else "P001"
+        raise self._parser_error(code, msg_str, token=t)
 
     def _collect_comments(self):
         comments = []
@@ -141,7 +155,7 @@ class _Parser:
             if self._peek().type == T.SEARCH:
                 if plans or vars_ or render is not None:
                     t = self._peek()
-                    raise DslSyntaxError.at("'search' directive must appear before other statements", t.line, t.col)
+                    raise self._parser_error_at("P004", "'search' directive must appear before other statements", t)
                 self._parse_search_directive()
                 continue
             if self._peek().type == T.RENDER:
@@ -169,8 +183,10 @@ class _Parser:
 
         self._expect(T.EOF, "Expected end of input")
         if not self._program_search_order:
-            raise DslSyntaxError("Missing required 'search' directive. Every program must start "
-                                 "with 'search <namespace>, ...' to specify namespace search order.")
+            last = self._tokens[-1] if self._tokens else None
+            msg = ("Missing required 'search' directive. Every program must start "
+                   "with 'search <namespace>, ...' to specify namespace search order.")
+            raise self._parser_error("P004", msg, token=last)
 
         # namespace meta (deep copy, reference/01 §6.1).
         meta = {
@@ -193,13 +209,13 @@ class _Parser:
     def _parse_search_directive(self):
         if self._program_search_order is not None:
             t = self._peek()
-            raise DslSyntaxError.at("Only one search directive is allowed per program", t.line, t.col)
+            raise self._parser_error_at("P004", "Only one search directive is allowed per program", t)
         self._advance()  # consume 'search'
         namespaces = []
 
         first = self._peek()
         if first.type not in _NAMESPACE_TOKENS:
-            raise DslSyntaxError.at("Expected namespace identifier after search", first.line, first.col)
+            raise self._parser_error_at("P004", "Expected namespace identifier after search", first)
         self._advance()
         self._validate_namespace(first)
         namespaces.append(first.lexeme)
@@ -208,7 +224,7 @@ class _Parser:
             self._advance()
             ns_tok = self._peek()
             if ns_tok.type not in _NAMESPACE_TOKENS:
-                raise DslSyntaxError.at("Expected namespace identifier after comma", ns_tok.line, ns_tok.col)
+                raise self._parser_error_at("P004", "Expected namespace identifier after comma", ns_tok)
             self._advance()
             self._validate_namespace(ns_tok)
             namespaces.append(ns_tok.lexeme)
@@ -227,8 +243,10 @@ class _Parser:
             valid = ''
             if self._registry is not None:
                 valid = ', '.join(self._registry.namespaces)
-            raise DslSyntaxError.at("Invalid namespace '" + ns + "'. Valid namespaces: " + valid,
-                                    token.line, token.col)
+            msg = "Invalid namespace '%s' at line %s col %s. Valid namespaces: %s" % (
+                ns, coord_str(token.line), coord_str(token.col), valid
+            )
+            raise self._parser_error("P004", msg, token=token)
 
     def _parse_render_directive(self):
         self._advance()  # consume 'render'
@@ -254,7 +272,7 @@ class _Parser:
     def _parse_statement(self):
         if self._peek().type == T.SEARCH:
             t = self._peek()
-            raise DslSyntaxError.at("'search' directive is only allowed at the start of the program", t.line, t.col)
+            raise self._parser_error_at("P004", "'search' directive is only allowed at the start of the program", t)
         if self._peek().type == T.LET:
             self._advance()
             name = self._expect(T.IDENT, "Expected identifier").lexeme
@@ -625,9 +643,12 @@ class _Parser:
         if kwargs is not None:
             for key in kwargs:
                 if key not in _OSC_KWARG_KEYS:
-                    raise DslSyntaxError.at(
-                        "osc() unknown parameter '" + key + "'. Valid: type, min, max, speed, offset, seed",
-                        name_token.line, name_token.col)
+                    raise self._parser_error_at(
+                        "P003",
+                        "osc() unknown parameter '" + key + "'",
+                        name_token,
+                        suffix=". Valid: type, min, max, speed, offset, seed",
+                    )
         return {
             'type': K.Oscillator,
             'oscType': self._resolve_param(call, order[0], 0, ast.member_of("oscKind", "sine")),
@@ -646,13 +667,15 @@ class _Parser:
         args = call['args']
         kwargs = call.get('kwargs') or {}
         if len(args) > len(order):
-            raise DslSyntaxError.at("midi() name, id, cc, nrpn, zone and members are keyword-only", name_token.line, name_token.col)
+            raise self._parser_error_at("P003", "midi() name, id, cc, nrpn, zone and members are keyword-only", name_token)
         for key in kwargs:
             if key not in valid:
-                raise DslSyntaxError(
-                    "midi() unknown parameter '%s' at line %d col %d. Valid: %s" %
-                    (key, name_token.line, name_token.col, ", ".join(valid)),
-                    name_token.line, name_token.col)
+                raise self._parser_error_at(
+                    "P003",
+                    "midi() unknown parameter '%s'" % key,
+                    name_token,
+                    suffix=". Valid: %s" % ", ".join(valid),
+                )
 
         defaults = {
             'mode': ast.member_of("midiMode", "velocity"),
@@ -671,28 +694,25 @@ class _Parser:
             elif param_name in defaults:
                 resolved[param_name] = defaults[param_name]
         if pos_cursor < len(args):
-            raise DslSyntaxError.at("midi() has an excess positional argument", name_token.line,
-                                    name_token.col)
+            raise self._parser_error_at("P003", "midi() has an excess positional argument", name_token)
 
         channel = resolved.get('channel')
         if channel is None and "zone" not in kwargs:
-            raise DslSyntaxError.at("midi() requires 'channel' or 'zone' argument", name_token.line, name_token.col)
+            raise self._parser_error_at("P003", "midi() requires 'channel' or 'zone' argument", name_token)
         if channel is not None and 'zone' in kwargs:
-            raise DslSyntaxError.at("midi() 'channel' and 'zone' are mutually exclusive", name_token.line, name_token.col)
+            raise self._parser_error_at("P003", "midi() 'channel' and 'zone' are mutually exclusive", name_token)
         if 'members' in kwargs and 'zone' not in kwargs:
-            raise DslSyntaxError.at("midi() 'members' requires 'zone'", name_token.line, name_token.col)
+            raise self._parser_error_at("P003", "midi() 'members' requires 'zone'", name_token)
         if 'id' in kwargs and 'name' not in kwargs:
-            raise DslSyntaxError.at("midi() 'id' requires readable 'name'", name_token.line, name_token.col)
+            raise self._parser_error_at("P003", "midi() 'id' requires readable 'name'", name_token)
         for param_name in ("name", "id"):
             if param_name not in kwargs:
                 continue
             value = kwargs[param_name]
             if value.get('type') != K.String:
-                raise DslSyntaxError.at("midi() '%s' requires a quoted string" % param_name,
-                                        name_token.line, name_token.col)
+                raise self._parser_error_at("P003", "midi() '%s' requires a quoted string" % param_name, name_token)
             if not value.get('value'):
-                raise DslSyntaxError.at("midi() '%s' must not be empty" % param_name,
-                                        name_token.line, name_token.col)
+                raise self._parser_error_at("P003", "midi() '%s' must not be empty" % param_name, name_token)
 
         node = {
             'type': K.Midi,
@@ -716,14 +736,15 @@ class _Parser:
         args = call['args']
         kwargs = call.get('kwargs') or {}
         if len(args) > len(order):
-            raise DslSyntaxError.at("audio() channel, name and id are keyword-only", name_token.line,
-                                    name_token.col)
+            raise self._parser_error_at("P003", "audio() channel, name and id are keyword-only", name_token)
         for key in kwargs:
             if key not in valid:
-                raise DslSyntaxError(
-                    "audio() unknown parameter '%s' at line %d col %d. Valid: %s" %
-                    (key, name_token.line, name_token.col, ", ".join(valid)),
-                    name_token.line, name_token.col)
+                raise self._parser_error_at(
+                    "P003",
+                    "audio() unknown parameter '%s'" % key,
+                    name_token,
+                    suffix=". Valid: %s" % ", ".join(valid),
+                )
 
         defaults = {'min': ast.number(0), 'max': ast.number(1)}
         resolved = {}
@@ -737,27 +758,23 @@ class _Parser:
             elif param_name in defaults:
                 resolved[param_name] = defaults[param_name]
         if pos_cursor < len(args):
-            raise DslSyntaxError.at("audio() has an excess positional argument", name_token.line,
-                                    name_token.col)
+            raise self._parser_error_at("P003", "audio() has an excess positional argument", name_token)
 
         band = resolved.get('band')
         if band is None:
-            raise DslSyntaxError.at("audio() requires 'band' argument", name_token.line, name_token.col)
+            raise self._parser_error_at("P003", "audio() requires 'band' argument", name_token)
         if 'id' in kwargs and 'name' not in kwargs:
-            raise DslSyntaxError.at("audio() 'id' requires readable 'name'", name_token.line, name_token.col)
+            raise self._parser_error_at("P003", "audio() 'id' requires readable 'name'", name_token)
         if 'name' in kwargs and 'channel' not in kwargs:
-            raise DslSyntaxError.at("audio() selected device requires both 'name' and 'channel'",
-                                    name_token.line, name_token.col)
+            raise self._parser_error_at("P003", "audio() selected device requires both 'name' and 'channel'", name_token)
         for param_name in ("name", "id"):
             if param_name not in kwargs:
                 continue
             value = kwargs[param_name]
             if value.get('type') != K.String:
-                raise DslSyntaxError.at("audio() '%s' requires a quoted string" % param_name,
-                                        name_token.line, name_token.col)
+                raise self._parser_error_at("P003", "audio() '%s' requires a quoted string" % param_name, name_token)
             if not value.get('value'):
-                raise DslSyntaxError.at("audio() '%s' must not be empty" % param_name,
-                                        name_token.line, name_token.col)
+                raise self._parser_error_at("P003", "audio() '%s' must not be empty" % param_name, name_token)
 
         node = {
             'type': K.Audio,

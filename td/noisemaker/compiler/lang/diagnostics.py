@@ -21,6 +21,8 @@ _TABLE = {
     'L004': ("Output surface reference out of range", SEVERITY_ERROR, STAGE_LEXER),
     'P001': ("Unexpected token", SEVERITY_ERROR, STAGE_PARSER),
     'P002': ("Expected closing parenthesis", SEVERITY_ERROR, STAGE_PARSER),
+    'P003': ("Invalid automation arguments", SEVERITY_ERROR, STAGE_PARSER),
+    'P004': ("Invalid search directive", SEVERITY_ERROR, STAGE_PARSER),
     'S001': ("Unknown identifier", SEVERITY_ERROR, STAGE_SEMANTIC),
     'S002': ("Argument out of range", SEVERITY_WARNING, STAGE_SEMANTIC),
     'S003': ("Variable used before assignment", SEVERITY_ERROR, STAGE_SEMANTIC),

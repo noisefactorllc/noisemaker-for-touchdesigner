@@ -464,6 +464,143 @@ class ValidatorContractTests(unittest.TestCase):
         self.assertEqual(iso_pass["defines"]["FILTERING"], 0)
         self.assertEqual(voxel_pass["defines"]["FILTERING"], 1)
 
+    def test_parser_structured_diagnostics_p003_automation(self):
+        cases = [
+            ("osc(type: oscKind.sine, bogus: 1)", "osc() unknown parameter 'bogus' at line 2 col 1. Valid: type, min, max, speed, offset, seed"),
+            ("midi(1, 2, 3, 4, 5, 6)", "midi() name, id, cc, nrpn, zone and members are keyword-only at line 2 col 1"),
+            ("midi(channel: 1, bogus: 2)", "midi() unknown parameter 'bogus' at line 2 col 1. Valid: channel, mode, min, max, sensitivity, name, id, cc, nrpn, zone, members"),
+            ("midi(1, 2, 3, 4, 5, channel: 6)", "midi() has an excess positional argument at line 2 col 1"),
+            ("midi()", "midi() requires 'channel' or 'zone' argument at line 2 col 1"),
+            ("midi(channel: 1, zone: 2)", "midi() 'channel' and 'zone' are mutually exclusive at line 2 col 1"),
+            ("midi(channel: 1, members: 2)", "midi() 'members' requires 'zone' at line 2 col 1"),
+            ("midi(channel: 1, id: \"pad\")", "midi() 'id' requires readable 'name' at line 2 col 1"),
+            ("midi(channel: 1, name: 1)", "midi() 'name' requires a quoted string at line 2 col 1"),
+            ("midi(channel: 1, name: \"\")", "midi() 'name' must not be empty at line 2 col 1"),
+            ("midi(channel: 1, name: \"pad\", id: 1)", "midi() 'id' requires a quoted string at line 2 col 1"),
+            ("midi(channel: 1, name: \"pad\", id: \"\")", "midi() 'id' must not be empty at line 2 col 1"),
+            ("audio(1, 2, 3, 4)", "audio() channel, name and id are keyword-only at line 2 col 1"),
+            ("audio(band: 1, bogus: 2)", "audio() unknown parameter 'bogus' at line 2 col 1. Valid: band, min, max, channel, name, id"),
+            ("audio(1, 2, 3, band: 4)", "audio() has an excess positional argument at line 2 col 1"),
+            ("audio()", "audio() requires 'band' argument at line 2 col 1"),
+            ("audio(band: 1, id: \"mic\")", "audio() 'id' requires readable 'name' at line 2 col 1"),
+            ("audio(band: 1, name: \"mic\")", "audio() selected device requires both 'name' and 'channel' at line 2 col 1"),
+            ("audio(band: 1, channel: 1, name: 1)", "audio() 'name' requires a quoted string at line 2 col 1"),
+            ("audio(band: 1, channel: 1, name: \"\")", "audio() 'name' must not be empty at line 2 col 1"),
+            ("audio(band: 1, channel: 1, name: \"mic\", id: 1)", "audio() 'id' requires a quoted string at line 2 col 1"),
+            ("audio(band: 1, channel: 1, name: \"mic\", id: \"\")", "audio() 'id' must not be empty at line 2 col 1"),
+        ]
+        registry = EffectRegistry.load_from_directory()
+        for expr, expected_msg in cases:
+            src = f"search synth\n{expr}"
+            with self.subTest(expr=expr):
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    parse(lex(src), registry)
+                err = ctx.exception
+                self.assertEqual(str(err), expected_msg)
+                diag = err.diagnostic
+                self.assertIsNotNone(diag)
+                self.assertEqual(diag["code"], "P003")
+                self.assertEqual(diag["stage"], "parser")
+                self.assertEqual(diag["severity"], "error")
+                self.assertEqual(diag["message"], expected_msg)
+                self.assertEqual(diag["location"], {"line": 2, "column": 1})
+                self.assertIsNone(diag["span"])
+
+        # coordinates with CRLF, tab, and surrogate pairs
+        utf_src = 'search synth\r\n\tlet x = "😀"; let y = midi()'
+        with self.assertRaises(DslSyntaxError) as ctx:
+            parse(lex(utf_src), registry)
+        err = ctx.exception
+        self.assertEqual(err.diagnostic["code"], "P003")
+        self.assertEqual(err.diagnostic["location"], {"line": 2, "column": 24})
+
+    def test_parser_structured_diagnostics_p004_search(self):
+        missing_msg = (
+            "Missing required 'search' directive. Every program must start with 'search <namespace>, ...' to specify namespace search order."
+        )
+        cases = [
+            ("empty program", "", missing_msg, 1, 1),
+            ("missing directive after statements", "let x = 1", missing_msg, 1, 10),
+            ("duplicate search directive", "search synth\nsearch filter", "Only one search directive is allowed per program at line 2 col 1", 2, 1),
+            ("misplaced search directive", "let x = 1\nsearch synth", "'search' directive must appear before other statements at line 2 col 1", 2, 1),
+            ("nested search directive", "search synth\nif (true) {\n  search filter\n}", "'search' directive is only allowed at the start of the program at line 3 col 3", 3, 3),
+            ("missing first namespace", "search", "Expected namespace identifier after search at line 1 col 7", 1, 7),
+            ("missing trailing namespace", "search synth,", "Expected namespace identifier after comma at line 1 col 14", 1, 14),
+            ("invalid namespace", "search bogus", "Invalid namespace 'bogus' at line 1 col 8. Valid namespaces: io, classicNoisedeck, synth, mixer, filter, render, points, synth3d, filter3d, user", 1, 8),
+            ("CRLF offset", "search synth\r\nsearch filter", "Only one search directive is allowed per program at line 2 col 1", 2, 1),
+            ("UTF-16 column offset", 'search synth\nlet x = "😀"; search filter', "'search' directive must appear before other statements at line 2 col 15", 2, 15),
+        ]
+        registry = EffectRegistry.load_from_directory()
+        for name, src, expected_msg, line, col in cases:
+            with self.subTest(name=name):
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    parse(lex(src), registry)
+                err = ctx.exception
+                self.assertEqual(str(err), expected_msg)
+                diag = err.diagnostic
+                self.assertIsNotNone(diag)
+                self.assertEqual(diag["code"], "P004")
+                self.assertEqual(diag["stage"], "parser")
+                self.assertEqual(diag["severity"], "error")
+                self.assertEqual(diag["message"], expected_msg)
+                self.assertEqual(diag["location"], {"line": line, "column": col})
+                self.assertIsNone(diag["span"])
+
+    def test_parser_automation_and_search_unavailable_locations(self):
+        cases = [
+            ({}, "undefined", "undefined"),
+            ({"line": 1}, "1", "undefined"),
+            ({"line": 0, "col": 1}, "0", "1"),
+            ({"line": 1, "col": float("nan")}, "1", "NaN"),
+        ]
+        registry = EffectRegistry.load_from_directory()
+        for coordinates, line_str, col_str in cases:
+            with self.subTest(coordinates=coordinates):
+                tokens = [
+                    {"type": "SEARCH", "lexeme": "search", "line": 1, "col": 1},
+                    {"type": "IDENT", "lexeme": "synth", "line": 1, "col": 8},
+                    {"type": "IDENT", "lexeme": "midi", **coordinates},
+                    {"type": "LPAREN", "lexeme": "(", "line": 2, "col": 5},
+                    {"type": "RPAREN", "lexeme": ")", "line": 2, "col": 6},
+                    {"type": "EOF", "lexeme": "", "line": 2, "col": 7},
+                ]
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    parse(tokens, registry)
+                err = ctx.exception
+                expected_msg = f"midi() requires 'channel' or 'zone' argument at line {line_str} col {col_str}"
+                self.assertEqual(str(err), expected_msg)
+                self.assertEqual(
+                    err.diagnostic,
+                    {
+                        "code": "P003",
+                        "stage": "parser",
+                        "severity": "error",
+                        "message": expected_msg,
+                        "location": None,
+                        "span": None,
+                    },
+                )
+
+                eof_tokens = [{"type": "EOF", "lexeme": "", **coordinates}]
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    parse(eof_tokens, registry)
+                err = ctx.exception
+                missing_msg = (
+                    "Missing required 'search' directive. Every program must start with 'search <namespace>, ...' to specify namespace search order."
+                )
+                self.assertEqual(str(err), missing_msg)
+                self.assertEqual(
+                    err.diagnostic,
+                    {
+                        "code": "P004",
+                        "stage": "parser",
+                        "severity": "error",
+                        "message": missing_msg,
+                        "location": None,
+                        "span": None,
+                    },
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
