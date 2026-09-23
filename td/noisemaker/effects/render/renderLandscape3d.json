@@ -161,6 +161,15 @@
       "uniform": "fieldOfView",
       "min": 10,
       "max": 150
+    },
+    "filtering": {
+      "type": "int",
+      "default": 1,
+      "define": "FILTERING",
+      "choices": {
+        "isosurface": 0,
+        "voxel": 1
+      }
     }
   },
   "passes": [

@@ -87,19 +87,21 @@ def lex(src):
     def fail(code, message, start, end):
         error_line = 1
         column = 1
-        for offset in range(start):
-            if src[offset] == '\n':
+        for ch_ in src[:start]:
+            if ch_ == '\n':
                 error_line += 1
                 column = 1
             else:
-                column += 1
+                column += 2 if ord(ch_) > 0xFFFF else 1
+        start_u16 = len(src[:start].encode("utf-16-le")) // 2
+        end_u16 = len(src[:end].encode("utf-16-le")) // 2
         diag = {
             'code': code,
             'stage': _diag.stage(code),
             'severity': _diag.severity(code),
             'message': message,
             'location': {'line': error_line, 'column': column},
-            'span': {'start': start, 'end': end},
+            'span': {'start': start_u16, 'end': end_u16},
         }
         raise DslSyntaxError(message, line=error_line, col=column, diagnostic=diag)
 
@@ -125,7 +127,7 @@ def lex(src):
             while j < n and src[j] != '\n':
                 j += 1
             tokens.append(Token(T.COMMENT, src[i:j], start_line, start_col))
-            col += j - i
+            col += len(src[i:j].encode("utf-16-le")) // 2
             i = j
             continue
 
@@ -139,7 +141,7 @@ def lex(src):
                     end_line += 1
                     end_col = 1
                 else:
-                    end_col += 1
+                    end_col += 2 if ord(src[j]) > 0xFFFF else 1
                 j += 1
             if j >= n:
                 fail('L003', f"Unterminated comment at line {start_line} col {start_col}", i, n)
@@ -271,7 +273,7 @@ def lex(src):
                     j += 1
                 expr = src[expr_start:j].strip()
                 tokens.append(Token(T.FUNC, expr, start_line, start_col))
-                col += j - i
+                col += len(src[i:j].encode("utf-16-le")) // 2
                 i = j
                 continue
             # else fall through: '(' handled by single-char punctuation below
@@ -311,9 +313,9 @@ def lex(src):
             # multi-line col fixup (reference/01 §1.4 rule 15)
             lines = content.split('\n')
             if len(lines) > 1:
-                col = len(lines[-1]) + 4
+                col = len(lines[-1].encode("utf-16-le")) // 2 + 4
             else:
-                col += j - i + 3
+                col += len(src[i:j + 3].encode("utf-16-le")) // 2
             i = j + 3
             continue
 
@@ -330,7 +332,7 @@ def lex(src):
                 fail('L002', f"Unterminated string literal at line {line} col {col}", i, j)
             content = src[i + 1:j]
             tokens.append(Token(T.STRING, content, start_line, start_col))
-            col += j - i + 1
+            col += len(src[i:j + 1].encode("utf-16-le")) // 2
             i = j + 1
             continue
 

@@ -17,10 +17,12 @@ AST nodes are plain dicts (ast.NodeKind type strings). Kwargs are plain dicts �
 preserve insertion order, matching the reference's order-significant JS kwarg objects.
 """
 
+import math
+
 from . import ast
 from .ast import NodeKind as K
-from .token import TokenType as T
-from .dsl_syntax_error import DslSyntaxError
+from .token import TokenType as T, Token
+from .dsl_syntax_error import DslSyntaxError, coord_str
 
 _EXPR_START = frozenset([
     T.PLUS, T.MINUS, T.NUMBER, T.HEX, T.FUNC, T.STRING, T.IDENT, T.OUTPUT_REF, T.SOURCE_REF,
@@ -42,9 +44,20 @@ _NAMESPACE_TOKENS = frozenset([
 _OSC_KWARG_KEYS = frozenset(['type', 'min', 'max', 'speed', 'offset', 'seed'])
 
 
+from .effect_registry import EffectRegistry
+
+
 def parse(tokens, registry=None):
     """Entry point — parse a token list into a Program AST dict (reference/01 §3.1)."""
-    return _Parser(tokens, registry)._parse_program()
+    if registry is None:
+        registry = EffectRegistry()
+    normalized = []
+    for tok in tokens:
+        if isinstance(tok, dict):
+            normalized.append(Token(tok.get('type'), tok.get('lexeme', ''), tok.get('line'), tok.get('col', tok.get('column'))))
+        else:
+            normalized.append(tok)
+    return _Parser(normalized, registry)._parse_program()
 
 
 class _Parser:
@@ -72,7 +85,35 @@ class _Parser:
         t = self._peek()
         if t.type == type_:
             return self._advance()
-        raise DslSyntaxError.at(msg, t.line, t.col)
+
+        line_val = getattr(t, 'line', None)
+        col_val = getattr(t, 'col', None)
+
+        msg_str = "%s at line %s col %s" % (msg, coord_str(line_val), coord_str(col_val))
+
+        code = "P002" if type_ == T.RPAREN else "P001"
+        has_location = (
+            isinstance(line_val, int)
+            and not isinstance(line_val, bool)
+            and line_val > 0
+            and isinstance(col_val, int)
+            and not isinstance(col_val, bool)
+            and col_val > 0
+        )
+        diagnostic = {
+            "code": code,
+            "stage": "parser",
+            "severity": "error",
+            "message": msg_str,
+            "location": {"line": line_val, "column": col_val} if has_location else None,
+            "span": None,
+        }
+        raise DslSyntaxError(
+            msg_str,
+            line=line_val if has_location else None,
+            col=col_val if has_location else None,
+            diagnostic=diagnostic,
+        )
 
     def _collect_comments(self):
         comments = []

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """App-free regressions for validator contracts mirrored from upstream."""
 
+import math
 import sys
 import unittest
 from pathlib import Path
@@ -295,6 +296,173 @@ class ValidatorContractTests(unittest.TestCase):
                 self.assertEqual(diag['message'], message)
                 self.assertEqual(diag['location'], location)
                 self.assertEqual(diag['span'], span)
+
+    def test_parser_structured_diagnostics(self):
+        cases = [
+            (
+                "opening parenthesis",
+                "search synth\nrender o0",
+                "P001",
+                "Expect '(' at line 2 col 8",
+                2,
+                8,
+            ),
+            (
+                "closing parenthesis",
+                "search synth\nrender(o0",
+                "P002",
+                "Expect ')' at line 2 col 10",
+                2,
+                10,
+            ),
+            (
+                "identifier",
+                "search synth\nlet = 1",
+                "P001",
+                "Expected identifier at line 2 col 5",
+                2,
+                5,
+            ),
+            (
+                "assignment sign",
+                "search synth\nlet x 1",
+                "P001",
+                "Expect '=' at line 2 col 7",
+                2,
+                7,
+            ),
+            (
+                "block opening",
+                "search synth\nif(true) return 1",
+                "P001",
+                "Expect '{' at line 2 col 10",
+                2,
+                10,
+            ),
+            (
+                "end of input",
+                "search synth\nrender(o0) xyz",
+                "P001",
+                "Expected end of input at line 2 col 12",
+                2,
+                12,
+            ),
+            (
+                "call closing parenthesis",
+                "search synth\nfoo(1",
+                "P002",
+                "Expect ')' at line 2 col 6",
+                2,
+                6,
+            ),
+            (
+                "write3d separator",
+                "search synth\nfoo().write3d(tex3d0 geo0)",
+                "P001",
+                "Expect ',' between tex3d and geo in write3d() at line 2 col 22",
+                2,
+                22,
+            ),
+            (
+                "CRLF and tab offsets",
+                "// 😀\r\nsearch synth\r\n\trender(o0",
+                "P002",
+                "Expect ')' at line 3 col 11",
+                3,
+                11,
+            ),
+            (
+                "UTF-16 column",
+                'search synth\nlet x = "😀"; render o0',
+                "P001",
+                "Expect '(' at line 2 col 22",
+                2,
+                22,
+            ),
+        ]
+
+        for name, src, code, message, line, col in cases:
+            with self.subTest(name=name, code=code):
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    parse(lex(src))
+                err = ctx.exception
+                self.assertEqual(str(err), message)
+                diag = err.diagnostic
+                self.assertIsNotNone(diag)
+                self.assertEqual(diag["code"], code)
+                self.assertEqual(diag["stage"], "parser")
+                self.assertEqual(diag["severity"], "error")
+                self.assertEqual(diag["message"], message)
+                self.assertEqual(diag["location"], {"line": line, "column": col})
+                self.assertIsNone(diag["span"])
+
+    def test_parser_diagnostic_explicit_unavailable_locations(self):
+        cases = [
+            ({}, "undefined", "undefined"),
+            ({"line": 1}, "1", "undefined"),
+            ({"line": 0, "col": 1}, "0", "1"),
+            ({"line": 1, "col": float("nan")}, "1", "NaN"),
+        ]
+
+        for coordinates, line_str, col_str in cases:
+            with self.subTest(coordinates=coordinates):
+                tokens = lex("search synth\nrender o0")
+                modified = []
+                for t in tokens:
+                    if t.type == "OUTPUT_REF":
+                        d = {"type": t.type, "lexeme": t.lexeme}
+                        d.update(coordinates)
+                        modified.append(d)
+                    else:
+                        modified.append(t)
+
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    parse(modified)
+                err = ctx.exception
+                expected_msg = f"Expect '(' at line {line_str} col {col_str}"
+                self.assertEqual(str(err), expected_msg)
+                self.assertEqual(
+                    err.diagnostic,
+                    {
+                        "code": "P001",
+                        "stage": "parser",
+                        "severity": "error",
+                        "message": expected_msg,
+                        "location": None,
+                        "span": None,
+                    },
+                )
+
+    def test_renderLandscape3d_filtering_define_choices(self):
+        default_graph = compile_dsl(
+            "search synth, synth3d, render\n"
+            "heightmap3d(heightTex: read(o1), tex: read(o2)).renderLandscape3d().write(o0)\n"
+            "render(o0)\n"
+        )
+        iso_graph = compile_dsl(
+            "search synth, synth3d, render\n"
+            "heightmap3d(heightTex: read(o1), tex: read(o2)).renderLandscape3d(filtering: isosurface).write(o0)\n"
+            "render(o0)\n"
+        )
+        voxel_graph = compile_dsl(
+            "search synth, synth3d, render\n"
+            "heightmap3d(heightTex: read(o1), tex: read(o2)).renderLandscape3d(filtering: voxel).write(o0)\n"
+            "render(o0)\n"
+        )
+
+        default_pass = next(
+            p for p in default_graph["passes"] if p["effectKey"] == "render.renderLandscape3d"
+        )
+        iso_pass = next(
+            p for p in iso_graph["passes"] if p["effectKey"] == "render.renderLandscape3d"
+        )
+        voxel_pass = next(
+            p for p in voxel_graph["passes"] if p["effectKey"] == "render.renderLandscape3d"
+        )
+
+        self.assertEqual(default_pass["defines"]["FILTERING"], 1)
+        self.assertEqual(iso_pass["defines"]["FILTERING"], 0)
+        self.assertEqual(voxel_pass["defines"]["FILTERING"], 1)
 
 
 if __name__ == "__main__":
