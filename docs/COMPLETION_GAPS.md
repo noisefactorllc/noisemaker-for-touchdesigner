@@ -1,0 +1,124 @@
+# noisemaker-for-touchdesigner: completion gaps
+
+Current compatibility matrix: [compatibility report](COMPATIBILITY.md).
+
+## 1. Scope and source revisions
+
+Date: 2026-09-24. Reviewed source: [`66426bc41c2b85940322ae843ba04f41b7905ce4`](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/commit/66426bc41c2b85940322ae843ba04f41b7905ce4).
+Local HEAD matched remote `main` before checks. The operator requested missing registers for all remaining eligible ports in this run.
+This is an initial register with bounded evidence, not a completed port audit or release approval.
+No implementation, effect coverage, or parity checkpoint changed. Full audits remain in the existing rotation.
+
+TouchDesigner Python compiler and native operator network. README requires an activated GPU desktop and identifies build 2025.32820 on Apple Silicon. [Contract](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md).
+
+Latest status entry records upstream `5b81e04f8a4b53c2be43b8e328cee0c3365f352f`. Runtime and rendered evidence beyond that revision remain unverified.
+Current Noisemaker upstream at discovery: `c9ee8a049b2b63cd300da67c01ee40baf29dc288`. Current CPU authority at discovery: `f2eb495d70abcb74e3632e7a652a4f83e4f3b11e`.
+These heads identify review targets, not qualification results. No authority evidence was regenerated.
+
+Served kit `0.1.20` identifies source `66426bc41c2b85940322ae843ba04f41b7905ce4`. [Deployment metadata](https://kits.noisedeck.app/touchdesigner/0/deployment-meta.json). Inventory and compatibility metadata were retrieved. Artifact bytes and installation were not fully checked.
+
+Only the gap document and README link are publication candidates. Their paths do not trigger the current workflows.
+Publication uses a document-only commit on `main`. The containing commit identifies this document's publication revision.
+Exact commit, remote document hashes, and downstream results are retained in the shared run record.
+
+## 2. Completion claims
+
+| Claim ID | Claim source | Claimed scope | Finding | Evidence |
+|---|---|---|---|---|
+| CLAIM-001 | [Source claim](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/STATUS.md) | Self-contained DSL rendering, 2D and 3D effects, simulations, and reusable TOP output. Historical shader and graph gates are separate evidence. | partial | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. [Local evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-tests.json). |
+| CLAIM-002 | [README workflow](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Human usability: installation, first output, errors, and recovery | unverified | The complete installed workflow was not observed during this register pass. GAP-002. |
+| CLAIM-003 | [Official ecosystem documentation](https://derivative.ca/UserGuide/System_Requirements) | Ecosystem fit and supported versions | partial | Source entry points were examined. Installed integration and the supported-version matrix remain open. GAP-002. |
+| CLAIM-004 | [Distribution description](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Release readiness | unverified | Metadata and CI alone do not qualify the actual installed artifact. GAP-003. |
+| CLAIM-005 | [Exact-source Actions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/actions?query=head_sha%3A66426bc41c2b85940322ae843ba04f41b7905ce4) | Exact-source automated evidence | supported | [Export kit](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/actions/runs/35955443239): `success`. This finding covers workflow status only. |
+
+## 3. Methods and evidence
+
+Environment: macOS 26.5, Darwin arm64. Source-file SHA-256 records bind the local checks to the reviewed revision.
+[Source hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/noisemaker-for-touchdesigner-source-hashes.json). [Remote evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/noisemaker-for-touchdesigner-remote.json).
+
+Executed bounded command:
+
+```sh
+python3 -m unittest discover -s parity -p "test_*.py"
+```
+
+76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. Command exit code: 0. [Local evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-tests.json).
+Unit and harness checks do not measure rendered parity. No new image denominator or tolerance is inferred from these results.
+
+Official reference: [TouchDesigner 2025 requirements, accessed 2026-09-24](https://derivative.ca/UserGuide/System_Requirements).
+Historical denominators and tolerances remain in the original source documents. Their current-source validity remains an open verification task.
+
+| Developer outcome | This pass | Required remaining check |
+|---|---|---|
+| Installation | Source instructions and package declarations inspected | Install the actual distribution in an isolated consumer. |
+| First useful result | Bounded checks only | Create an isolated Base COMP, execute the documented NMRenderer example, connect its TOP, resize, recover from invalid DSL, and reopen the project. |
+| Normal host workflow | Not fully observed | Exercise ordinary parameters, external inputs, resize, state, and cleanup. |
+| Error and recovery | Selected tests only where listed above | Fail through the installed public entry point, correct input, and render again. |
+| Distribution | Metadata inspection only | Load the served kit in an isolated activated project. Check source paths, TOP output, saved-project relocation, notices, and removal. |
+| Accessibility | Not observed | Check keyboard, focus, labels, and errors for provided interfaces. For a headless library, check CLI diagnostics instead. |
+
+No global installation, user-project modification, manual deployment, or manual release occurred.
+Native applications present on the machine are not evidence of a qualified host workflow.
+
+## 4. Known gaps
+
+P1 means false completion or major correctness failure. P2 means coverage or integration uncertainty. P3 means documentation inconsistency.
+These initial entries record missing qualification, not inferred implementation defects. No gap closes during this pass.
+
+### GAP-001: current authority and parity qualification
+
+- Status: open. Priority: P2. Category: verification.
+- Affected scope: td/noisemaker/, td/make_bootstrap.py, parity/, README.md, STATUS.md
+- Expected behavior: Each supported claim has reproducible evidence tied to the port and authority revisions.
+- Observed behavior: Unit tests do not establish an activated host workflow. The current official build is 2025.33230, newer than README qualification 2025.32820. [Official releases](https://derivative.ca/UserGuide/Release_Notes).
+- Evidence: [Historical claim](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/STATUS.md) and the bounded checks in section 3.
+- Next action: Run current compiler and native render gates in an activated host. Preserve chaotic, timed, skipped, and platform-specific cases.
+- Dependencies: Resolve immutable authority inputs before comparison. Retain historical goldens and their provenance.
+- Acceptance criteria: Record every applicable case, parameter choice, exclusion, error, and tolerance. Pass the declared contract without silently reducing coverage.
+- Required checks: Existing compiler and parity entry points from the README, with raw results and exact source hashes.
+- Last verification: 2026-09-24. Full behavior qualification remains unverified.
+
+### GAP-002: installed developer workflow qualification
+
+- Status: open. Priority: P2. Category: usability.
+- Affected scope: Public API, README examples, supported host versions, and lifecycle behavior.
+- Expected behavior: Developers can install, produce useful output, integrate it, diagnose errors, recover, and remove the package.
+- Observed behavior: This pass did not observe the complete installed workflow or supported-platform matrix.
+- Evidence: [README](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md), [ecosystem reference](https://derivative.ca/UserGuide/System_Requirements), and section 3.
+- Next action: Create an isolated Base COMP, execute the documented NMRenderer example, connect its TOP, resize, recover from invalid DSL, and reopen the project.
+- Dependencies: Use an isolated consumer and the intended host version. Identify any required GPU, license, or external input before testing.
+- Acceptance criteria: Retain the installed artifact hash, interaction steps, meaningful output, recovery result, and cleanup result.
+- Required checks: Test minimum and current supported versions. Measure cancellation and file preservation where relevant. Record unavailable platforms explicitly.
+- Last verification: 2026-09-24. Source inspection does not close this gap.
+
+### GAP-003: distribution and release qualification
+
+- Status: open. Priority: P2. Category: release.
+- Affected scope: Distribution artifact, dependency metadata, notices, platform promises, and release evidence.
+- Expected behavior: The delivered artifact contains required files and supports its documented installation and first useful result.
+- Observed behavior: Distribution metadata was inspected. Complete artifact reproduction, installation, upgrades, and removal remain unverified.
+- Evidence: [Package instructions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md), exact-source CI in section 2, and recorded distribution observations in section 1.
+- Next action: Load the served kit in an isolated activated project. Check source paths, TOP output, saved-project relocation, notices, and removal.
+- Dependencies: Complete GAP-002 for the release candidate. Distinguish source CI from downstream publication and host qualification.
+- Acceptance criteria: Match artifact bytes to the inventory. Check licenses and dependencies. Pass installation, example execution, upgrade, and removal.
+- Required checks: Inspect required CI jobs at the exact source SHA. Count skips and verify actual render legs, not green summaries.
+- Last verification: 2026-09-24. No package or release approval follows from this register.
+
+## 5. Ordered next actions
+
+1. Resolve authority revisions and retained evidence for GAP-001. Preserve all previous comparisons and exclusions.
+2. Run the bounded installed workflow for GAP-002. Record output, errors, recovery, host version, and resource cleanup.
+3. Execute the declared parity cases for GAP-001. Keep compilation, structure, rendered pixels, and platform qualification separate.
+4. Qualify the actual distribution for GAP-003 after the workflow passes. Verify exact-source CI and required artifact contents.
+5. Update this register with measured results. Close entries only when their acceptance criteria pass.
+
+Implementation changes belong to the separate implementation job. This register does not authorize further effect ports or checkpoint advancement.
+
+## 6. Pass history
+
+| Date | Source SHA | Changes | Tested scope | Remaining limits |
+|---|---|---|---|---|
+| 2026-09-24 | `66426bc41c2b85940322ae843ba04f41b7905ce4` | Created the requested six-section register and README link. No closures. | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. | Full audit, current parity, installed workflows, platform qualification, and release readiness remain open. |
+
+Run ID: `20260924-remaining-gap-documents`.
+[Operational evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents). Queue position and successful-audit timestamps remain unchanged by document creation.

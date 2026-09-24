@@ -1,0 +1,293 @@
+# noisemaker-for-touchdesigner: compatibility report
+
+## 1. Source and authority revisions
+
+Report date: 2026-09-24. Source inspected: [`66426bc41c2b85940322ae843ba04f41b7905ce4`](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/commit/66426bc41c2b85940322ae843ba04f41b7905ce4).
+Full rendered parity at this SHA: **unverified**. This is not a release approval.
+A later documentation-only commit does not change this tested source identity.
+Any runtime, package, or authority update requires fresh evidence before this report can qualify it.
+
+TouchDesigner Python compiler and native operator network. README requires an activated GPU desktop and identifies build 2025.32820 on Apple Silicon. [Source contract](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md).
+
+Latest status entry records upstream `5b81e04f8a4b53c2be43b8e328cee0c3365f352f`. Runtime and rendered evidence beyond that revision remain unverified.
+Current upstream discovery SHA: `c9ee8a049b2b63cd300da67c01ee40baf29dc288`.
+Published authority: `1.0.176`, source `c9ee8a049b2b63cd300da67c01ee40baf29dc288`.
+[Immutable published manifest](https://shaders.noisedeck.app/1.0.176/effects/manifest.json) contains 210 effect IDs.
+Its SHA-256 is `05c4d7b7744837ae90a3bb4c89e5403ff09448a74d9d7e824abb3d719ad3314e`.
+These IDs do not define complete parameter, state, input, or platform coverage.
+
+Served kit `0.1.20` records `66426bc41c2b85940322ae843ba04f41b7905ce4`. [Source metadata](https://kits.noisedeck.app/touchdesigner/0/deployment-meta.json).
+Historical measurements remain bound to their original revisions in [completion gaps](COMPLETION_GAPS.md).
+
+## 2. Host and distribution matrix
+
+| Dimension | Status | Measured scope or limit |
+|---|---|---|
+| Source-level checks | verified | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. |
+| Actual host rendering | unverified | No new complete native or browser workflow qualified by this report. |
+| Minimum and current host versions | unverified | Declared requirements are not a tested version matrix. |
+| Supported operating systems and backends | unverified | This pass does not establish Windows, Linux, and macOS coverage. |
+| Installed package and first useful result | unverified | Complete isolated installation was not qualified for this source. |
+| Parameters, external inputs, state, and chains | unverified | Full current-authority combinations remain unmeasured. |
+| Invalid input and recovery | unverified | Unit checks do not establish every installed public entry point. |
+| Upgrade, removal, and resource cleanup | unverified | Prior defects and missing workflows remain in the gap register. |
+| Accessibility of provided controls | unverified | Keyboard, focus, labels, and diagnostics need host observations where applicable. |
+| Release readiness | blocked | Full parity, installation, host, and artifact evidence remain incomplete. |
+
+## 3. Parity coverage
+
+Full parity requires complete applicable coverage with no skips or missing cases.
+Historical NEAR, CHAOS, and tolerated differences do not count as strict equality.
+The existing numerical contracts remain separate from exact comparison. This report does not change tolerances or goldens.
+Unknown values mean `not measured`, never zero.
+
+| Gate | Expected cases | Executed | Strict passes | Failures | Skips | Status |
+|---|---|---|---|---|---|---|
+| Current full render suite | not measured | not measured | not measured | not measured | not measured | unverified |
+
+Served compatibility inventory declares 207 effect IDs. Declaration does not establish execution or parity.
+IDs absent from the served declaration: `synth/media`, `synth/scope`, `synth/spectrum`.
+Missing effects remain visible toward the full-parity goal. Contract exclusions do not become successful tests.
+
+### Effect inventory
+
+| Effect ID | Declared in served kit | Current full parity |
+|---|---|---|
+| `classicNoisedeck/bitEffects` | yes | unverified |
+| `classicNoisedeck/caustic` | yes | unverified |
+| `classicNoisedeck/cellNoise` | yes | unverified |
+| `classicNoisedeck/cellRefract` | yes | unverified |
+| `classicNoisedeck/coalesce` | yes | unverified |
+| `classicNoisedeck/colorLab` | yes | unverified |
+| `classicNoisedeck/composite` | yes | unverified |
+| `classicNoisedeck/effects` | yes | unverified |
+| `classicNoisedeck/fractal` | yes | unverified |
+| `classicNoisedeck/glitch` | yes | unverified |
+| `classicNoisedeck/kaleido` | yes | unverified |
+| `classicNoisedeck/lensDistortion` | yes | unverified |
+| `classicNoisedeck/moodscape` | yes | unverified |
+| `classicNoisedeck/noise` | yes | unverified |
+| `classicNoisedeck/noise3d` | yes | unverified |
+| `classicNoisedeck/refract` | yes | unverified |
+| `classicNoisedeck/shapeMixer` | yes | unverified |
+| `classicNoisedeck/shapes` | yes | unverified |
+| `classicNoisedeck/shapes3d` | yes | unverified |
+| `classicNoisedeck/splat` | yes | unverified |
+| `filter/adjust` | yes | unverified |
+| `filter/bloom` | yes | unverified |
+| `filter/blur` | yes | unverified |
+| `filter/bulge` | yes | unverified |
+| `filter/celShading` | yes | unverified |
+| `filter/channel` | yes | unverified |
+| `filter/chroma` | yes | unverified |
+| `filter/chromaticAberration` | yes | unverified |
+| `filter/chrome` | yes | unverified |
+| `filter/clouds` | yes | unverified |
+| `filter/colorReplace` | yes | unverified |
+| `filter/convolutionFeedback` | yes | unverified |
+| `filter/corrupt` | yes | unverified |
+| `filter/craquelure` | yes | unverified |
+| `filter/crt` | yes | unverified |
+| `filter/degauss` | yes | unverified |
+| `filter/deriv` | yes | unverified |
+| `filter/directionalBlur` | yes | unverified |
+| `filter/dither` | yes | unverified |
+| `filter/edge` | yes | unverified |
+| `filter/emboss` | yes | unverified |
+| `filter/extrude` | yes | unverified |
+| `filter/feedback` | yes | unverified |
+| `filter/fibers` | yes | unverified |
+| `filter/flipMirror` | yes | unverified |
+| `filter/fxaa` | yes | unverified |
+| `filter/glowingEdge` | yes | unverified |
+| `filter/glyphMap` | yes | unverified |
+| `filter/grade` | yes | unverified |
+| `filter/grain` | yes | unverified |
+| `filter/grime` | yes | unverified |
+| `filter/halftone` | yes | unverified |
+| `filter/hatch` | yes | unverified |
+| `filter/highPass` | yes | unverified |
+| `filter/historicPalette` | yes | unverified |
+| `filter/invert` | yes | unverified |
+| `filter/lens` | yes | unverified |
+| `filter/lensFlare` | yes | unverified |
+| `filter/lensWarp` | yes | unverified |
+| `filter/lightLeak` | yes | unverified |
+| `filter/lighting` | yes | unverified |
+| `filter/lowPoly` | yes | unverified |
+| `filter/median` | yes | unverified |
+| `filter/morphology` | yes | unverified |
+| `filter/mosaicTiles` | yes | unverified |
+| `filter/motionBlur` | yes | unverified |
+| `filter/normalMap` | yes | unverified |
+| `filter/normalize` | yes | unverified |
+| `filter/octaveWarp` | yes | unverified |
+| `filter/oilPaint` | yes | unverified |
+| `filter/osd` | yes | unverified |
+| `filter/outline` | yes | unverified |
+| `filter/palette` | yes | unverified |
+| `filter/parallax` | yes | unverified |
+| `filter/patchwork` | yes | unverified |
+| `filter/photocopy` | yes | unverified |
+| `filter/pinch` | yes | unverified |
+| `filter/pixelSort` | yes | unverified |
+| `filter/pixels` | yes | unverified |
+| `filter/plasticWrap` | yes | unverified |
+| `filter/polar` | yes | unverified |
+| `filter/pondRipples` | yes | unverified |
+| `filter/posterize` | yes | unverified |
+| `filter/prismaticAberration` | yes | unverified |
+| `filter/reindex` | yes | unverified |
+| `filter/relief` | yes | unverified |
+| `filter/repeat` | yes | unverified |
+| `filter/reverb` | yes | unverified |
+| `filter/ridge` | yes | unverified |
+| `filter/rotate` | yes | unverified |
+| `filter/scale` | yes | unverified |
+| `filter/scanlineError` | yes | unverified |
+| `filter/scatter` | yes | unverified |
+| `filter/scratches` | yes | unverified |
+| `filter/scroll` | yes | unverified |
+| `filter/seamless` | yes | unverified |
+| `filter/sharpen` | yes | unverified |
+| `filter/simpleAberration` | yes | unverified |
+| `filter/sine` | yes | unverified |
+| `filter/skew` | yes | unverified |
+| `filter/smooth` | yes | unverified |
+| `filter/smoothstep` | yes | unverified |
+| `filter/snow` | yes | unverified |
+| `filter/sobel` | yes | unverified |
+| `filter/spatter` | yes | unverified |
+| `filter/spinBlur` | yes | unverified |
+| `filter/spiral` | yes | unverified |
+| `filter/spookyTicker` | yes | unverified |
+| `filter/stamp` | yes | unverified |
+| `filter/step` | yes | unverified |
+| `filter/stipple` | yes | unverified |
+| `filter/strayHair` | yes | unverified |
+| `filter/strokes` | yes | unverified |
+| `filter/temporalAberration` | yes | unverified |
+| `filter/tetraColorArray` | yes | unverified |
+| `filter/tetraCosine` | yes | unverified |
+| `filter/text` | yes | unverified |
+| `filter/texture` | yes | unverified |
+| `filter/threshold` | yes | unverified |
+| `filter/tile` | yes | unverified |
+| `filter/tint` | yes | unverified |
+| `filter/translate` | yes | unverified |
+| `filter/tunnel` | yes | unverified |
+| `filter/unsharpMask` | yes | unverified |
+| `filter/vaseline` | yes | unverified |
+| `filter/vignette` | yes | unverified |
+| `filter/warp` | yes | unverified |
+| `filter/watercolor` | yes | unverified |
+| `filter/waves` | yes | unverified |
+| `filter/wind` | yes | unverified |
+| `filter/wobble` | yes | unverified |
+| `filter/wormhole` | yes | unverified |
+| `filter/zoomBlur` | yes | unverified |
+| `filter3d/flow3d` | yes | unverified |
+| `filter3d/palette3d` | yes | unverified |
+| `mixer/alphaMask` | yes | unverified |
+| `mixer/applyMode` | yes | unverified |
+| `mixer/blendMode` | yes | unverified |
+| `mixer/cellSplit` | yes | unverified |
+| `mixer/centerMask` | yes | unverified |
+| `mixer/channelCombine` | yes | unverified |
+| `mixer/distortion` | yes | unverified |
+| `mixer/focusBlur` | yes | unverified |
+| `mixer/mashup` | yes | unverified |
+| `mixer/patternMix` | yes | unverified |
+| `mixer/shadow` | yes | unverified |
+| `mixer/shapeMask` | yes | unverified |
+| `mixer/split` | yes | unverified |
+| `mixer/thresholdMix` | yes | unverified |
+| `mixer/uvRemap` | yes | unverified |
+| `points/attractor` | yes | unverified |
+| `points/buddhabrot` | yes | unverified |
+| `points/dla` | yes | unverified |
+| `points/flock` | yes | unverified |
+| `points/flow` | yes | unverified |
+| `points/heightGrid` | yes | unverified |
+| `points/hydraulic` | yes | unverified |
+| `points/lenia` | yes | unverified |
+| `points/life` | yes | unverified |
+| `points/physarum` | yes | unverified |
+| `points/physical` | yes | unverified |
+| `render/loopBegin` | yes | unverified |
+| `render/loopEnd` | yes | unverified |
+| `render/meshLoader` | yes | unverified |
+| `render/meshRender` | yes | unverified |
+| `render/pointsBillboardRender` | yes | unverified |
+| `render/pointsEmit` | yes | unverified |
+| `render/pointsRender` | yes | unverified |
+| `render/render3d` | yes | unverified |
+| `render/renderCubemap3d` | yes | unverified |
+| `render/renderCubemapSurface` | yes | unverified |
+| `render/renderLandscape3d` | yes | unverified |
+| `render/renderLit3d` | yes | unverified |
+| `synth/bitwise` | yes | unverified |
+| `synth/cell` | yes | unverified |
+| `synth/cellularAutomata` | yes | unverified |
+| `synth/curl` | yes | unverified |
+| `synth/gabor` | yes | unverified |
+| `synth/gradient` | yes | unverified |
+| `synth/julia` | yes | unverified |
+| `synth/mandala` | yes | unverified |
+| `synth/mandelbrot` | yes | unverified |
+| `synth/media` | no | unverified |
+| `synth/mnca` | yes | unverified |
+| `synth/modPattern` | yes | unverified |
+| `synth/navierStokes` | yes | unverified |
+| `synth/newton` | yes | unverified |
+| `synth/noise` | yes | unverified |
+| `synth/osc2d` | yes | unverified |
+| `synth/pattern` | yes | unverified |
+| `synth/perlin` | yes | unverified |
+| `synth/polygon` | yes | unverified |
+| `synth/reactionDiffusion` | yes | unverified |
+| `synth/remap` | yes | unverified |
+| `synth/roll` | yes | unverified |
+| `synth/sacredGeometry` | yes | unverified |
+| `synth/scope` | no | unverified |
+| `synth/shape` | yes | unverified |
+| `synth/solid` | yes | unverified |
+| `synth/spectrum` | no | unverified |
+| `synth/subdivide` | yes | unverified |
+| `synth/testPattern` | yes | unverified |
+| `synth3d/cell3d` | yes | unverified |
+| `synth3d/cellularAutomata3d` | yes | unverified |
+| `synth3d/flythrough3d` | yes | unverified |
+| `synth3d/fractal3d` | yes | unverified |
+| `synth3d/heightmap3d` | yes | unverified |
+| `synth3d/noise3d` | yes | unverified |
+| `synth3d/reactionDiffusion3d` | yes | unverified |
+| `synth3d/shape3d` | yes | unverified |
+
+## 4. Evidence
+
+[Bounded test evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-tests.json). [Exact-source Actions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/actions?query=head_sha%3A66426bc41c2b85940322ae843ba04f41b7905ce4).
+[This run evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents) retains commands, exit codes, source identities, and distribution metadata.
+Official ecosystem reference: [TouchDesigner 2025 requirements, accessed 2026-09-24](https://derivative.ca/UserGuide/System_Requirements).
+Source CI, export dispatch, artifact delivery, and rendered parity are separate evidence dimensions.
+A successful dispatch or unit-test summary does not establish a full rendered gate.
+
+## 5. Open compatibility limits
+
+See [GAP-001 and the complete gap register](COMPLETION_GAPS.md#4-known-gaps) for evidence, dependencies, and acceptance criteria.
+
+1. Reconcile the current authority and complete case inventory, including parameters, inputs, stateful frames, and host versions.
+2. Run the existing actual-renderer suite without skip options. Record every missing, failed, refused, or timed-out case.
+3. Verify installation, useful output, errors, recovery, upgrades, and removal with the actual distribution.
+4. Inspect exact-source CI and retain artifact hashes. Keep unresolved qualification failed or unverified.
+
+All eligible ports have equal priority. Full parity and zero skipped cases remain the goal.
+Implementation corrections remain with the separate job. This report does not advance the parity checkpoint.
+
+## 6. History
+
+| Date | Source | Result | Change |
+|---|---|---|---|
+| 2026-09-24 | `66426bc41c2b85940322ae843ba04f41b7905ce4` | Full qualification unverified | Created the requested maintained compatibility report. Preserved historical evidence and open gaps. |
+
+Run: `20260924-remaining-gap-documents`. Later audits and reviews update this report with source-bound results.
