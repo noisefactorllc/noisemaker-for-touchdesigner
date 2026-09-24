@@ -24,6 +24,7 @@ _TABLE = {
     'P003': ("Invalid automation arguments", SEVERITY_ERROR, STAGE_PARSER),
     'P004': ("Invalid search directive", SEVERITY_ERROR, STAGE_PARSER),
     'P005': ("Invalid output operation", SEVERITY_ERROR, STAGE_PARSER),
+    'P006': ("Invalid subchain", SEVERITY_ERROR, STAGE_PARSER),
     'S001': ("Unknown identifier", SEVERITY_ERROR, STAGE_SEMANTIC),
     'S002': ("Argument out of range", SEVERITY_WARNING, STAGE_SEMANTIC),
     'S003': ("Variable used before assignment", SEVERITY_ERROR, STAGE_SEMANTIC),

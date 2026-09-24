@@ -445,16 +445,15 @@ class _Parser:
                     if key == "iterations":
                         if self._peek().type != T.NUMBER:
                             p = self._peek()
-                            raise DslSyntaxError.at("Expected number value for subchain iterations", p.line, p.col)
+                            raise self._parser_error_at("P006", "Expected number value for subchain iterations", p)
                         nval = float(self._advance().lexeme)
-                        import math
                         iterations_val = int(math.floor(nval))
                         if iterations_val < 1:
                             iterations_val = 1
                     else:
                         if self._peek().type != T.STRING:
                             p = self._peek()
-                            raise DslSyntaxError.at("Expected string value for subchain " + key, p.line, p.col)
+                            raise self._parser_error_at("P006", "Expected string value for subchain " + key, p)
                         val = self._advance().lexeme
                         if key == "name":
                             name_val = val
@@ -472,7 +471,7 @@ class _Parser:
                 break
             if self._peek().type != T.DOT:
                 p = self._peek()
-                raise DslSyntaxError.at("Expected '.' before chain element in subchain body", p.line, p.col)
+                raise self._parser_error_at("P006", "Expected '.' before chain element in subchain body", p)
             self._advance()  # consume '.'
             post_dot = self._collect_comments()
             all_comments = list(leading_comments)
@@ -483,7 +482,7 @@ class _Parser:
             body.append(call)
         self._expect(T.RBRACE, "Expect '}' to end subchain body")
         if not body:
-            raise DslSyntaxError.at("Subchain body cannot be empty", token_line, token_col)
+            raise self._parser_error_at("P006", "Subchain body cannot be empty", tok)
 
         node = {'type': K.Subchain, 'name': name_val, 'id': id_val, 'body': body,
                 'loc': ast.loc(token_line, token_col)}

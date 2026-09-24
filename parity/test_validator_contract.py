@@ -722,6 +722,178 @@ class ValidatorContractTests(unittest.TestCase):
                 },
             )
 
+    def test_parser_subchain_diagnostics_p006(self):
+        cases = [
+            (
+                "non-string argument",
+                "search synth\nread(o0).subchain(name: 1) { .diagProbe() }",
+                "Expected string value for subchain name at line 2 col 25",
+                2,
+                25,
+            ),
+            (
+                "non-number iterations",
+                'search synth\nread(o0).subchain(iterations: "invalid") { .diagProbe() }',
+                "Expected number value for subchain iterations at line 2 col 31",
+                2,
+                31,
+            ),
+            (
+                "argument at EOF",
+                "search synth\nread(o0).subchain(name:",
+                "Expected string value for subchain name at line 2 col 24",
+                2,
+                24,
+            ),
+            (
+                "missing body dot",
+                "search synth\nread(o0).subchain() { diagProbe() }",
+                "Expected '.' before chain element in subchain body at line 2 col 23",
+                2,
+                23,
+            ),
+            (
+                "body at EOF",
+                "search synth\nread(o0).subchain() {",
+                "Expected '.' before chain element in subchain body at line 2 col 22",
+                2,
+                22,
+            ),
+            (
+                "empty body",
+                "search synth\nread(o0).subchain() {}",
+                "Subchain body cannot be empty at line 2 col 10",
+                2,
+                10,
+            ),
+            (
+                "comment-only body",
+                "search synth\nread(o0).subchain() { /* empty */ }",
+                "Subchain body cannot be empty at line 2 col 10",
+                2,
+                10,
+            ),
+            (
+                "CRLF tab and UTF-16 argument",
+                '// 😀\r\nsearch synth\r\n\tread(o0).subchain(name: "😀", id: 1) { .diagProbe() }',
+                "Expected string value for subchain id at line 3 col 36",
+                3,
+                36,
+            ),
+            (
+                "missing dot after comment",
+                "search synth\nread(o0).subchain() { /* 😀 */ missing() }",
+                "Expected '.' before chain element in subchain body at line 2 col 32",
+                2,
+                32,
+            ),
+            (
+                "unclosed nonempty body",
+                "search synth\nread(o0).subchain() { .diagProbe()",
+                "Expected '.' before chain element in subchain body at line 2 col 35",
+                2,
+                35,
+            ),
+        ]
+        registry = EffectRegistry.load_from_directory()
+        for name, src, message, expected_line, expected_col in cases:
+            with self.subTest(name=name):
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    parse(lex(src), registry)
+                err = ctx.exception
+                self.assertEqual(str(err), message)
+                self.assertIsNotNone(err.diagnostic)
+                self.assertEqual(
+                    err.diagnostic,
+                    {
+                        "code": "P006",
+                        "stage": "parser",
+                        "severity": "error",
+                        "message": message,
+                        "location": {"line": expected_line, "column": expected_col},
+                        "span": None,
+                    },
+                )
+
+    def test_parser_subchain_diagnostics_preserve_unavailable_caller_token_coordinates(self):
+        cases = [
+            "search synth\nread(o0).subchain(name: 1) { .diagProbe() }",
+            "search synth\nread(o0).subchain(name:",
+            "search synth\nread(o0).subchain() { diagProbe() }",
+            "search synth\nread(o0).subchain() {",
+            "search synth\nread(o0).subchain() {}",
+            "search synth\nread(o0).subchain() { /* empty */ }",
+        ]
+        coords_list = [
+            ({}, "undefined", "undefined"),
+            ({"line": 1}, "1", "undefined"),
+            ({"line": 0, "col": 1}, "0", "1"),
+            ({"line": 1, "col": float("nan")}, "1", "NaN"),
+        ]
+        registry = EffectRegistry.load_from_directory()
+        for src in cases:
+            for coords, _, _ in coords_list:
+                with self.subTest(src=src, coords=coords):
+                    tokens = [
+                        {"type": t.type, "lexeme": t.lexeme, **coords}
+                        for t in lex(src)
+                    ]
+                    with self.assertRaises(DslSyntaxError) as ctx:
+                        parse(tokens, registry)
+                    err = ctx.exception
+                    self.assertIsNotNone(err.diagnostic)
+                    self.assertEqual(err.diagnostic["code"], "P006")
+                    self.assertEqual(err.diagnostic["stage"], "parser")
+                    self.assertEqual(err.diagnostic["severity"], "error")
+                    self.assertEqual(err.diagnostic["message"], str(err))
+                    self.assertIsNone(err.diagnostic["location"])
+                    self.assertIsNone(err.diagnostic["span"])
+
+    def test_parser_subchain_syntax_preserves_expectation_precedence(self):
+        cases = [
+            ("search synth\nread(o0).subchain", "P001", "Expect '(' after subchain at line 2 col 18"),
+            ("search synth\nread(o0).subchain(name: \"test\"", "P002", "Expect ')' after subchain arguments at line 2 col 31"),
+            ("search synth\nread(o0).subchain() .diagProbe()", "P001", "Expect '{' to start subchain body at line 2 col 21"),
+        ]
+        registry = EffectRegistry.load_from_directory()
+        for src, code, message in cases:
+            with self.subTest(src=src):
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    parse(lex(src), registry)
+                err = ctx.exception
+                self.assertEqual(str(err), message)
+                self.assertIsNotNone(err.diagnostic)
+                self.assertEqual(err.diagnostic["code"], code)
+
+    def test_parser_valid_subchains(self):
+        registry = EffectRegistry.load_from_directory()
+        ast1 = parse(lex('search synth\nread(o0).subchain() { .diagProbe() }'), registry)
+        sub1 = ast1["plans"][0]["chain"][1]
+        self.assertEqual(sub1["type"], "Subchain")
+        self.assertIsNone(sub1["name"])
+        self.assertIsNone(sub1["id"])
+        self.assertNotIn("iterations", sub1)
+        self.assertEqual(len(sub1["body"]), 1)
+
+        ast2 = parse(lex('search synth\nread(o0).subchain("named") { .diagProbe() }'), registry)
+        sub2 = ast2["plans"][0]["chain"][1]
+        self.assertEqual(sub2["type"], "Subchain")
+        self.assertEqual(sub2["name"], "named")
+        self.assertIsNone(sub2["id"])
+        self.assertNotIn("iterations", sub2)
+
+        ast3 = parse(lex('search synth\nread(o0).subchain(name: "alpha", id: "a1") { .diagProbe() }'), registry)
+        sub3 = ast3["plans"][0]["chain"][1]
+        self.assertEqual(sub3["type"], "Subchain")
+        self.assertEqual(sub3["name"], "alpha")
+        self.assertEqual(sub3["id"], "a1")
+        self.assertNotIn("iterations", sub3)
+
+        ast4 = parse(lex('search synth\nread(o0).subchain(iterations: 3) { .diagProbe() }'), registry)
+        sub4 = ast4["plans"][0]["chain"][1]
+        self.assertEqual(sub4["type"], "Subchain")
+        self.assertEqual(sub4["iterations"], 3)
+
 
 if __name__ == "__main__":
     unittest.main()
