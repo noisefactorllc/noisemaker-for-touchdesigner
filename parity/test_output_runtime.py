@@ -40,6 +40,30 @@ class RecordingSink:
         self.closes.append(options)
 
 
+class DeferringSink:
+    def __init__(self, *, defer=False, fail_defer=False, use_camel_case=False):
+        self.defer = defer
+        self.fail_defer = fail_defer
+        if use_camel_case:
+            self.deferRender = self._defer
+        else:
+            self.defer_render = self._defer
+
+    def configure(self, descriptor):
+        pass
+
+    def submit(self, texture, timestamp):
+        return True
+
+    def close(self, options=None):
+        pass
+
+    def _defer(self):
+        if self.fail_defer:
+            raise RuntimeError("defer probe failed")
+        return self.defer
+
+
 class SinkManagerTests(unittest.TestCase):
     def test_configuration_submission_removal_and_failure_are_isolated(self):
         errors = []
@@ -82,6 +106,48 @@ class SinkManagerTests(unittest.TestCase):
             manager.add(sink)
         with self.assertRaises(TypeError):
             manager.add(object())
+
+    def test_should_defer_render_delegates_removes_and_isolates_failures(self):
+        errors = []
+        manager = SinkManager(on_error=lambda error, sink: errors.append((str(error), sink)))
+        self.assertFalse(manager.should_defer_render())
+        self.assertFalse(manager.shouldDeferRender())
+
+        standard_sink = RecordingSink()
+        manager.add(standard_sink)
+        self.assertFalse(manager.should_defer_render())
+
+        defer_sink = DeferringSink(defer=False)
+        remove_defer_sink = manager.add(defer_sink)
+        self.assertFalse(manager.should_defer_render())
+
+        defer_sink.defer = True
+        self.assertTrue(manager.should_defer_render())
+        self.assertTrue(manager.shouldDeferRender())
+
+        # Non-boolean truthy values must not trigger deferral
+        defer_sink.defer = 1
+        self.assertFalse(manager.should_defer_render())
+        defer_sink.defer = "true"
+        self.assertFalse(manager.should_defer_render())
+
+        defer_sink.defer = True
+        remove_defer_sink()
+        self.assertFalse(manager.should_defer_render())
+
+        camel_sink = DeferringSink(defer=True, use_camel_case=True)
+        manager.add(camel_sink)
+        self.assertTrue(manager.should_defer_render())
+
+        throwing_sink = DeferringSink(fail_defer=True)
+        manager.add(throwing_sink)
+        camel_sink.defer = False
+        self.assertFalse(manager.should_defer_render())
+        self.assertEqual(errors, [("defer probe failed", throwing_sink)])
+        self.assertEqual(manager.stats[throwing_sink]["failed"], 1)
+
+        manager.close()
+        self.assertFalse(manager.should_defer_render())
 
 
 class FakeAdapter:
@@ -323,6 +389,12 @@ class PipelineAndRendererTests(unittest.TestCase):
         sink = RecordingSink()
         pipeline.add_sink(sink)
         pipeline._configure_sinks()
+        self.assertFalse(pipeline.should_defer_render())
+        self.assertFalse(pipeline.shouldDeferRender())
+        defer_sink = DeferringSink(defer=True)
+        pipeline.add_sink(defer_sink)
+        self.assertTrue(pipeline.should_defer_render())
+        self.assertTrue(pipeline.shouldDeferRender())
 
         self.assertTrue(pipeline.submit_frame(42.25))
         self.assertEqual(sink.submissions, [(pipeline.output, 42.25)])
@@ -333,6 +405,8 @@ class PipelineAndRendererTests(unittest.TestCase):
     def test_renderer_delegates_sink_and_frame_export_apis(self):
         renderer = NMRenderer.__new__(NMRenderer)
         renderer.pipeline = None
+        self.assertFalse(renderer.should_defer_render())
+        self.assertFalse(renderer.shouldDeferRender())
         with self.assertRaisesRegex(RuntimeError, "active pipeline"):
             renderer.add_sink(RecordingSink())
         with self.assertRaisesRegex(RuntimeError, "active pipeline"):
@@ -342,12 +416,16 @@ class PipelineAndRendererTests(unittest.TestCase):
         pipeline = mock.Mock()
         pipeline.add_sink.return_value = "remove"
         pipeline.create_frame_export_queue.return_value = queue
+        pipeline.should_defer_render.return_value = True
         renderer.pipeline = pipeline
         sink = RecordingSink()
         self.assertEqual(renderer.add_sink(sink), "remove")
         self.assertIs(renderer.create_frame_export_queue(slots=2), queue)
+        self.assertTrue(renderer.should_defer_render())
+        self.assertTrue(renderer.shouldDeferRender())
         pipeline.add_sink.assert_called_once_with(sink)
         pipeline.create_frame_export_queue.assert_called_once_with(slots=2, on_error=None)
+        pipeline.should_defer_render.assert_called()
 
     def test_renderer_persists_and_delegates_external_input_and_time_controls(self):
         renderer = NMRenderer.__new__(NMRenderer)

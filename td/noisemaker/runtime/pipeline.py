@@ -60,6 +60,12 @@ class Pipeline:
         """Create a bounded queue backed by TouchDesigner's delayed TOP downloads."""
         return self.backend.create_frame_export_queue(slots=slots, on_error=on_error)
 
+    def should_defer_render(self):
+        """Report whether any registered output sink asks to skip rendering."""
+        return self.sink_manager.should_defer_render()
+
+    shouldDeferRender = should_defer_render
+
     def set_resolution(self, width, height):
         self.width = width
         self.height = height

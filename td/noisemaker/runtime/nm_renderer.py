@@ -15,6 +15,7 @@ Public API:
     nm.Output                  the presented TOP (renderSurface) — wire to a Null/Out for display
     nm.add_sink(sink)          register an output sink for explicitly submitted frames
     nm.submit_frame(timestamp) cook and submit the current TOP to registered sinks
+    nm.should_defer_render()   check if any registered sink requests skipping rendering
     nm.create_frame_export_queue(...)  create a delayed GPU-download queue
     nm.render_to(path, time)   deterministic single-frame render (parity / export)
 
@@ -93,6 +94,14 @@ class NMRenderer:
                 'NMRenderer has no active pipeline; build before creating a frame export queue'
             )
         return self.pipeline.create_frame_export_queue(slots=slots, on_error=on_error)
+
+    def should_defer_render(self):
+        """Report whether any active output sink requests deferring the next render."""
+        if self.pipeline is None:
+            return False
+        return self.pipeline.should_defer_render()
+
+    shouldDeferRender = should_defer_render
 
     def set_midi_state(self, state):
         self._midi_state = state
