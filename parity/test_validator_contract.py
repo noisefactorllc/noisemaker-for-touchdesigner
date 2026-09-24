@@ -601,6 +601,127 @@ class ValidatorContractTests(unittest.TestCase):
                     },
                 )
 
+    def test_parser_structured_diagnostics_p005_output(self):
+        output_failures = [
+            ("invalid render target", "search synth\nrender(1)", "Expected output reference in render()", 2, 8),
+            ("render target at EOF", "search synth\nrender(", "Expected output reference in render()", 2, 8),
+            ("write in expression", "search synth\nlet x = diagProbe().write(o0)", "'.write()' is only allowed in statement context at line 2 col 21", 2, 21),
+            ("write3d in expression", "search synth\nlet x = diagProbe().write3d(vol0, geo0)", "'.write()' is only allowed in statement context at line 2 col 21", 2, 21),
+            ("missing write surface", "search synth\ndiagProbe().write()", "write() requires an explicit surface reference (e.g., o0, o1, xyz0, vel0, rgba0, mesh0, none) at line 2 col 19", 2, 19),
+            ("write surface at EOF", "search synth\ndiagProbe().write(", "write() requires an explicit surface reference (e.g., o0, o1, xyz0, vel0, rgba0, mesh0, none) at line 2 col 19", 2, 19),
+            ("invalid write surface", "search synth\ndiagProbe().write(1)", "write() requires an explicit surface reference (e.g., o0, o1, xyz0, vel0, rgba0, mesh0, none) at line 2 col 19", 2, 19),
+            ("invalid write3d texture", "search synth\ndiagProbe().write3d(1, geo0)", "Expected tex3d reference in write3d() at line 2 col 21", 2, 21),
+            ("write3d texture at EOF", "search synth\ndiagProbe().write3d(", "Expected tex3d reference in write3d() at line 2 col 21", 2, 21),
+            ("invalid write3d geometry", "search synth\ndiagProbe().write3d(vol0, 1)", "Expected geo reference in write3d() at line 2 col 27", 2, 27),
+            ("write3d geometry at EOF", "search synth\ndiagProbe().write3d(vol0,", "Expected geo reference in write3d() at line 2 col 26", 2, 26),
+            ("CRLF and tab render target", "// 😀\r\nsearch synth\r\n\trender(\"😀\")", "Expected output reference in render()", 3, 9),
+            ("UTF-16 render target column", 'search synth\nlet x = "😀"; render(none)', "Expected output reference in render()", 2, 22),
+        ]
+        registry = EffectRegistry.load_from_directory()
+        for name, src, expected_msg, line, col in output_failures:
+            with self.subTest(name=name):
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    parse(lex(src), registry)
+                err = ctx.exception
+                self.assertEqual(str(err), expected_msg)
+                diag = err.diagnostic
+                self.assertIsNotNone(diag)
+                self.assertEqual(diag["code"], "P005")
+                self.assertEqual(diag["stage"], "parser")
+                self.assertEqual(diag["severity"], "error")
+                self.assertEqual(diag["message"], expected_msg)
+                self.assertEqual(diag["location"], {"line": line, "column": col})
+                self.assertIsNone(diag["span"])
+
+    def test_parser_output_unavailable_locations(self):
+        output_failures = [
+            ("invalid render target", "search synth\nrender(1)"),
+            ("render target at EOF", "search synth\nrender("),
+            ("write in expression", "search synth\nlet x = diagProbe().write(o0)"),
+            ("write3d in expression", "search synth\nlet x = diagProbe().write3d(vol0, geo0)"),
+            ("missing write surface", "search synth\ndiagProbe().write()"),
+            ("write surface at EOF", "search synth\ndiagProbe().write("),
+            ("invalid write surface", "search synth\ndiagProbe().write(1)"),
+            ("invalid write3d texture", "search synth\ndiagProbe().write3d(1, geo0)"),
+            ("write3d texture at EOF", "search synth\ndiagProbe().write3d("),
+            ("invalid write3d geometry", "search synth\ndiagProbe().write3d(vol0, 1)"),
+            ("write3d geometry at EOF", "search synth\ndiagProbe().write3d(vol0,"),
+            ("CRLF and tab render target", '// 😀\r\nsearch synth\r\n\trender("😀")'),
+            ("UTF-16 render target column", 'search synth\nlet x = "😀"; render(none)'),
+        ]
+        cases = [
+            ({}, "undefined", "undefined"),
+            ({"line": 1}, "1", "undefined"),
+            ({"line": 0, "col": 1}, "0", "1"),
+            ({"line": 1, "col": float("nan")}, "1", "NaN"),
+        ]
+        registry = EffectRegistry.load_from_directory()
+        for name, src in output_failures:
+            for coordinates, _, _ in cases:
+                with self.subTest(name=name, coordinates=coordinates):
+                    tokens = [
+                        {"type": t.type, "lexeme": t.lexeme, **coordinates}
+                        for t in lex(src)
+                    ]
+                    with self.assertRaises(DslSyntaxError) as ctx:
+                        parse(tokens, registry)
+                    err = ctx.exception
+                    self.assertIsNotNone(err.diagnostic)
+                    self.assertEqual(err.diagnostic["code"], "P005")
+                    self.assertEqual(err.diagnostic["stage"], "parser")
+                    self.assertEqual(err.diagnostic["severity"], "error")
+                    self.assertEqual(err.diagnostic["message"], str(err))
+                    self.assertIsNone(err.diagnostic["location"])
+                    self.assertIsNone(err.diagnostic["span"])
+
+    def test_parser_output_syntax_preserves_expectation_precedence(self):
+        cases = [
+            ("search synth\nrender o0", "P001", "Expect '(' at line 2 col 8"),
+            ("search synth\nrender(o0", "P002", "Expect ')' at line 2 col 10"),
+            ("search synth\nrender(o0) render(o1)", "P001", "Expected end of input at line 2 col 12"),
+            ("search synth\ndiagProbe().write(o0", "P002", "Expect ')' at line 2 col 21"),
+            ("search synth\ndiagProbe().write3d(vol0 geo0)", "P001", "Expect ',' between tex3d and geo in write3d() at line 2 col 26"),
+        ]
+        registry = EffectRegistry.load_from_directory()
+        for src, code, message in cases:
+            with self.subTest(src=src):
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    parse(lex(src), registry)
+                err = ctx.exception
+                self.assertEqual(str(err), message)
+                self.assertIsNotNone(err.diagnostic)
+                self.assertEqual(err.diagnostic["code"], code)
+
+    def test_parser_valid_output_operations(self):
+        registry = EffectRegistry.load_from_directory()
+        for name, expected_type in [
+            ("o0", "OutputRef"), ("xyz0", "XyzRef"), ("vel0", "VelRef"),
+            ("rgba0", "RgbaRef"), ("mesh0", "MeshRef"), ("none", "OutputRef"),
+        ]:
+            ast_res = parse(lex(f"search synth\ndiagProbe().write({name})"), registry)
+            self.assertEqual(
+                ast_res["plans"][0]["chain"][1],
+                {"type": "Write", "surface": {"type": expected_type, "name": name}, "loc": {"line": 2, "col": 13}},
+            )
+            self.assertEqual(ast_res["plans"][0]["write"], {"type": expected_type, "name": name})
+            self.assertIsNone(ast_res["render"])
+
+        for tex, tex_type, geo, geo_type in [
+            ("vol0", "VolRef", "geo0", "GeoRef"),
+            ("o0", "OutputRef", "o1", "OutputRef"),
+            ("volume", "Ident", "geometry", "Ident"),
+        ]:
+            ast_res = parse(lex(f"search synth\ndiagProbe().write3d({tex}, {geo})"), registry)
+            self.assertEqual(
+                ast_res["plans"][0]["chain"][1],
+                {
+                    "type": "Write3D",
+                    "tex3d": {"type": tex_type, "name": tex},
+                    "geo": {"type": geo_type, "name": geo},
+                    "loc": {"line": 2, "col": 13},
+                },
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

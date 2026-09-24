@@ -252,7 +252,7 @@ class _Parser:
         self._advance()  # consume 'render'
         self._expect(T.LPAREN, "Expect '('")
         if self._peek().type != T.OUTPUT_REF:
-            raise DslSyntaxError("Expected output reference in render()")
+            raise self._parser_error("P005", "Expected output reference in render()", token=self._peek())
         out_ref = {'type': K.OutputRef, 'name': self._advance().lexeme}
         self._expect(T.RPAREN, "Expect ')'")
         return out_ref
@@ -347,7 +347,7 @@ class _Parser:
             if next_type == T.WRITE or next_type == T.WRITE3D:
                 if context == "expression":
                     t = self._peek()
-                    raise DslSyntaxError.at("'.write()' is only allowed in statement context", t.line, t.col)
+                    raise self._parser_error_at("P005", "'.write()' is only allowed in statement context", t)
                 write_node = self._parse_write_call()
                 if all_comments:
                     write_node['leadingComments'] = all_comments
@@ -389,9 +389,11 @@ class _Parser:
                 surface = {'type': K.OutputRef, 'name': self._advance().lexeme}
             else:
                 p = self._peek()
-                raise DslSyntaxError.at(
+                raise self._parser_error_at(
+                    "P005",
                     "write() requires an explicit surface reference (e.g., o0, o1, xyz0, vel0, rgba0, mesh0, none)",
-                    p.line, p.col)
+                    p,
+                )
             self._expect(T.RPAREN, "Expect ')'")
             return {'type': K.Write, 'surface': surface, 'loc': ast.loc(token_line, token_col)}
 
@@ -407,7 +409,7 @@ class _Parser:
             tex3d = {'type': K.Ident, 'name': self._advance().lexeme}
         else:
             p = self._peek()
-            raise DslSyntaxError.at("Expected tex3d reference in write3d()", p.line, p.col)
+            raise self._parser_error_at("P005", "Expected tex3d reference in write3d()", p)
         self._expect(T.COMMA, "Expect ',' between tex3d and geo in write3d()")
         pt = self._peek().type
         if pt == T.OUTPUT_REF:
@@ -418,7 +420,7 @@ class _Parser:
             geo = {'type': K.Ident, 'name': self._advance().lexeme}
         else:
             p = self._peek()
-            raise DslSyntaxError.at("Expected geo reference in write3d()", p.line, p.col)
+            raise self._parser_error_at("P005", "Expected geo reference in write3d()", p)
         self._expect(T.RPAREN, "Expect ')'")
         return {'type': K.Write3D, 'tex3d': tex3d, 'geo': geo, 'loc': ast.loc(token_line, token_col)}
 
