@@ -23,8 +23,8 @@ Historical measurements remain bound to their original revisions in [completion 
 
 | Dimension | Status | Measured scope or limit |
 |---|---|---|
-| Source-level checks | verified | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. |
-| Actual host rendering | unverified | No new complete native or browser workflow qualified by this report. |
+| Source-level checks | verified | 76 Python unit tests passed. Installation, license activation, saved projects, and accessibility were not exercised. |
+| Actual host rendering | verified | Two native probes rendered. Complete host workflow and full parity remain unverified. |
 | Minimum and current host versions | unverified | Declared requirements are not a tested version matrix. |
 | Supported operating systems and backends | unverified | This pass does not establish Windows, Linux, and macOS coverage. |
 | Installed package and first useful result | unverified | Complete isolated installation was not qualified for this source. |
@@ -44,6 +44,7 @@ Unknown values mean `not measured`, never zero.
 | Gate | Expected cases | Executed | Strict passes | Failures | Skips | Status |
 |---|---|---|---|---|---|---|
 | Current full render suite | not measured | not measured | not measured | not measured | not measured | unverified |
+| Retained native probes | 2 | 2 | 1 | 1 exact mismatch | 0 | bounded probe; historical golden provenance unverified |
 
 Served compatibility inventory declares 207 effect IDs. Declaration does not establish execution or parity.
 IDs absent from the served declaration: `synth/media`, `synth/scope`, `synth/spectrum`.
@@ -272,6 +273,14 @@ Official ecosystem reference: [TouchDesigner 2025 requirements, accessed 2026-09
 Source CI, export dispatch, artifact delivery, and rendered parity are separate evidence dimensions.
 A successful dispatch or unit-test summary does not establish a full rendered gate.
 
+Native follow-up used TouchDesigner 2025.32820 on Apple M4 macOS 26.5, with an isolated copy of the existing bootstrap and renderer.
+Source `c5242301da6c6bb096f716623f92edf63a34f36b` differs from the inspected revision only in audit documents.
+Both 256×256 probes rendered at time 0.25. `solid` matched its retained golden exactly; `noise` had maximum byte difference 1 across 38,396 channels.
+These measurements do not independently qualify golden provenance or current-authority parity. Existing tolerances and goldens were unchanged.
+The staged inventory contains 301 program fixtures: two executed and 299 unexecuted. Separate corpus and stateful coverage remain unqualified.
+[Command and runtime evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-native.json). [Input hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-native-input-hashes.json).
+[Exact comparisons](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-native-comparisons.json). [Unexecuted fixture IDs](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-fixture-inventory.json).
+
 ## 5. Open compatibility limits
 
 See [GAP-001 and the complete gap register](COMPLETION_GAPS.md#4-known-gaps) for evidence, dependencies, and acceptance criteria.
@@ -289,5 +298,7 @@ Implementation corrections remain with the separate job. This report does not ad
 | Date | Source | Result | Change |
 |---|---|---|---|
 | 2026-09-24 | `66426bc41c2b85940322ae843ba04f41b7905ce4` | Full qualification unverified | Created the requested maintained compatibility report. Preserved historical evidence and open gaps. |
+
+Native follow-up: recorded two rendered probes and 299 unexecuted staged fixtures. No gap was closed.
 
 Run: `20260924-remaining-gap-documents`. Later audits and reviews update this report with source-bound results.

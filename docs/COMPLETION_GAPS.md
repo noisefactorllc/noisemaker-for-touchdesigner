@@ -51,7 +51,7 @@ Historical denominators and tolerances remain in the original source documents. 
 | Developer outcome | This pass | Required remaining check |
 |---|---|---|
 | Installation | Source instructions and package declarations inspected | Install the actual distribution in an isolated consumer. |
-| First useful result | Bounded checks only | Create an isolated Base COMP, execute the documented NMRenderer example, connect its TOP, resize, recover from invalid DSL, and reopen the project. |
+| First useful result | Two native 256×256 renders completed | Create an isolated Base COMP, execute the documented NMRenderer example, connect its TOP, resize, recover from invalid DSL, and reopen the project. |
 | Normal host workflow | Not fully observed | Exercise ordinary parameters, external inputs, resize, state, and cleanup. |
 | Error and recovery | Selected tests only where listed above | Fail through the installed public entry point, correct input, and render again. |
 | Distribution | Metadata inspection only | Load the served kit in an isolated activated project. Check source paths, TOP output, saved-project relocation, notices, and removal. |
@@ -59,6 +59,14 @@ Historical denominators and tolerances remain in the original source documents. 
 
 No global installation, user-project modification, manual deployment, or manual release occurred.
 Native applications present on the machine are not evidence of a qualified host workflow.
+
+Native follow-up used TouchDesigner 2025.32820 on Apple M4 macOS 26.5, with an isolated copy of the existing bootstrap and renderer.
+Source `c5242301da6c6bb096f716623f92edf63a34f36b` differs from the inspected revision only in audit documents.
+Both 256×256 probes rendered at time 0.25. `solid` matched its retained golden exactly; `noise` had maximum byte difference 1 across 38,396 channels.
+These measurements do not independently qualify golden provenance or current-authority parity. Existing tolerances and goldens were unchanged.
+The staged inventory contains 301 program fixtures: two executed and 299 unexecuted. Separate corpus and stateful coverage remain unqualified.
+[Command and runtime evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-native.json). [Input hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-native-input-hashes.json).
+[Exact comparisons](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-native-comparisons.json). [Unexecuted fixture IDs](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-fixture-inventory.json).
 
 ## 4. Known gaps
 
@@ -70,7 +78,7 @@ These initial entries record missing qualification, not inferred implementation 
 - Status: open. Priority: P2. Category: verification.
 - Affected scope: td/noisemaker/, td/make_bootstrap.py, parity/, README.md, STATUS.md
 - Expected behavior: Each supported claim has reproducible evidence tied to the port and authority revisions.
-- Observed behavior: Unit tests do not establish an activated host workflow. The current official build is 2025.33230, newer than README qualification 2025.32820. [Official releases](https://derivative.ca/UserGuide/Release_Notes).
+- Observed behavior: Two native probes ran, but 299 staged fixtures and the complete host workflow remain unqualified. The current official build is 2025.33230, newer than README qualification 2025.32820. [Official releases](https://derivative.ca/UserGuide/Release_Notes).
 - Evidence: [Historical claim](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/STATUS.md) and the bounded checks in section 3.
 - Next action: Run current compiler and native render gates in an activated host. Preserve chaotic, timed, skipped, and platform-specific cases.
 - Dependencies: Resolve immutable authority inputs before comparison. Retain historical goldens and their provenance.
@@ -119,6 +127,8 @@ Implementation changes belong to the separate implementation job. This register 
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
 | 2026-09-24 | `66426bc41c2b85940322ae843ba04f41b7905ce4` | Created the requested six-section register and README link. No closures. | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. | Full audit, current parity, installed workflows, platform qualification, and release readiness remain open. |
+
+Native follow-up: `solid` was exact; `noise` differed by one byte maximum. Full current-authority qualification remains open.
 
 Run ID: `20260924-remaining-gap-documents`.
 [Operational evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents). Queue position and successful-audit timestamps remain unchanged by document creation.
