@@ -100,7 +100,27 @@ the dynamic corpus gate: every tracked definition validates with explicit denomi
 210/210 clean, 0 failures, 0 skips). Verified compiler parity gates: check_lex (326/326 PASS),
 check_parse (326/326 PASS), check_validate (326/326 PASS), check_graph (325 PASS / 0 DIFF /
 0 STAGE / 1 SKIP), and unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s
-parity -p "test_*.py"`, 110/110 PASS).*
+parity -p "test_*.py"`, 110/110 PASS). **Range-audit facts (machine-checkable in any upstream
+clone via `git fetch https://github.com/noisefactorllc/noisemaker` + `git merge-base
+--is-ancestor`):** the declared start `4891b9953f9fd8a61cf9ae0dda2fe747a9be82df` is an ancestor
+of the audited end `9d3474dfdc6cb737ebb7b2f3598b16d940af1544` (`git merge-base --is-ancestor
+4891b9953f9fd8a61cf9ae0dda2fe747a9be82df 9d3474dfdc6cb737ebb7b2f3598b16d940af1544` → exit 0),
+and the prior sync point `240740dd2d30` is also an ancestor of the end — so the endpoint tree
+diff loses no upstream content despite the force-pushed/non-contiguous declared range, and the
+dropped declared start contributes nothing beyond the audited endpoint diff. The audited
+endpoint diff `git diff --name-only 240740dd2d30 9d3474dfdc6c -- shaders/` touches exactly
+`shaders/src/runtime/effect-validator.js` and `shaders/tests/test_effect_definition_validation.js`
+(every other commit in the observed delivery range is docs/CI-only: LEDGER.md, docs/plans,
+llms-full.txt, package.json `run-js-tests` wiring). **Reference fidelity baseline:** the
+reference's own JS validator suite `shaders/tests/test_effect_definition_validation.js` was
+run from a `git archive` extraction of the pinned end SHA (`node --test`, 16/16 PASS) against
+the same upstream tree the parity gates consume; the ported Python suite
+(`parity/test_effect_validator.py`, part of the 110/110 run above) mirrors that contract, and
+the definitions + shaders conversion gates were re-run against the pinned reference tree:
+`convert-definitions.mjs` 210/210 byte-identical, `convert-shaders.mjs` byte-identical after
+re-applying the repo's documented hand-guard flow for the two navierStokes port guards
+(`ns.frag`/`nsSplat.frag`, commit `9406590`: "marked as port guards, re-apply after
+re-transpile" — restored from HEAD before the diff, every other program byte-identical).*
 
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
