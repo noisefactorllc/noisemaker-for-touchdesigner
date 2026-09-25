@@ -30,7 +30,7 @@ class CompileError(Exception):
 _CACHED_REG = None
 
 
-def compile_dsl(src, reg=None):
+def compile_dsl(src, reg=None, options=None, **kwargs):
     """Convenience entry point: compile DSL source with a module-cached EffectRegistry (loaded
     once from td/noisemaker/effects). Used by the live runtime path (nm_renderer.set_dsl)."""
     global _CACHED_REG
@@ -39,13 +39,17 @@ def compile_dsl(src, reg=None):
             from .lang.effect_registry import EffectRegistry
             _CACHED_REG = EffectRegistry.load_from_directory()
         reg = _CACHED_REG
-    return compile_graph(src, reg)
+    opts = dict(options or {})
+    opts.update(kwargs)
+    return compile_graph(src, reg, options=opts)
 
 
-def compile_graph(dsl, reg):
+def compile_graph(dsl, reg, options=None, **kwargs):
     """Compile DSL source into a normalized Render Graph dict."""
+    opts = dict(options or {})
+    opts.update(kwargs)
     tokens = lex(dsl)
-    ast = parse(tokens, reg)
+    ast = parse(tokens, reg, options=opts)
     validated = validate(ast, reg)
 
     errors = [d for d in validated['diagnostics'] if d.get('severity') == _diag.SEVERITY_ERROR]

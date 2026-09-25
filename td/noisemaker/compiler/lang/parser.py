@@ -48,23 +48,27 @@ _OSC_KWARG_KEYS = frozenset(['type', 'min', 'max', 'speed', 'offset', 'seed'])
 from .effect_registry import EffectRegistry
 
 
-def parse(tokens, registry=None):
+def parse(tokens, registry=None, options=None, **kwargs):
     """Entry point — parse a token list into a Program AST dict (reference/01 §3.1)."""
     if registry is None:
         registry = EffectRegistry()
+    opts = dict(options or {})
+    opts.update(kwargs)
     normalized = []
     for tok in tokens:
         if isinstance(tok, dict):
             normalized.append(Token(tok.get('type'), tok.get('lexeme', ''), tok.get('line'), tok.get('col', tok.get('column'))))
         else:
             normalized.append(tok)
-    return _Parser(normalized, registry)._parse_program()
+    return _Parser(normalized, registry, opts)._parse_program()
 
 
 class _Parser:
-    def __init__(self, tokens, registry):
+    def __init__(self, tokens, registry, options=None):
         self._tokens = tokens
         self._registry = registry
+        self._options = options or {}
+        self._strict_subchain_arguments = self._options.get('subchainArguments') == 'strict'
         self._current = 0
         self._program_search_order = None         # None until `search` parsed
         self._program_namespace = {'imports': [], 'default': None}
@@ -82,7 +86,7 @@ class _Parser:
         self._current += 1
         return t
 
-    def _parser_error(self, code, msg, token=None, line=None, col=None):
+    def _parser_error(self, code, msg, token=None, line=None, col=None, severity_override=None):
         position = getattr(token, 'position', None) if token is not None else None
         if isinstance(token, dict) and position is None:
             position = token.get('position')
@@ -123,7 +127,7 @@ class _Parser:
         diagnostic = {
             "code": code,
             "stage": _diag.stage(code) if code in _diag._TABLE else "parser",
-            "severity": _diag.severity(code) if code in _diag._TABLE else "error",
+            "severity": severity_override or (_diag.severity(code) if code in _diag._TABLE else "error"),
             "message": msg,
             "location": {"line": position['line'], "column": position['column']} if has_position else ({"line": line_val, "column": col_val} if has_location else None),
             "span": {"start": position['start'], "end": position['end']} if has_position else None,
@@ -454,15 +458,70 @@ class _Parser:
         self._advance()  # consume 'subchain'
         self._expect(T.LPAREN, "Expect '(' after subchain")
 
+        arg_diagnostics = []
+
+        def report_arg_issue(code, message, token):
+            if self._strict_subchain_arguments:
+                raise self._parser_error(code, message, token=token, severity_override=_diag.SEVERITY_ERROR)
+            pos = getattr(token, 'position', None) if token is not None else None
+            if isinstance(token, dict) and pos is None:
+                pos = token.get('position')
+            has_pos = (
+                isinstance(pos, dict)
+                and isinstance(pos.get('line'), int)
+                and not isinstance(pos.get('line'), bool)
+                and pos['line'] > 0
+                and isinstance(pos.get('column'), int)
+                and not isinstance(pos.get('column'), bool)
+                and pos['column'] > 0
+                and isinstance(pos.get('start'), int)
+                and not isinstance(pos.get('start'), bool)
+                and pos['start'] >= 0
+                and isinstance(pos.get('end'), int)
+                and not isinstance(pos.get('end'), bool)
+                and pos['end'] >= pos['start']
+            )
+            line_val = None
+            col_val = None
+            if token is not None:
+                if isinstance(token, dict):
+                    line_val = token.get('line')
+                    col_val = token.get('col', token.get('column'))
+                else:
+                    line_val = getattr(token, 'line', None)
+                    col_val = getattr(token, 'col', None)
+            has_loc = (
+                isinstance(line_val, int)
+                and not isinstance(line_val, bool)
+                and line_val > 0
+                and isinstance(col_val, int)
+                and not isinstance(col_val, bool)
+                and col_val > 0
+            )
+            report = {
+                'code': code,
+                'message': message,
+                'severity': _diag.severity(code),
+            }
+            if has_pos:
+                report['location'] = {'line': pos['line'], 'column': pos['column']}
+                report['span'] = {'start': pos['start'], 'end': pos['end']}
+            elif has_loc:
+                report['location'] = {'line': line_val, 'column': col_val}
+            arg_diagnostics.append(report)
+
         name_val = None
         id_val = None
         iterations_val = None
+        kwargs = {}
         if self._peek().type != T.RPAREN:
             if self._peek().type == T.STRING:
                 name_val = self._advance().lexeme  # positional name
+                kwargs['name'] = name_val
             elif self._peek().type == T.IDENT and self._kw_colon(self._current + 1):
                 while self._peek().type == T.IDENT and self._kw_colon(self._current + 1):
-                    key = self._advance().lexeme
+                    key_token = self._advance()
+                    key = key_token.lexeme
                     self._advance()  # consume ':'
                     # DSL LOOPS (hlsl additive): `iterations:` takes a NUMBER; name/id stay STRING.
                     if key == "iterations":
@@ -478,12 +537,24 @@ class _Parser:
                             p = self._peek()
                             raise self._parser_error_at("P006", "Expected string value for subchain " + key, p)
                         val = self._advance().lexeme
+                        key_line = getattr(key_token, 'line', None) if not isinstance(key_token, dict) else key_token.get('line')
+                        key_col = getattr(key_token, 'col', None) if not isinstance(key_token, dict) else key_token.get('col', key_token.get('column'))
+                        if key not in ("name", "id"):
+                            report_arg_issue("P008", f"Unknown subchain argument '{key}' at line {coord_str(key_line)} col {coord_str(key_col)}. Valid keys: name, id. The value is discarded.", key_token)
+                        elif key in kwargs:
+                            report_arg_issue("P009", f"Duplicate subchain argument '{key}' at line {coord_str(key_line)} col {coord_str(key_col)}. The last value wins.", key_token)
+                        kwargs[key] = val
                         if key == "name":
                             name_val = val
                         elif key == "id":
                             id_val = val
                     if self._peek().type == T.COMMA:
                         self._advance()
+                    elif self._peek().type == T.IDENT and self._kw_colon(self._current + 1):
+                        p = self._peek()
+                        p_line = getattr(p, 'line', None) if not isinstance(p, dict) else p.get('line')
+                        p_col = getattr(p, 'col', None) if not isinstance(p, dict) else p.get('col', p.get('column'))
+                        report_arg_issue("P010", f"Missing ',' between subchain arguments at line {coord_str(p_line)} col {coord_str(p_col)}", p)
         self._expect(T.RPAREN, "Expect ')' after subchain arguments")
         self._expect(T.LBRACE, "Expect '{' to start subchain body")
 
@@ -511,6 +582,8 @@ class _Parser:
                 'loc': ast.loc(token_line, token_col)}
         if iterations_val is not None:
             node['iterations'] = iterations_val
+        if arg_diagnostics:
+            node['subchainArgumentDiagnostics'] = arg_diagnostics
         return node
 
     def _kw_colon(self, idx):

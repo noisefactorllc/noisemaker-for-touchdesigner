@@ -484,6 +484,22 @@ class _Validator:
 
             # subchain / DSL loop bracket (reference/02 §5.1)
             if t == K.Subchain:
+                # Surface parser-attached subchain-argument reports (GAP-027)
+                arg_diags = original.get('subchainArgumentDiagnostics')
+                if arg_diags:
+                    for report in arg_diags:
+                        diag = {
+                            'code': report['code'],
+                            'message': report['message'],
+                            'severity': report['severity'],
+                            'nodeId': original.get('id'),
+                        }
+                        if 'location' in report and report['location'] is not None:
+                            diag['location'] = report['location']
+                            diag['line'] = report['location'].get('line')
+                            diag['column'] = report['location'].get('column')
+                        self._diagnostics.append(diag)
+
                 if current is None:
                     self._push_diag("S005", original, "subchain() requires an input - cannot be first in chain")
                     continue

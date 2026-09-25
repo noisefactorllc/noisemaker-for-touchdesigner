@@ -894,6 +894,118 @@ class ValidatorContractTests(unittest.TestCase):
         self.assertEqual(sub4["type"], "Subchain")
         self.assertEqual(sub4["iterations"], 3)
 
+    def test_subchain_argument_diagnostics_gap027(self):
+        registry = EffectRegistry.load_from_directory()
+
+        # P008: Unknown subchain argument (warning, discarded from AST, validated output carries diagnostic)
+        s1 = 'search synth\nread(o0).subchain(unknownKey: "val", name: "ok") { .diagProbe() }.write(o1)'
+        ast1 = parse(lex(s1), registry)
+        sub1 = ast1["plans"][0]["chain"][1]
+        self.assertEqual(sub1["type"], "Subchain")
+        self.assertEqual(sub1["name"], "ok")
+        self.assertNotIn("unknownKey", sub1)
+        val1 = validate(ast1, registry)
+        p008_list = [d for d in val1["diagnostics"] if d["code"] == "P008"]
+        self.assertEqual(len(p008_list), 1)
+        p008 = p008_list[0]
+        self.assertEqual(p008["severity"], "warning")
+        self.assertEqual(p008["location"], {"line": 2, "column": 19})
+        self.assertEqual(
+            p008["message"],
+            "Unknown subchain argument 'unknownKey' at line 2 col 19. Valid keys: name, id. The value is discarded."
+        )
+
+        # P009: Duplicate subchain argument (warning, last value wins)
+        s2 = 'search synth\nread(o0).subchain(name: "first", name: "second") { .diagProbe() }.write(o1)'
+        ast2 = parse(lex(s2), registry)
+        sub2 = ast2["plans"][0]["chain"][1]
+        self.assertEqual(sub2["type"], "Subchain")
+        self.assertEqual(sub2["name"], "second")
+        val2 = validate(ast2, registry)
+        p009_list = [d for d in val2["diagnostics"] if d["code"] == "P009"]
+        self.assertEqual(len(p009_list), 1)
+        p009 = p009_list[0]
+        self.assertEqual(p009["severity"], "warning")
+        self.assertEqual(p009["location"], {"line": 2, "column": 34})
+        self.assertEqual(
+            p009["message"],
+            "Duplicate subchain argument 'name' at line 2 col 34. The last value wins."
+        )
+
+        # P010: Missing comma between arguments (warning, next arg parsed)
+        s3 = 'search synth\nread(o0).subchain(name: "a" id: "b") { .diagProbe() }.write(o1)'
+        ast3 = parse(lex(s3), registry)
+        sub3 = ast3["plans"][0]["chain"][1]
+        self.assertEqual(sub3["type"], "Subchain")
+        self.assertEqual(sub3["name"], "a")
+        self.assertEqual(sub3["id"], "b")
+        val3 = validate(ast3, registry)
+        p010_list = [d for d in val3["diagnostics"] if d["code"] == "P010"]
+        self.assertEqual(len(p010_list), 1)
+        p010 = p010_list[0]
+        self.assertEqual(p010["severity"], "warning")
+        self.assertEqual(p010["nodeId"], "b")
+        self.assertEqual(p010["location"], {"line": 2, "column": 29})
+        self.assertEqual(
+            p010["message"],
+            "Missing ',' between subchain arguments at line 2 col 29"
+        )
+
+    def test_subchain_argument_strict_mode_gap027(self):
+        registry = EffectRegistry.load_from_directory()
+
+        # Strict mode throws DslSyntaxError with code P008, P009, P010 and severity error
+        cases = [
+            (
+                'search synth\nread(o0).subchain(unknownKey: "val", name: "ok") { .diagProbe() }.write(o1)',
+                'P008',
+                "Unknown subchain argument 'unknownKey' at line 2 col 19. Valid keys: name, id. The value is discarded.",
+                2,
+                19
+            ),
+            (
+                'search synth\nread(o0).subchain(name: "first", name: "second") { .diagProbe() }.write(o1)',
+                'P009',
+                "Duplicate subchain argument 'name' at line 2 col 34. The last value wins.",
+                2,
+                34
+            ),
+            (
+                'search synth\nread(o0).subchain(name: "a" id: "b") { .diagProbe() }.write(o1)',
+                'P010',
+                "Missing ',' between subchain arguments at line 2 col 29",
+                2,
+                29
+            ),
+        ]
+        for src, code, message, line, col in cases:
+            with self.subTest(code=code):
+                with self.assertRaises(DslSyntaxError) as ctx:
+                    parse(lex(src), registry, options={'subchainArguments': 'strict'})
+                err = ctx.exception
+                self.assertEqual(str(err), message)
+                self.assertIsNotNone(err.diagnostic)
+                self.assertEqual(err.diagnostic["code"], code)
+                self.assertEqual(err.diagnostic["severity"], "error")
+                self.assertEqual(err.diagnostic["location"], {"line": line, "column": col})
+
+    def test_subchain_argument_diagnostics_preserve_unavailable_caller_token_coordinates(self):
+        registry = EffectRegistry.load_from_directory()
+        src = 'search synth\nread(o0).subchain(unknownKey: "val", name: "ok") { .diagProbe() }.write(o1)'
+        tokens = [
+            {"type": t.type, "lexeme": t.lexeme}
+            for t in lex(src)
+        ]
+        ast_tree = parse(tokens, registry)
+        val = validate(ast_tree, registry)
+        p008_list = [d for d in val["diagnostics"] if d["code"] == "P008"]
+        self.assertEqual(len(p008_list), 1)
+        self.assertEqual(
+            p008_list[0]["message"],
+            "Unknown subchain argument 'unknownKey' at line undefined col undefined. Valid keys: name, id. The value is discarded."
+        )
+        self.assertNotIn("location", p008_list[0])
+
     def test_parser_call_form_diagnostics_attach_metadata(self):
         cases = [
             ("from named arguments", "search synth\nlet x = from(a: 1, b: 2)", "'from' does not support named arguments at line 2 col 9", 2, 9),
