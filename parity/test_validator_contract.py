@@ -989,6 +989,10 @@ class ValidatorContractTests(unittest.TestCase):
                 self.assertEqual(err.diagnostic["severity"], "error")
                 self.assertEqual(err.diagnostic["location"], {"line": line, "column": col})
 
+                with self.assertRaises(DslSyntaxError) as ctx_dsl:
+                    compile_dsl(src, reg=registry, options={'subchainArguments': 'strict'})
+                self.assertEqual(ctx_dsl.exception.diagnostic["code"], code)
+
     def test_subchain_argument_diagnostics_preserve_unavailable_caller_token_coordinates(self):
         registry = EffectRegistry.load_from_directory()
         src = 'search synth\nread(o0).subchain(unknownKey: "val", name: "ok") { .diagProbe() }.write(o1)'
