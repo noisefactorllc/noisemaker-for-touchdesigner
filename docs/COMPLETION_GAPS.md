@@ -4,6 +4,14 @@ Current compatibility matrix: [compatibility report](COMPATIBILITY.md).
 
 ## 1. Scope and source revisions
 
+Daily review: 2026-09-25. Current inspected source: [`de416d7606e231bf6e38027316269640a1d7d096`](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/commit/de416d7606e231bf6e38027316269640a1d7d096).
+Full rendered parity remains **unverified**. No release approval or new closure follows from this review.
+Current upstream discovery: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published Noisemaker authority: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`, 210 effect IDs.
+The observations below retain their original source and authority identities; they do not qualify later updates.
+Current served kit: `0.1.23`, source `de416d7606e231bf6e38027316269640a1d7d096`. [Retrieved inventory and hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-served-inventories.json). Artifact identity does not establish host qualification.
+
+### Earlier source observations
+
 Date: 2026-09-24. Reviewed source: [`66426bc41c2b85940322ae843ba04f41b7905ce4`](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/commit/66426bc41c2b85940322ae843ba04f41b7905ce4).
 Local HEAD matched remote `main` before checks. The operator requested missing registers for all remaining eligible ports in this run.
 This is an initial register with bounded evidence, not a completed port audit or release approval.
@@ -32,6 +40,13 @@ Exact commit, remote document hashes, and downstream results are retained in the
 | CLAIM-005 | [Exact-source Actions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/actions?query=head_sha%3A66426bc41c2b85940322ae843ba04f41b7905ce4) | Exact-source automated evidence | supported | [Export kit](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/actions/runs/35955443239): `success`. This finding covers workflow status only. |
 
 ## 3. Methods and evidence
+
+Review CI boundary: Exact-source runs: Export kit. A passing export dispatch does not qualify rendered parity. Current complete-render enforcement remains an open verification requirement. [Exact-source responses and workflows](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/noisemaker-for-touchdesigner-remote-evidence.json).
+
+### Daily review, 2026-09-25
+
+91 harness tests pass. The actual TouchDesigner process renders the current runtime: solid is byte-exact and noise differs by at most 1 in 38,396 channels against retained historical goldens. Both cases executed; this two-case result does not qualify the current authority, full fixture inventory, Windows, or installed workflows. TouchDesigner retains equal priority with every other port. [Raw evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-native-comparisons.json).
+The review checked source changes, worker evidence, source-bound CI where present, and current served inventories. Full installed-host and platform qualification remains incomplete.
 
 Environment: macOS 26.5, Darwin arm64. Source-file SHA-256 records bind the local checks to the reviewed revision.
 [Source hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/noisemaker-for-touchdesigner-source-hashes.json). [Remote evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/noisemaker-for-touchdesigner-remote.json).
@@ -114,6 +129,9 @@ These initial entries record missing qualification, not inferred implementation 
 
 ## 5. Ordered next actions
 
+Current first action: Resolve immutable current authority inputs, then use the existing build_parity_toe.py and native TouchDesigner capture entry points for every tracked fixture. Require no missing or skipped cases. Next install the delivered component in a fresh project, verify TOP output, parameters, cook failure and recovery, and record the unsupported host/version matrix.
+Subsequent historical actions remain dependent on that evidence. No implementation is authorized by this audit.
+
 1. Resolve authority revisions and retained evidence for GAP-001. Preserve all previous comparisons and exclusions.
 2. Run the bounded installed workflow for GAP-002. Record output, errors, recovery, host version, and resource cleanup.
 3. Execute the declared parity cases for GAP-001. Keep compilation, structure, rendered pixels, and platform qualification separate.
@@ -123,6 +141,8 @@ These initial entries record missing qualification, not inferred implementation 
 Implementation changes belong to the separate implementation job. This register does not authorize further effect ports or checkpoint advancement.
 
 ## 6. Pass history
+
+2026-09-25 daily review at `de416d7606e231bf6e38027316269640a1d7d096`: source freshness and bounded evidence reviewed; open qualification limits retained. [Retained review evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-native-comparisons.json). No new closure claimed.
 
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
