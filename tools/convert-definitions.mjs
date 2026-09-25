@@ -188,6 +188,13 @@ function convertEffect (instance, namespace, name) {
   if (instance.outputRgba !== undefined) def.outputRgba = instance.outputRgba
   if (instance.hidden) def.hidden = true
   if (instance.deprecatedBy) def.deprecatedBy = instance.deprecatedBy
+  // External media declarations (reference Effect instance fields consumed by
+  // the UI/runtime: filter/text + synth/media declare externalTexture, render/
+  // meshLoader declares externalMesh). Carried so the port's definition-validator
+  // (GAP-003) can resolve the declared pass input, matching the reference
+  // validator's source.externalTexture / source.externalMesh lookup.
+  if (instance.externalTexture !== undefined) def.externalTexture = instance.externalTexture
+  if (instance.externalMesh !== undefined) def.externalMesh = instance.externalMesh
 
   return def
 }

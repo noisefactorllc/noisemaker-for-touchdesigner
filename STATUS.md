@@ -53,6 +53,55 @@ fixes landed in `filter/invert`, `filter/tint`, `filter/adjust`, `filter/grade`,
 
 *Incrementally synced 2026-09-25 to reference `240740dd` (`fca611fd8f91..240740dd2d30`) — ported upstream GAP-027 subchain-argument validation contract into `td/noisemaker/compiler/lang/diagnostics.py`, `td/noisemaker/compiler/lang/parser.py`, `td/noisemaker/compiler/lang/validator.py`, and `td/noisemaker/compiler/dsl_compiler.py`: registered `P008` (unknown subchain argument), `P009` (duplicate subchain argument), and `P010` (missing comma between subchain arguments) with warning severity in `_TABLE`. Added parser argument tracking enforcing valid keys (`name`, `id`), reporting `P008` on unknown arguments with discarded AST projection, reporting `P009` on duplicate keyword arguments with last-value-wins semantics, and reporting `P010` on missing comma separators. Added `options` support with `subchainArguments: 'strict'` opt-in to `parse`, `compile_dsl`, and `compile_graph`, throwing `DslSyntaxError` with error severity and diagnostic metadata. Surfaced parser-attached subchain argument diagnostics in validator `_process_chain`. Added unit tests in `parity/test_validator_contract.py` covering `P008`, `P009`, `P010`, strict mode rejections, and unavailable token coordinates. Verified definitions conversion via `tools/convert-definitions.mjs` (210/210 effects byte-identical). Verified compiler parity gates: check_lex (326/326 PASS), check_parse (326/326 PASS), check_validate (326/326 PASS), check_graph (325 PASS / 0 DIFF / 0 STAGE / 1 SKIP), and unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`, 94/94 PASS).*
 
+*Incrementally synced 2026-09-25 to reference `9d3474dfdc6c` — **range audit:** the declared
+upstream range `4891b9953f9f..9d3474dfdc6c` is non-contiguous (force-pushed delivery; observed
+delivery range `0bd09d00c41c..9d3474dfdc6c`), so the port was audited against the actual tree
+diff `240740dd2d30..9d3474dfdc6c` (the last synced reference → the new end) rather than the
+declared start. That tree diff contains exactly two port-affecting upstream commits — `ba87ffa`
+(feat: validate effect definitions against spec at runtime, GAP-003) and `9d3474d` (fix:
+complete GAP-003 validator contract, corpus gate, and test wiring) — plus docs/CI-only commits
+(LEDGER.md, docs/plans, llms-full.txt, package.json run-js-tests wiring) with no effect on the
+ported shaders/ or compiler surface. Ported upstream GAP-003 definition-grammar validation as a
+new `td/noisemaker/runtime/effect_validator.py` — a message-identical port of
+`shaders/src/runtime/effect-validator.js` @9d3474dfdc6c: `validate_effect_definition(def)`
+returns a list of error strings ([] = valid), deterministic and side-effect-free; never throws
+for malformed/null/array/non-object containers; never mutates the input; never invokes lifecycle
+hooks; never sorts globals; validates name/namespace/func/description/tags/openCategories/
+defaultProgram/hidden/deprecatedBy/externalTexture/externalMesh/builtinMeshes/outputTex3d/
+outputGeo/lifecycle-hook-typing, global specs (type table, per-type default constraints,
+min/max scalar-or-array form agreement and ordering, default containment, step/zero/rand*
+numeric fields, uniform-conflict detection, define/colorModeUniform strings, choices with
+null section headers + string-typed choice values + default-among-values, std-enum `enum`
+table resolution and `member` default leaf resolution via the port's own std enum tree),
+passes (field allowlist, program/name/entryPoint strings, type/drawMode/drawBuffers/count/
+countUniform/repeat/blend/workgroups/storageBuffers/storageTextures/viewport dimension specs,
+runIf/skipIf condition objects referencing declared globals with an `equals` value, numeric
+pass-uniform literals preserved, per-pass defines), textures/textures3d (field allowlist,
+dimension specs incl. percentages/keywords/param/screenDivide/scale+clamp expression forms,
+formats, is3D), shaders maps, slot uniform layouts (ascending xyzw component order, duplicate
+and overlap conflicts, byte layouts with offset/size overlap conflicts) and per-program
+uniformLayouts, paramAliases resolving to declared globals, and top-level unknown-field
+diagnosis in declaration insertion order. Documented port deviations in the module docstring:
+the reference's `Effect`-instance/prototype-merge branches are JS-only (this port's definitions
+are plain JSON dicts, so only the plain-object path exists); `TOP_LEVEL_KEYS` additionally
+accepts the converter-stamped `starter` flag. `tools/convert-definitions.mjs` now carries the
+reference `Effect` instance's `externalTexture` (`filter/text` → `textTex`, `synth/media` →
+`imageTex`) and `externalMesh` (`render/meshLoader` → `mesh0`) declarations onto the converted
+JSON so the validator resolves those declared pass inputs exactly as the reference validator's
+instance lookup does (definitions regenerated: 210/210 effects, only those three files gained
+the external-declaration field, all other 207 byte-identical). Added `parity/test_effect_validator.py`
+porting the reference suite `shaders/tests/test_effect_definition_validation.js` (null/array/
+primitive containers without throwing, valid schema probe, unknown top-level/global/ui/pass/
+texture fields, malformed containers, global type and primitive constraints, member-typed std
+enum resolution, duplicate uniform and layout conflicts, unsupported binding references,
+enabledBy references, numeric literals and dimension-expression forms, external-declaration
+resolution, lifecycle hooks not invoked, no input mutation, declaration insertion order, and
+the dynamic corpus gate: every tracked definition validates with explicit denominators —
+210/210 clean, 0 failures, 0 skips). Verified compiler parity gates: check_lex (326/326 PASS),
+check_parse (326/326 PASS), check_validate (326/326 PASS), check_graph (325 PASS / 0 DIFF /
+0 STAGE / 1 SKIP), and unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s
+parity -p "test_*.py"`, 110/110 PASS).*
+
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
 the first to actually exercise): (1) pass-level `defines`/`conditions` (the clone pattern itself) had

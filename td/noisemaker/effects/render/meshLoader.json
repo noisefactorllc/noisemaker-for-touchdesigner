@@ -25,5 +25,6 @@
     }
   ],
   "textures": {},
-  "defaultProgram": "search render\n\nmeshLoader()\n.meshRender()\n.write(o0)"
+  "defaultProgram": "search render\n\nmeshLoader()\n.meshRender()\n.write(o0)",
+  "externalMesh": "mesh0"
 }

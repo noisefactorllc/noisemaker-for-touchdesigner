@@ -101,5 +101,6 @@
     }
   ],
   "textures": {},
-  "defaultProgram": "search filter, synth\n\nperlin(scale: 100)\n  .text()\n  .write(o0)"
+  "defaultProgram": "search filter, synth\n\nperlin(scale: 100)\n  .text()\n  .write(o0)",
+  "externalTexture": "textTex"
 }
