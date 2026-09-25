@@ -23,6 +23,7 @@ from . import ast
 from .ast import NodeKind as K
 from .token import TokenType as T, Token
 from .dsl_syntax_error import DslSyntaxError, coord_str
+from . import diagnostics as _diag
 
 _EXPR_START = frozenset([
     T.PLUS, T.MINUS, T.NUMBER, T.HEX, T.FUNC, T.STRING, T.IDENT, T.OUTPUT_REF, T.SOURCE_REF,
@@ -82,9 +83,31 @@ class _Parser:
         return t
 
     def _parser_error(self, code, msg, token=None, line=None, col=None):
+        position = getattr(token, 'position', None) if token is not None else None
+        if isinstance(token, dict) and position is None:
+            position = token.get('position')
+        has_position = (
+            isinstance(position, dict)
+            and isinstance(position.get('line'), int)
+            and not isinstance(position.get('line'), bool)
+            and position['line'] > 0
+            and isinstance(position.get('column'), int)
+            and not isinstance(position.get('column'), bool)
+            and position['column'] > 0
+            and isinstance(position.get('start'), int)
+            and not isinstance(position.get('start'), bool)
+            and position['start'] >= 0
+            and isinstance(position.get('end'), int)
+            and not isinstance(position.get('end'), bool)
+            and position['end'] >= position['start']
+        )
         if token is not None:
-            line_val = getattr(token, 'line', None)
-            col_val = getattr(token, 'col', None)
+            if isinstance(token, dict):
+                line_val = token.get('line')
+                col_val = token.get('col', token.get('column'))
+            else:
+                line_val = getattr(token, 'line', None)
+                col_val = getattr(token, 'col', None)
         else:
             line_val = line
             col_val = col
@@ -99,16 +122,16 @@ class _Parser:
         )
         diagnostic = {
             "code": code,
-            "stage": "parser",
-            "severity": "error",
+            "stage": _diag.stage(code) if code in _diag._TABLE else "parser",
+            "severity": _diag.severity(code) if code in _diag._TABLE else "error",
             "message": msg,
-            "location": {"line": line_val, "column": col_val} if has_location else None,
-            "span": None,
+            "location": {"line": position['line'], "column": position['column']} if has_position else ({"line": line_val, "column": col_val} if has_location else None),
+            "span": {"start": position['start'], "end": position['end']} if has_position else None,
         }
         return DslSyntaxError(
             msg,
-            line=line_val if has_location else None,
-            col=col_val if has_location else None,
+            line=position['line'] if has_position else (line_val if has_location else None),
+            col=position['column'] if has_position else (col_val if has_location else None),
             diagnostic=diagnostic,
         )
 
@@ -161,7 +184,7 @@ class _Parser:
             if self._peek().type == T.RENDER:
                 if render is not None:
                     t = self._peek()
-                    raise DslSyntaxError.at("Duplicate render() directive", t.line, t.col)
+                    raise self._parser_error_at("P005", "Duplicate render() directive", t)
                 render = self._parse_render_directive()
                 while self._peek().type == T.SEMICOLON:
                     self._advance()
@@ -279,7 +302,7 @@ class _Parser:
             self._expect(T.EQUAL, "Expect '='")
             if self._peek().type not in _EXPR_START:
                 t = self._peek()
-                raise DslSyntaxError.at("Expected expression after '='", t.line, t.col)
+                raise self._parser_error_at("P001", "Expected expression after '='", t)
             expr = self._parse_additive()
             return {'type': K.VarAssign, 'name': name, 'expr': expr}
 
@@ -505,10 +528,13 @@ class _Parser:
             if nxt is not None and nxt.type == T.IDENT:
                 after = self._token_at(self._current + 2)
                 if after is not None and after.type == T.LPAREN:
-                    raise DslSyntaxError.at(
+                    raise self._parser_error_at(
+                        "P007",
                         "Inline namespace syntax '" + name_token.lexeme + "." + nxt.lexeme +
                         "()' is not allowed. Use 'search " + name_token.lexeme +
-                        "' at the start of the program instead,", name_token.line, name_token.col)
+                        "' at the start of the program instead,",
+                        name_token
+                    )
         self._expect(T.LPAREN, "Expect '('")
         args = []
         kwargs = {}
@@ -520,13 +546,13 @@ class _Parser:
                 if self._peek().type == T.IDENT and self._kw_colon(self._current + 1):
                     if positional and not allow_mixed:
                         t = self._peek()
-                        raise DslSyntaxError.at("Cannot mix positional and keyword arguments", t.line, t.col)
+                        raise self._parser_error_at("P007", "Cannot mix positional and keyword arguments", t)
                     keyword = True
                     self._parse_kwarg(kwargs)
                 else:
                     if keyword and not allow_mixed:
                         t = self._peek()
-                        raise DslSyntaxError.at("Cannot mix positional and keyword arguments", t.line, t.col)
+                        raise self._parser_error_at("P007", "Cannot mix positional and keyword arguments", t)
                     positional = True
                     args.append(self._parse_arg())
                 if self._peek().type != T.COMMA:
@@ -590,14 +616,21 @@ class _Parser:
         self._expect(T.COLON, "Expect ':'")
         if self._peek().type not in _EXPR_START:
             t = self._peek()
-            raise DslSyntaxError.at("Expected expression after '='", t.line, t.col)
+            raise self._parser_error_at("P001", "Expected expression after '='", t)
         obj[key] = self._parse_arg()
 
     # --- special-form transforms (reference/01 §4.6 / §7) ---------------
 
     def _transform_from(self, call, name_token):
         def fail(message):
-            raise DslSyntaxError.at(message, name_token.line, name_token.col)
+            line_val = getattr(name_token, 'line', None) if name_token is not None else None
+            col_val = getattr(name_token, 'col', None) if name_token is not None else None
+            if (
+                isinstance(line_val, int) and not isinstance(line_val, bool) and line_val > 0
+                and isinstance(col_val, int) and not isinstance(col_val, bool) and col_val > 0
+            ):
+                raise self._parser_error_at('P007', message, name_token)
+            raise self._parser_error('P007', message, token=name_token)
         if call.get('kwargs') is not None and len(call['kwargs']) > 0:
             fail("'from' does not support named arguments")
         if len(call['args']) != 2:
@@ -831,11 +864,20 @@ class _Parser:
             return ast.number(-self._to_number(val))
         return self._parse_primary()
 
-    @staticmethod
-    def _to_number(node):
-        if node.get('type') == K.Number:
+    def _to_number(self, node):
+        if isinstance(node, dict) and node.get('type') == K.Number:
             return node['value']
-        raise DslSyntaxError("Expected number")
+        pos = getattr(node, 'position', None) if node is not None else None
+        loc = node.get('loc') if isinstance(node, dict) and isinstance(node.get('loc'), dict) else {}
+        raise self._parser_error(
+            'P001',
+            'Expected number',
+            token={
+                'position': pos,
+                'line': loc.get('line'),
+                'col': loc.get('col')
+            }
+        )
 
     def _parse_primary(self):
         token = self._peek()
@@ -861,7 +903,7 @@ class _Parser:
                     elements.append(self._parse_arg())
             if self._peek().type != T.RBRACKET:
                 t = self._peek()
-                raise DslSyntaxError.at("Expected ']'", t.line, t.col)
+                raise self._parser_error_at("P001", "Expected ']'", t)
             self._advance()
             return {'type': K.ArrayLiteral, 'elements': elements, 'loc': ast.loc(sl, sc)}
         if tt == T.FUNC:
@@ -898,7 +940,7 @@ class _Parser:
                 if after is not None and after.type == T.LPAREN:
                     break  # dot begins a call
                 if nxt.type not in _MEMBER_TOKENS:
-                    raise DslSyntaxError.at("Expected identifier after '.'", nxt.line, nxt.col)
+                    raise self._parser_error_at("P001", "Expected identifier after '.'", nxt)
                 self._advance()  # consume '.'
                 self._advance()  # consume segment
                 path.append(nxt.lexeme)
@@ -934,7 +976,7 @@ class _Parser:
             expr = self._parse_additive()
             self._expect(T.RPAREN, "Expect ')'")
             return expr
-        raise DslSyntaxError.at("Unexpected token " + token.type, token.line, token.col)
+        raise self._parser_error_at("P001", "Unexpected token " + token.type, token)
 
     def _has_call_after_dot(self, index):
         i = index + 1

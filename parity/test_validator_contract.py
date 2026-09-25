@@ -894,6 +894,185 @@ class ValidatorContractTests(unittest.TestCase):
         self.assertEqual(sub4["type"], "Subchain")
         self.assertEqual(sub4["iterations"], 3)
 
+    def test_parser_call_form_diagnostics_attach_metadata(self):
+        cases = [
+            ("from named arguments", "search synth\nlet x = from(a: 1, b: 2)", "'from' does not support named arguments at line 2 col 9", 2, 9),
+            ("from missing second argument", "search synth\nlet x = from(synth)", "'from' requires exactly two arguments (namespace, call) at line 2 col 9", 2, 9),
+            ("from namespace not an identifier", "search synth\nlet x = from(1, probe())", "'from' namespace argument must be an identifier at line 2 col 9", 2, 9),
+            ("from second argument not a call", "search synth\nlet x = from(synth, 1)", "'from' second argument must be a call expression at line 2 col 9", 2, 9),
+            ("inline namespace", "search synth\nnd.noise()", "Inline namespace syntax 'nd.noise()' is not allowed. Use 'search nd' at the start of the program instead, at line 2 col 1", 2, 1),
+            ("positional then keyword", "search synth\ndiagProbe(1, x: 2)", "Cannot mix positional and keyword arguments at line 2 col 14", 2, 14),
+            ("keyword then positional", "search synth\ndiagProbe(x: 1, 2)", "Cannot mix positional and keyword arguments at line 2 col 17", 2, 17),
+            ("CRLF tab and UTF-16", "// 😀\r\nsearch synth\r\n\tdiagProbe(1, x: 2)", "Cannot mix positional and keyword arguments at line 3 col 15", 3, 15),
+            ("UTF-16 inline namespace column", 'search synth\nlet x = "😀"; nd.noise()', "Inline namespace syntax 'nd.noise()' is not allowed. Use 'search nd' at the start of the program instead, at line 2 col 15", 2, 15),
+        ]
+        for name, source, message, expected_line, expected_col in cases:
+            with self.subTest(name=name):
+                for entry_point in (lambda s: parse(lex(s)), compile_dsl):
+                    with self.assertRaises(DslSyntaxError) as cm:
+                        entry_point(source)
+                    err = cm.exception
+                    self.assertEqual(str(err), message)
+                    self.assertEqual(
+                        err.diagnostic,
+                        {
+                            "code": "P007",
+                            "stage": "parser",
+                            "severity": "error",
+                            "message": message,
+                            "location": {"line": expected_line, "column": expected_col},
+                            "span": None,
+                        },
+                    )
+
+    def test_parser_call_form_diagnostics_preserve_unavailable_caller_token_coordinates(self):
+        cases = [
+            "search synth\nlet x = from(a: 1, b: 2)",
+            "search synth\nlet x = from(synth)",
+            "search synth\nlet x = from(1, probe())",
+            "search synth\nlet x = from(synth, 1)",
+            "search synth\nnd.noise()",
+            "search synth\ndiagProbe(1, x: 2)",
+            "search synth\ndiagProbe(x: 1, 2)",
+        ]
+        for source in cases:
+            for coords in [{}, {"line": 1}, {"line": 0, "col": 1}, {"line": 1, "col": float("nan")}]:
+                tokens = [
+                    {"type": t.type, "lexeme": t.lexeme, **coords}
+                    for t in lex(source)
+                ]
+                with self.assertRaises(DslSyntaxError) as cm:
+                    parse(tokens)
+                err = cm.exception
+                self.assertEqual(
+                    err.diagnostic,
+                    {
+                        "code": "P007",
+                        "stage": "parser",
+                        "severity": "error",
+                        "message": str(err),
+                        "location": None,
+                        "span": None,
+                    },
+                )
+
+    def test_parser_remaining_expectation_diagnostics(self):
+        cases = [
+            ("expected expression in assignment", "search synth\nlet x = ;", "Expected expression after '=' at line 2 col 9", 2, 9),
+            ("expected expression in keyword argument", "search synth\ndiagProbe(a: )", "Expected expression after '=' at line 2 col 14", 2, 14),
+            ("expected closing bracket", "search synth\nlet x = [1 2]", "Expected ']' at line 2 col 12", 2, 12),
+            ("expected identifier after dot", "search synth\nlet x = foo.+", "Expected identifier after '.' at line 2 col 13", 2, 13),
+            ("unexpected primary token", "search synth\ndiagProbe(; 1)", "Unexpected token SEMICOLON at line 2 col 11", 2, 11),
+            ("UTF-16 column", 'search synth\nlet x = "😀"; let y = [1 2]', "Expected ']' at line 2 col 26", 2, 26),
+        ]
+        for name, source, message, expected_line, expected_col in cases:
+            with self.subTest(name=name):
+                for entry_point in (lambda s: parse(lex(s)), compile_dsl):
+                    with self.assertRaises(DslSyntaxError) as cm:
+                        entry_point(source)
+                    err = cm.exception
+                    self.assertEqual(str(err), message)
+                    self.assertEqual(
+                        err.diagnostic,
+                        {
+                            "code": "P001",
+                            "stage": "parser",
+                            "severity": "error",
+                            "message": message,
+                            "location": {"line": expected_line, "column": expected_col},
+                            "span": None,
+                        },
+                    )
+
+    def test_parser_remaining_expectation_diagnostics_preserve_unavailable_caller_token_coordinates(self):
+        cases = [
+            "search synth\nlet x = ;",
+            "search synth\ndiagProbe(a: )",
+            "search synth\nlet x = [1 2]",
+            "search synth\nlet x = foo.+",
+            "search synth\ndiagProbe(; 1)",
+        ]
+        for source in cases:
+            for coords in [{}, {"line": 1}, {"line": 0, "col": 1}, {"line": 1, "col": float("nan")}]:
+                tokens = [
+                    {"type": t.type, "lexeme": t.lexeme, **coords}
+                    for t in lex(source)
+                ]
+                with self.assertRaises(DslSyntaxError) as cm:
+                    parse(tokens)
+                err = cm.exception
+                self.assertEqual(
+                    err.diagnostic,
+                    {
+                        "code": "P001",
+                        "stage": "parser",
+                        "severity": "error",
+                        "message": str(err),
+                        "location": None,
+                        "span": None,
+                    },
+                )
+
+    def test_number_coercion_diagnostics_represent_unavailable_locations_explicitly(self):
+        for source in ["search synth\nlet x = 1 + o0", "search synth\nlet x = diagProbe() + 1"]:
+            for entry_point in (lambda s: parse(lex(s)), compile_dsl):
+                with self.assertRaises(DslSyntaxError) as cm:
+                    entry_point(source)
+                err = cm.exception
+                self.assertEqual(str(err), "Expected number")
+                self.assertEqual(
+                    err.diagnostic,
+                    {
+                        "code": "P001",
+                        "stage": "parser",
+                        "severity": "error",
+                        "message": "Expected number",
+                        "location": None,
+                        "span": None,
+                    },
+                )
+
+    def test_number_coercion_diagnostics_preserve_available_locations(self):
+        source = "search synth\nlet x = 1 + [1, 2]"
+        for entry_point in (lambda s: parse(lex(s)), compile_dsl):
+            with self.assertRaises(DslSyntaxError) as cm:
+                entry_point(source)
+            err = cm.exception
+            self.assertEqual(str(err), "Expected number")
+            self.assertEqual(
+                err.diagnostic,
+                {
+                    "code": "P001",
+                    "stage": "parser",
+                    "severity": "error",
+                    "message": "Expected number",
+                    "location": {"line": 2, "column": 13},
+                    "span": None,
+                },
+            )
+
+    def test_valid_call_forms_retain_from_override_namespaces_and_mixed_automation_arguments(self):
+        ast = parse(lex("search synth\nlet x = from(synth, probe())"))
+        self.assertEqual(
+            ast["vars"][0]["expr"],
+            {
+                "type": "Call",
+                "name": "probe",
+                "args": [],
+                "namespace": {
+                    "name": "synth",
+                    "path": ["synth"],
+                    "explicit": True,
+                    "source": "from",
+                    "resolved": "synth",
+                    "searchOrder": ["synth"],
+                    "fromOverride": True,
+                },
+            },
+        )
+        mixed = parse(lex("search synth\nlet a = midi(1, channel: 2)"))
+        self.assertEqual(mixed["vars"][0]["expr"]["channel"]["value"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()
