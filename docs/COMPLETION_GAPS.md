@@ -175,17 +175,21 @@ native render half (`adjust`, `alphaMask`, `bitwise` under the declared
 `touchdesigner-parity` profile) still requires the activated macOS host and
 remains the open condition for closing the gap.
 
-Native render check at source `5ba51bb3` (check `753f86fe`,
-profile `touchdesigner-parity` v1, engine TouchDesigner 2025.32820): failed on
-runner `native-spare` with `command_failed` and no command, stderr, or artifact
-captured; the runner did not deliver per-case results for any of the three
-required cases. These historical ledger rows remain the last recorded per-case
-native verdicts: `adjust` PASS (max_abs_diff 1.000003695487976, ssim
-0.9999804496765137, tol 2.001/0.98), `alphaMask` PASS (max_abs_diff
-1.000003695487976, ssim 0.9999801516532898), `bitwise` PASS (max_abs_diff 0.0,
-ssim 1.0) — all against goldens rendered from the reference engine under the
-declared tolerances. The gap stays open on the missing current-source native
-run, not on any recorded per-case failure.
+Infrastructure observation (records no qualification, closure, or per-case
+native result): the declared native check at source `5ba51bb3` (check
+`753f86fe`, profile `touchdesigner-parity` v1, engine TouchDesigner 2025.32820)
+did not complete — runner `native-spare` exited `command_failed` and returned
+no command, stderr, artifact, or per-case result for `adjust`, `alphaMask`, or
+`bitwise`. No current-source native verdict exists; the historical ledger rows
+(`adjust` max_abs_diff 1.000003695487976 / ssim 0.9999804496765137,
+`alphaMask` 1.000003695487976 / 0.9999801516532898, `bitwise` 0.0 / 1.0, all
+within tol 2.001 / ssim 0.98) remain the last recorded per-case verdicts and
+are unchanged by this observation. GAP-001 therefore stays fully open on both
+required halves (compiler half qualified above; native half unqualified), and
+the host-workflow items it depends on remain recorded as GAP-002/GAP-003. The
+README qualification engine (2025.32820) versus the current official build
+(2025.33230) remains the recorded version-matrix uncertainty; no claim about
+the newer build is made.
 
 ## 4. Known gaps
 
