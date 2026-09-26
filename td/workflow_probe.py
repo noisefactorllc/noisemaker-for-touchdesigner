@@ -95,7 +95,7 @@ def _shader_errors(ops):
 
 def _versions():
     v = {}
-    for attr in ('version', 'osName', 'osVersion', 'licenseType', 'build'):
+    for attr in ('build', 'osName', 'osVersion', 'licenseType'):
         try:
             v[attr] = str(getattr(app, attr))
         except Exception:

@@ -110,7 +110,10 @@ def onStart():
     # siblings only, so a cross-network connect (COMP-internal nm.Output -> an external
     # 'out') is silently refused. Create 'out' inside your COMP, next to the nm network:
     out = comp.create(nullTOP, 'out')                   # your display/export TOP
-    if nm.Output is not None:
+    if nm.Output is None:
+        print('[noisemaker] build failed — nm.Output is None; check the Textport '
+              'for the compile error before wiring a display TOP.')
+    else:
         out.inputConnectors[0].connect(nm.Output)       # nm.Output is an ordinary TOP
         out.cook()                                      # out now shows the rendered frame
 ```
