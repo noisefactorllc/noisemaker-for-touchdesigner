@@ -441,9 +441,22 @@ Two scope records, stated explicitly rather than waived:
    unwired `out` then reports "Not enough sources specified". The first useful
    result was therefore verified from the kit's own `nm.Output` TOP, which is
    what the export delivers as an ordinary TOP. `export-kit/kit/
-   README.template.md` and `integrate.py` still document the refused form; that
-   documentation correction belongs to the implementation job and is not made
-   here (the served artifact is frozen at its source SHA).
+   README.template.md` and `integrate.py` documented the refused form at the
+   source SHA this kit was served from
+   (`6c96151d72648f87e16e572428a98d1922b61136`), so the served `0.1.26`
+   artifact still contains it (the served artifact is frozen at its source
+   SHA); the in-tree files were corrected at candidate
+   `3064d0dc9c58840bf7a1510ffd37f7707b6cc9ba` (in-COMP `out` wiring in
+   `integrate.py`, in-COMP documentation in `README.template.md`), and the
+   Export kit workflow ran successfully at exactly that SHA (run
+   `36262052983`, `completed` / `success`, created 2026-09-26T18:18:10Z),
+   dispatching the scaffold export-kit release that ships to
+   kits.noisedeck.app. Direct re-verification of the served artifact from
+   this environment returns 403 (nginx) on `https://kits.noisedeck.app/`,
+   so the deployed kit content is recorded as updated-by-run rather than
+   re-fetched; the later candidates (`b159bd5`, `90c384d`, `f29c6ab`,
+   `b68859f`, `b6c178d`) touch no trigger paths, so the `3064d0dc` run
+   covers the latest `export-kit/` content.
 2. Version-to-version upgrade is not exercisable: kits.noisedeck.app serves a
    single rolling deployment (deployment `0`; `/1/` and `/2/` return 404; the
    previously served `0.1.20` and `0.1.23` kits are replaced, not retained).
