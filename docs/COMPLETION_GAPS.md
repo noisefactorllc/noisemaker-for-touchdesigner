@@ -9,6 +9,7 @@ Full rendered parity remains **unverified**. No release approval or new closure 
 Current upstream discovery: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published Noisemaker authority: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`, 210 effect IDs.
 The observations below retain their original source and authority identities. They do not qualify later updates.
 Current served kit: `0.1.23`, source `de416d7606e231bf6e38027316269640a1d7d096`. [Retrieved inventory and hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-served-inventories.json). Artifact identity does not establish host qualification.
+Served kit `0.1.26` at source `6c96151d72648f87e16e572428a98d1922b61136` was later byte-verified against its own served inventory and the source tree (2026-09-26, section 3). Artifact identity still does not establish host qualification.
 
 ### Earlier source observations
 
@@ -245,6 +246,64 @@ native attempts (`753f86fe`, `3632a413`, `34156eb1`, `077a584e`) are retained
 as the repair trail that produced the run-driver fixes
 (`b502e32`/`c727965`/`40114b8`/`699f6d2`/`3b543dd`).
 
+### 2026-09-26 served distribution artifact byte qualification (GAP-003, artifact half)
+
+The served distribution artifact was reproduced and checked byte-for-byte
+against its own published inventory. [Deployment
+metadata](https://kits.noisedeck.app/touchdesigner/0/deployment-meta.json)
+reports version `0.1.26`, `git_hash 6c96151d72648f87e16e572428a98d1922b61136`,
+`date 1790392233`. The served inventory
+[kit.json](https://kits.noisedeck.app/touchdesigner/0/kit.json) (SHA-256
+`9a7092ce2548224cf0988e684817defaa890cf42604ca1236f987b76139ffdf5`, 178485
+bytes) lists 852 files with per-file byte counts and SHA-256 hashes. All 852
+files were fetched individually from
+`https://kits.noisedeck.app/touchdesigner/0/<path>` and each matched its
+inventory entry on both SHA-256 and byte count: 852/852, zero mismatches, zero
+skips. Bytes per `estBytes` class also matched exactly (base 23,954; engine
+2,377,207; shaders 1,441,251).
+
+Inventory bytes were then reproduced from this repository at source
+`6c96151d72648f87e16e572428a98d1922b61136` (via `git show <sha>:<path>`):
+
+- All 549 non-shader, non-`compat.json` files are byte-identical to their
+  sources: 546 `engine/noisemaker/*` files to `td/noisemaker/*`,
+  `LICENSES/noisemaker-for-touchdesigner-LICENSE.txt` to `LICENSE` (SHA-256
+  `e502d1baf14c5fde7a7476f8a860665352d31d26f75b7a6977943606c8b51259`),
+  and `README.template.md`/`integrate.py` to `export-kit/kit/` (integrate.py
+  SHA-256 `433eab0ab9af15d3225f8047ccd4630fc9129d2f771508e8e73d4fcc8fa45540`).
+- All 301 `shaders/*` files are byte-identical to `td/noisemaker/shaders/`
+  content.
+- `compat.json` (SHA-256
+  `b4c57ae75efeb357e22893f5261a02be95cd99cba86f51c9c00dab5637807ce5`) lists
+  207 effect ids exactly equal to the effect definitions under
+  `td/noisemaker/effects/` at that SHA (`namespace/func`), with `media`,
+  `scope`, and `spectrum` excluded as declared in `export-kit/kit.config.json`;
+  no missing and no extra ids.
+- `td/noisemaker`, `export-kit/kit`, and `LICENSE` are byte-identical between
+  `6c96151` and current `main` (`dbd98d8`), so the served bytes reproduce from
+  the current default-branch tree.
+
+Licenses and dependencies: the kit ships two notices — the port's MIT license
+(byte-identical to the repo `LICENSE`) and the upstream Noisemaker MIT notice
+(`LICENSES/noisemaker-MIT.txt`, "Copyright (c) 2017-2025 Noise Factor LLC").
+An import scan over the served engine `.py` files finds only the Python
+standard library, TouchDesigner's built-in `td` module, and `numpy` (a single
+`import numpy` in `runtime/td_frame_export.py`; numpy ships inside
+TouchDesigner), consistent with the README's no-third-party-dependency claim.
+
+Required-check boundary: at source `6c96151d72648f87e16e572428a98d1922b61136`
+the only exact-source workflow run is [Export kit
+36213953378](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/actions/runs/36213953378),
+which is a dispatch-only job (every step succeeded; no skipped steps; it
+performs no render legs and claims none). The byte checks above, not the green
+dispatch, carry the artifact evidence.
+
+Still open under GAP-003/GAP-002: the host legs — loading the served kit in an
+isolated activated TouchDesigner project, source-path resolution, TOP output,
+saved-project relocation, upgrade, and removal. Artifact byte identity does
+not establish host qualification, and no package or release approval follows
+from this section.
+
 ## 4. Known gaps
 
 P1 means false completion or major correctness failure. P2 means coverage or integration uncertainty. P3 means documentation inconsistency.
@@ -281,13 +340,13 @@ These initial entries record missing qualification, not inferred implementation 
 - Status: open. Priority: P2. Category: release.
 - Affected scope: Distribution artifact, dependency metadata, notices, platform promises, and release evidence.
 - Expected behavior: The delivered artifact contains required files and supports its documented installation and first useful result.
-- Observed behavior: Distribution metadata was inspected. Complete artifact reproduction, installation, upgrades, and removal remain unverified.
-- Evidence: [Package instructions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md), exact-source CI in section 2, and recorded distribution observations in section 1.
-- Next action: Load the served kit in an isolated activated project. Check source paths, TOP output, saved-project relocation, notices, and removal.
+- Observed behavior: Distribution metadata was inspected. The served artifact (`0.1.26`, source `6c96151d72648f87e16e572428a98d1922b61136`) was byte-matched file-by-file to its served inventory (852/852 SHA-256, zero mismatches or skips), reproduced from the source tree, and its license notices and dependency surface were checked — section 3, 2026-09-26. Installation, example execution, saved-project relocation, upgrade, and removal remain unverified.
+- Evidence: [Package instructions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md), [served inventory](https://kits.noisedeck.app/touchdesigner/0/kit.json), exact-source CI in section 2/3, and recorded distribution observations in section 1.
+- Next action: Load the served kit in an isolated activated project. Check source paths, TOP output, saved-project relocation, notices, and removal. Blocked by the same activated-host requirement as GAP-002.
 - Dependencies: Complete GAP-002 for the release candidate. Distinguish source CI from downstream publication and host qualification.
-- Acceptance criteria: Match artifact bytes to the inventory. Check licenses and dependencies. Pass installation, example execution, upgrade, and removal.
-- Required checks: Inspect required CI jobs at the exact source SHA. Count skips and verify actual render legs, not green summaries.
-- Last verification: 2026-09-24. No package or release approval follows from this register.
+- Acceptance criteria: Match artifact bytes to the inventory (met for artifact `0.1.26` — section 3). Check licenses and dependencies (met — two notices, stdlib + `td` + bundled numpy). Pass installation, example execution, upgrade, and removal (still open).
+- Required checks: Inspect required CI jobs at the exact source SHA (done — Export kit 36213953378 is dispatch-only, no skips, no render legs). Count skips and verify actual render legs, not green summaries (render legs were never claimed by that workflow; artifact bytes verified directly).
+- Last verification: 2026-09-26 (artifact byte/license/dependency half only). No package or release approval follows from this register.
 
 ## 5. Ordered next actions
 
@@ -308,6 +367,7 @@ Implementation changes belong to the separate implementation job. This register 
 
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
+| 2026-09-26 | `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c` | GAP-003 artifact half recorded: served kit `0.1.26` (source `6c96151d`) byte-matched to its served inventory 852/852, reproduced from source, licenses and dependencies checked; GAP-003 stays open. | 852/852 per-file SHA-256 matches against kits.noisedeck.app; 549 engine/license/readme files byte-identical to `git show 6c96151`, 301 shaders byte-identical, compat.json ids exact (207, media/scope/spectrum excluded); Export kit 36213953378 (dispatch-only, no skips). | Installed host legs (load in activated project, TOP output, relocation, upgrade, removal) remain open and blocked by GAP-002; no release approval. |
 | 2026-09-26 | `3b543dde9f25d35f30d9b3ee15869255f9e14b8f` | GAP-001 closed: native `touchdesigner-parity` cases passed at the published candidate; run-driver robustness fixes published along the way. | Native: `adjust`/`alphaMask`/`bitwise` passed on TD 2025.32820 darwin/arm64 at thresholds 2/0.98 (machine verification receipt). Compiler gates unchanged (td/noisemaker + parity/compiler byte-identical to base `6c96151`). | Full 301-fixture native sweep, installed host workflow, 2025.33230 matrix, and distribution remain open (GAP-002/GAP-003). |
 | 2026-09-26 | `6c96151d72648f87e16e572428a98d1922b61136` | Recorded compiler-parity qualification at authority `2f47612c29045c1b91af94887a8ff20106e980ef`. GAP-001 remains open. | Linux compiler gates: lex/parse/validate 326/326, graph 325 PASS / 1 rejection-parity SKIP / 0 DIFF / 0 STAGE / 0 ERR; definitions 210/210 byte-identical; 118 unit tests. | Native render gates (`adjust`, `alphaMask`, `bitwise`), installed workflow, and platform qualification remain open. |
 | 2026-09-24 | `66426bc41c2b85940322ae843ba04f41b7905ce4` | Created the requested six-section register and README link. No closures. | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. | Full audit, current parity, installed workflows, platform qualification, and release readiness remain open. |
