@@ -317,16 +317,18 @@ The runtime used is byte-identical to source
 parity/compiler` is empty). Artifact SHA-256s: runtime
 `td/noisemaker/runtime/nm_renderer.py`
 `9c4f1f5abc1fef1513aeef79e84518fc9b32eaa91a3694a6f300cb43fa0c37d3`, probe
-`0905f5b7bddabd10d39130fef7fd503644fb53adad66bcc9eddb58afe0bdf538`, builder
+`7943f068e4ed4baa848971d7cbc1eacba01577169d8533fc5e8fac58a58fa4f9`, builder
 `1a4c57f3dfe1158b5f5d082caf294d79e96e31526fbf0d9b08b80bc705922edf`. An initial
-builder revision (`c68f1e38…`) had a corrupt Execute-DAT text frame; after the
-framing fix the full workflow was re-run from the rebuilt `.toe` and all three
-render PNGs reproduced byte-identically (hashes unchanged below). Both runs
+run (probe `0905f5b7…`, builder `c68f1e38…`) produced identical render PNG
+bytes but the initial builder revision had a corrupt Execute-DAT text frame;
+after the framing fix — and a later log-per-phase probe fix — the full
+workflow was re-run from the rebuilt `.toe` and all render PNGs reproduced
+byte-identically (hashes unchanged below). Both final runs
 ended in `project.quit(force=True)`; the host reported exit 0 and
 `timed_out=false` for each (project-level cancellation measured).
 
 Recorded workflow (`parity/out/workflow/report.build.json`, `report.reopen.json`,
-`_workflow_log.txt`, and four PNG artifacts retained in the run checkout):
+`_workflow_log.build.txt` / `_workflow_log.reopen.txt` (phase-split; the build log retains the connect-diagnostic and same-level-control output), and four PNG artifacts retained in the run checkout):
 
 | Step | Result |
 |---|---|
@@ -337,7 +339,7 @@ Recorded workflow (`parity/out/workflow/report.build.json`, `report.reopen.json`
 | resize | `nm.resize(320, 240)`: out verified 320×240, `workflow.resized-320x240.png` sha256 `88d7c715d241a7a089e7895bf9ed2112e6556678e55c5d18e59256e16cc8792a` |
 | invalid DSL | raises `DslSyntaxError` "Unexpected character '!' at line 1 col 42", diagnostic `{code L001, stage lexer, severity error}` |
 | recovery | valid DSL re-set, renders again (`workflow.recovered.png` sha256 `88d7c715…`, byte-identical to the resized render — deterministic solid program) |
-| file preservation / reopen | saved `parity/out/workflow/nm_workflow_saved.toe` sha256 `6762ddbd40365cf0225bbf0d065fe0da791c968d98a29f78605b49870c55884c` (6863 bytes); reopen run: consumer present, same display TOP, re-cooked `workflow.reopened.png` sha256 `88d7c715…` byte-identical to the build render |
+| file preservation / reopen | saved `parity/out/workflow/nm_workflow_saved.toe` sha256 `908296be7a18dcaba5a31a5c8de330a7c71de3f80b0d8aadc6f6215a0244f0c9` (6858 bytes); reopen run: consumer present, same display TOP, re-cooked `workflow.reopened.png` sha256 `88d7c715…` byte-identical to the build render |
 | cleanup | consumer and display TOP destroyed; `remaining_ops: []`, clean |
 
 Version matrix and unavailable platforms, recorded explicitly: the minimum
@@ -379,12 +381,12 @@ These initial entries record missing qualification, not inferred implementation 
 - Affected scope: Public API, README examples, supported host versions, and lifecycle behavior.
 - Expected behavior: Developers can install, produce useful output, integrate it, diagnose errors, recover, and remove the package.
 - Observed behavior: The full documented workflow was qualified on TouchDesigner 2025.32820 (darwin arm64 GPU, macOS 26.5) in an isolated Base COMP in a fresh stock project: documented NMRenderer example at 1280×1280 with meaningful non-error output (mean 0.674927), TOP connected and resized to 320×240, invalid DSL raised a diagnostic (`DslSyntaxError`, `L001` lexer error) with successful recovery, project saved/reopened with byte-identical re-cooked output, and cleanup destroyed the consumer with no remaining ops — section 3, with exact steps, stats, SHA-256s, and retained report/PNG artifacts. Both runs self-quit (`project.quit(force=True)`) with exit 0 and no timeout. The README's original cross-network connect form (`out` sibling of the COMP wired to `nm.Output`) was verified silently refused by 2025.32820 (same-level control connects fine) and repaired in this pass: README.md now documents the working in-COMP connect form the workflow executed. Remaining: the current official build 2025.33230 is not installed on the only available TouchDesigner host (bundle verified sole install, `CFBundleVersion 2025.32820`) and this job has no licensed Derivative download channel — the current-version workflow check is not exercised and this entry stays open on it.
-- Evidence: Section 3 ("2026-09-26 installed developer workflow qualification"), retained reports `parity/out/workflow/report.build.json` / `report.reopen.json` / `_workflow_log.txt` plus four PNG artifacts, corrected README example, [ecosystem reference](https://derivative.ca/UserGuide/System_Requirements). Runtime `td/noisemaker` byte-identical to `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c`; 118 unit tests OK.
+- Evidence: Section 3 ("2026-09-26 installed developer workflow qualification"), retained reports `parity/out/workflow/report.build.json` / `report.reopen.json` / `_workflow_log.build.txt` / `_workflow_log.reopen.txt` plus four PNG artifacts, corrected README example, [ecosystem reference](https://derivative.ca/UserGuide/System_Requirements). Runtime `td/noisemaker` byte-identical to `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c`; 118 unit tests OK.
 - Next action: Run the same workflow on the current official build 2025.33230 (requires obtaining that licensed build on a host; the qualified host holds only 2025.32820).
 - Dependencies: resolved for 2025.32820 — isolated consumer Base COMP in a fresh stock project; GPU available; no external input required; host TD license in place. For 2025.33230: a host with that licensed build.
-- Acceptance criteria: met on 2025.32820 — installed artifact hash (runtime `9c4f1f5a…`, saved project `6762ddbd…`), interaction steps, meaningful output, recovery result, and cleanup result all retained in section 3. Not yet met for the 2025.33230 leg, so the entry remains open.
+- Acceptance criteria: met on 2025.32820 — installed artifact hash (runtime `9c4f1f5a…`, saved project `908296be…`), interaction steps, meaningful output, recovery result, and cleanup result all retained in section 3. Not yet met for the 2025.33230 leg, so the entry remains open.
 - Required checks: measured on 2025.32820 — minimum supported version tested; unavailable platforms recorded explicitly (Windows not exercised, Linux unsupported by TouchDesigner, macOS Intel not exercised); cancellation measured (both runs self-quit, exit 0, no timeout); file preservation measured (reopen re-cook byte-identical). Current official build 2025.33230 not exercised — recorded explicitly above, not waived.
-- Last verification: 2026-09-26 (workflow on TD 2025.32820 darwin arm64; runtime byte-identical to `dbd98d8`; probe `fa8b1e2f…`, builder `1a4c57f3…`).
+- Last verification: 2026-09-26 (workflow on TD 2025.32820 darwin arm64; runtime byte-identical to `dbd98d8`; probe `7943f068…`, builder `1a4c57f3…`).
 
 ### GAP-003: distribution and release qualification
 

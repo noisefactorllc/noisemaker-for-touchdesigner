@@ -344,5 +344,5 @@ except Exception:
     except Exception:
         pass
 finally:
-    with open(os.path.join(OUT, '_workflow_log.txt'), 'w') as f:
+    with open(os.path.join(OUT, '_workflow_log.%s.txt' % PHASE), 'w') as f:
         f.write('\n'.join(_lines) + '\n')
