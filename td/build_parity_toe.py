@@ -32,8 +32,13 @@ NEWPROJ_REL = ('Samples', 'Setup', 'Base', 'NewProject.toe')
 
 
 def _has_toe_tools(d):
-    return os.path.isdir(d) and os.path.exists(os.path.join(d, 'toeexpand')) \
-        and os.path.exists(os.path.join(d, 'toecollapse'))
+    if not os.path.isdir(d):
+        return False
+    for tool in ('toeexpand', 'toecollapse'):
+        if not (os.path.exists(os.path.join(d, tool))
+                or os.path.exists(os.path.join(d, tool + '.exe'))):
+            return False
+    return True
 
 
 def _find_newproj(roots):
@@ -67,6 +72,8 @@ def discover_td():
     if env:
         if env.endswith('.app'):
             roots.append(os.path.join(env, 'Contents'))
+        elif os.path.isfile(env):
+            roots.append(os.path.dirname(os.path.abspath(env)))   # the TD binary itself
         else:
             roots.append(env)
             for sub in ('bin', os.path.join('Contents', 'MacOS')):
@@ -74,11 +81,14 @@ def discover_td():
                 if _has_toe_tools(b):
                     roots.append(b)
     roots += [os.path.join(p, 'Contents') for p in sorted(glob.glob('/Applications/TouchDesigner*.app'))]
+    roots += [os.path.join(p, 'Contents') for p in sorted(glob.glob(os.path.expanduser('~/Applications/TouchDesigner*.app')))]
     for pat in ('/opt/TouchDesigner*', '/opt/touchdesigner*', '/usr/local/TouchDesigner*',
                 '/usr/local/touchdesigner*', os.path.expanduser('~/TouchDesigner*'),
                 os.path.expanduser('~/touchdesigner*'),
                 '/c/Program Files*/Derivative/TouchDesigner*',
-                'C:/Program Files*/Derivative/TouchDesigner*'):
+                '/c/Program Files*/Derivative/*TouchDesigner*',
+                'C:/Program Files*/Derivative/TouchDesigner*',
+                'C:/Program Files*/Derivative/*TouchDesigner*'):
         roots += sorted(glob.glob(pat))
     # Each root may BE the bin dir, or hold it (install roots keep tools in bin/,
     # macOS bundle roots in Contents/MacOS).
@@ -96,8 +106,23 @@ def discover_td():
 
 TD_BIN_DIR, NEWPROJ = discover_td()
 if not TD_BIN_DIR or not NEWPROJ:
-    sys.exit('TouchDesigner install not found (set TD_APP to the install root or the bin '
-             'directory containing toeexpand/toecollapse and NewProject.toe).')
+    seen = []
+    env = os.environ.get('TD_APP')
+    if env:
+        seen.append('TD_APP=%s' % env)
+    for root in sorted(glob.glob('/Applications/TouchDesigner*.app')) + \
+            sorted(glob.glob(os.path.expanduser('~/Applications/TouchDesigner*.app'))) + \
+            sorted(glob.glob('/opt/TouchDesigner*')) + sorted(glob.glob('/opt/touchdesigner*')) + \
+            sorted(glob.glob('/usr/local/TouchDesigner*')) + sorted(glob.glob('/usr/local/touchdesigner*')) + \
+            sorted(glob.glob(os.path.expanduser('~/TouchDesigner*'))) + \
+            sorted(glob.glob(os.path.expanduser('~/touchdesigner*'))) + \
+            sorted(glob.glob('C:/Program Files*/Derivative/*TouchDesigner*')) + \
+            sorted(glob.glob('/c/Program Files*/Derivative/*TouchDesigner*')):
+        if os.path.isdir(root):
+            seen.append(root)
+    sys.exit('TouchDesigner install not found (searched: %s; set TD_APP to the install root '
+             'or the bin directory containing toeexpand/toecollapse and NewProject.toe).'
+             % ('; '.join(seen) or 'no candidate roots'))
 WORK = os.path.join(os.environ.get('TMPDIR', '/tmp'), 'nm_parity_build')
 
 # The Execute DAT body: define onStart/onCreate, exec the render script with a namespace that
@@ -129,6 +154,13 @@ def onCreate():
 ''' % RENDER
 
 
+def _tool(name):
+    for cand in (os.path.join(TD_BIN_DIR, name), os.path.join(TD_BIN_DIR, name + '.exe')):
+        if os.path.exists(cand):
+            return cand
+    return name
+
+
 def _toe_text(code):
     """Frame DAT text as TD stores it: '2\\n*' + 6 BE int32 [1,1,1,1,2,len] + utf8 body."""
     b = code.encode('utf-8')
@@ -140,7 +172,7 @@ def main():
     os.makedirs(WORK)
     shutil.copy(NEWPROJ, os.path.join(WORK, 'boot.toe'))
     # NOTE: toeexpand/toecollapse exit non-zero even on success — verify by output files.
-    subprocess.run([os.path.join(TD_BIN_DIR, 'toeexpand'), 'boot.toe'], cwd=WORK,
+    subprocess.run([_tool('toeexpand'), 'boot.toe'], cwd=WORK,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     dd = os.path.join(WORK, 'boot.toe.dir')
     if not os.path.isdir(dd):
@@ -170,7 +202,7 @@ def main():
 
     if os.path.exists(OUT_TOE):
         os.remove(OUT_TOE)
-    subprocess.run([os.path.join(TD_BIN_DIR, 'toecollapse'), 'boot.toe'], cwd=WORK,
+    subprocess.run([_tool('toecollapse'), 'boot.toe'], cwd=WORK,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     built = os.path.join(WORK, 'boot.toe')
     if not os.path.exists(built):
