@@ -106,9 +106,13 @@ def onStart():
     nm = NMRenderer(comp, width=1280, height=1280)
     comp.store('nm', nm)                                # keep a reference alive
     nm.set_dsl('search synth\nsolid(color: [0.9, 0.3, 0.5]).write(o0)\nrender(o0)')
-    out = op('../out')                                  # your Null/Out TOP for display or export
-    if out is not None and nm.Output is not None:
+    # The display TOP must live in the same network as the built nodes: TD wires connect
+    # siblings only, so a cross-network connect (COMP-internal nm.Output -> an external
+    # 'out') is silently refused. Create 'out' inside your COMP, next to the nm network:
+    out = comp.create(nullTOP, 'out')                   # your display/export TOP
+    if nm.Output is not None:
         out.inputConnectors[0].connect(nm.Output)       # nm.Output is an ordinary TOP
+        out.cook()                                      # out now shows the rendered frame
 ```
 
 | Member | Purpose |

@@ -72,7 +72,9 @@ def _discover_td():
         roots.append(os.path.join(app, 'Contents', 'MacOS'))
     for pat in ('/opt/TouchDesigner*', '/opt/touchdesigner*', '/usr/local/TouchDesigner*',
                 '/usr/local/touchdesigner*', os.path.expanduser('~/TouchDesigner*'),
-                os.path.expanduser('~/touchdesigner*')):
+                os.path.expanduser('~/touchdesigner*'),
+                '/c/Program Files*/Derivative/TouchDesigner*', 'C:/Program Files*/Derivative/TouchDesigner*',
+                '/c/Program Files*/TouchDesigner*', 'C:/Program Files*/TouchDesigner*'):
         roots += sorted(glob.glob(pat))
     for root in roots:
         for cand in (root, os.path.join(root, 'bin'), os.path.join(root, 'Contents', 'MacOS')):
@@ -93,7 +95,7 @@ def _tool(name):
 def _toe_text(code):
     """Frame DAT text as TD stores it: '2\\n*' + 6 BE int32 [1,1,1,1,2,len] + utf8 body."""
     b = code.encode('utf-8')
-    return b'2\\n*' + struct.pack('>6i', 1, 1, 1, 1, 2, len(b)) + b
+    return b'2\n*' + struct.pack('>6i', 1, 1, 1, 1, 2, len(b)) + b
 
 
 CALLBACK = '''# noisemaker GAP-002 workflow bootstrap — runs the installed-workflow probe on load, then quits.

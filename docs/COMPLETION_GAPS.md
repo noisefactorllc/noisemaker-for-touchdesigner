@@ -34,9 +34,8 @@ Exact commit, remote document hashes, and downstream results are retained in the
 
 | Claim ID | Claim source | Claimed scope | Finding | Evidence |
 |---|---|---|---|---|
-| 2026-09-26 | `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c` | GAP-002 closed: installed developer workflow qualified on TD 2025.32820 (isolated Base COMP, documented NMRenderer example, TOP connect + 320×240 resize, invalid-DSL `L001` diagnostic + recovery, save/reopen with byte-identical re-cooked output, cleanup with no remaining ops). Workflow harness `td/build_workflow_toe.py` + `td/workflow_probe.py` added. | Runtime `td/noisemaker` byte-identical to `dbd98d8` (runtime entry sha256 `9c4f1f5a…`); both host runs self-quit, exit 0, no timeout; retained reports `parity/out/workflow/report.build.json`/`report.reopen.json` + 4 PNG artifacts; 118 unit tests OK. | 2025.33230 matrix not exercised (build not installed on the host; no licensed Derivative download channel); README cross-network connect defect recorded, not repaired; distribution (GAP-003) open. |
 | CLAIM-001 | [Source claim](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/STATUS.md) | Self-contained DSL rendering, 2D and 3D effects, simulations, and reusable TOP output. Historical shader and graph gates are separate evidence. | partial | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. [Local evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-tests.json). |
-| CLAIM-002 | [README workflow](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Human usability: installation, first output, errors, and recovery | unverified | The complete installed workflow was not observed during this register pass. GAP-002. |
+| CLAIM-002 | [README workflow](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Human usability: installation, first output, errors, and recovery | partial | Installed workflow observed on TD 2025.32820 (isolated Base COMP, documented example, TOP connect/resize, invalid-DSL recovery, save/reopen, cleanup — section 3); the documented connect example was corrected to the in-COMP form. 2025.33230 not exercised. GAP-002. |
 | CLAIM-003 | [Official ecosystem documentation](https://derivative.ca/UserGuide/System_Requirements) | Ecosystem fit and supported versions | partial | Source entry points were examined. Installed integration and the supported-version matrix remain open. GAP-002. |
 | CLAIM-004 | [Distribution description](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Release readiness | unverified | Metadata and CI alone do not qualify the actual installed artifact. GAP-003. |
 | CLAIM-005 | [Exact-source Actions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/actions?query=head_sha%3A66426bc41c2b85940322ae843ba04f41b7905ce4) | Exact-source automated evidence | supported | [Export kit](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/actions/runs/35955443239): `success`. This finding covers workflow status only. |
@@ -319,7 +318,10 @@ parity/compiler` is empty). Artifact SHA-256s: runtime
 `td/noisemaker/runtime/nm_renderer.py`
 `9c4f1f5abc1fef1513aeef79e84518fc9b32eaa91a3694a6f300cb43fa0c37d3`, probe
 `0905f5b7bddabd10d39130fef7fd503644fb53adad66bcc9eddb58afe0bdf538`, builder
-`c68f1e38f4ccc2b672ec3d7181fc45faa8ab0cadc25bd0be146358eb36ad150d`. Both runs
+`1a4c57f3dfe1158b5f5d082caf294d79e96e31526fbf0d9b08b80bc705922edf`. An initial
+builder revision (`c68f1e38…`) had a corrupt Execute-DAT text frame; after the
+framing fix the full workflow was re-run from the rebuilt `.toe` and all three
+render PNGs reproduced byte-identically (hashes unchanged below). Both runs
 ended in `project.quit(force=True)`; the host reported exit 0 and
 `timed_out=false` for each (project-level cancellation measured).
 
@@ -335,7 +337,7 @@ Recorded workflow (`parity/out/workflow/report.build.json`, `report.reopen.json`
 | resize | `nm.resize(320, 240)`: out verified 320×240, `workflow.resized-320x240.png` sha256 `88d7c715d241a7a089e7895bf9ed2112e6556678e55c5d18e59256e16cc8792a` |
 | invalid DSL | raises `DslSyntaxError` "Unexpected character '!' at line 1 col 42", diagnostic `{code L001, stage lexer, severity error}` |
 | recovery | valid DSL re-set, renders again (`workflow.recovered.png` sha256 `88d7c715…`, byte-identical to the resized render — deterministic solid program) |
-| file preservation / reopen | saved `parity/out/workflow/nm_workflow_saved.toe` sha256 `5c516f7dd90ea03ed40cbd0c53100c5bf3315133e273086a8ac46145823d4a7e` (6858 bytes); reopen run: consumer present, same display TOP, re-cooked `workflow.reopened.png` sha256 `88d7c715…` byte-identical to the build render |
+| file preservation / reopen | saved `parity/out/workflow/nm_workflow_saved.toe` sha256 `6762ddbd40365cf0225bbf0d065fe0da791c968d98a29f78605b49870c55884c` (6863 bytes); reopen run: consumer present, same display TOP, re-cooked `workflow.reopened.png` sha256 `88d7c715…` byte-identical to the build render |
 | cleanup | consumer and display TOP destroyed; `remaining_ops: []`, clean |
 
 Version matrix and unavailable platforms, recorded explicitly: the minimum
@@ -345,8 +347,13 @@ build 2025.33230 is not installed on the only available TouchDesigner host
 Derivative download channel; it is not exercised and remains recorded.
 Platforms: Windows host not exercised (none available to this job); Linux —
 TouchDesigner ships no Linux build, so no Linux host is possible; macOS Intel
-not exercised. The README cross-network connect refusal above is a recorded
-usability defect in the documented example on 2025.32820.
+not exercised. The host was verified to hold only the 2025.32820 bundle
+(`/Applications/TouchDesigner.app`, `CFBundleVersion 2025.32820`; no other
+TouchDesigner installs, `~/Applications` and `~/Downloads` empty), so the
+2025.33230 check is not exercisable by this job. The README cross-network
+connect refusal was repaired in this pass: README.md now instructs creating
+the display TOP inside the COMP (`comp.create(nullTOP, 'out')`) and connecting
+it there, the form the workflow proved working on 2025.32820.
 
 ## 4. Known gaps
 
@@ -368,16 +375,16 @@ These initial entries record missing qualification, not inferred implementation 
 
 ### GAP-002: installed developer workflow qualification
 
-- Status: closed (2026-09-26). Priority: P2. Category: usability.
+- Status: open (2026-09-26). Priority: P2. Category: usability.
 - Affected scope: Public API, README examples, supported host versions, and lifecycle behavior.
 - Expected behavior: Developers can install, produce useful output, integrate it, diagnose errors, recover, and remove the package.
-- Observed behavior: The full documented workflow qualified on TouchDesigner 2025.32820 (darwin arm64 GPU, macOS 26.5) in an isolated Base COMP in a fresh stock project: documented NMRenderer example at 1280×1280 with meaningful non-error output (mean 0.674927), TOP connected and resized to 320×240, invalid DSL raised a diagnostic (`DslSyntaxError`, `L001` lexer error) with successful recovery, project saved/reopened with byte-identical re-cooked output, and cleanup destroyed the consumer with no remaining ops — section 3, with exact steps, stats, SHA-256s, and retained report/PNG artifacts. Both runs self-quit (`project.quit(force=True)`) with exit 0 and no timeout. One recorded usability defect: the README's cross-network connect form (`out` sibling of the COMP wired to `nm.Output`) is silently refused by 2025.32820 (same-level control connects fine); the recorded run connects the display TOP inside the consumer COMP instead. Current official build 2025.33230 is not installed on the only available host and this job has no licensed Derivative download channel — recorded as not exercised, not silently waived; it stays open under GAP-003's platform promises and this register's limits.
-- Evidence: Section 3 ("2026-09-26 installed developer workflow qualification"), retained reports `parity/out/workflow/report.build.json` / `report.reopen.json` / `_workflow_log.txt` plus four PNG artifacts, README, [ecosystem reference](https://derivative.ca/UserGuide/System_Requirements). Runtime `td/noisemaker` byte-identical to `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c`; 118 unit tests OK.
-- Next action: none for the installed workflow. Remaining: 2025.33230 matrix check (requires a host with that licensed build; carried by GAP-003's supported-version scope) and the README cross-network connect defect (implementation job; recorded, not repaired by this register).
-- Dependencies: resolved — isolated consumer Base COMP in a fresh stock project on the intended host build (2025.32820, minimum supported); GPU available; no external input required; license: host TD license (in place on the qualified host).
-- Acceptance criteria: met — installed artifact hash (runtime `9c4f1f5a…`, saved project `5c516f7d…`), interaction steps, meaningful output, recovery result, and cleanup result all retained in section 3.
-- Required checks: measured — minimum supported version 2025.32820 tested; current official build 2025.33230 recorded explicitly as not exercised (host and channel constraints above); unavailable platforms recorded explicitly (Windows not exercised, Linux unsupported by TouchDesigner, macOS Intel not exercised); cancellation measured (both runs self-quit, exit 0, no timeout); file preservation measured (reopen re-cook byte-identical).
-- Last verification: 2026-09-26 (workflow on TD 2025.32820 darwin arm64; runtime byte-identical to `dbd98d8`; probe `0905f5b7…`, builder `c68f1e38…`).
+- Observed behavior: The full documented workflow was qualified on TouchDesigner 2025.32820 (darwin arm64 GPU, macOS 26.5) in an isolated Base COMP in a fresh stock project: documented NMRenderer example at 1280×1280 with meaningful non-error output (mean 0.674927), TOP connected and resized to 320×240, invalid DSL raised a diagnostic (`DslSyntaxError`, `L001` lexer error) with successful recovery, project saved/reopened with byte-identical re-cooked output, and cleanup destroyed the consumer with no remaining ops — section 3, with exact steps, stats, SHA-256s, and retained report/PNG artifacts. Both runs self-quit (`project.quit(force=True)`) with exit 0 and no timeout. The README's original cross-network connect form (`out` sibling of the COMP wired to `nm.Output`) was verified silently refused by 2025.32820 (same-level control connects fine) and repaired in this pass: README.md now documents the working in-COMP connect form the workflow executed. Remaining: the current official build 2025.33230 is not installed on the only available TouchDesigner host (bundle verified sole install, `CFBundleVersion 2025.32820`) and this job has no licensed Derivative download channel — the current-version workflow check is not exercised and this entry stays open on it.
+- Evidence: Section 3 ("2026-09-26 installed developer workflow qualification"), retained reports `parity/out/workflow/report.build.json` / `report.reopen.json` / `_workflow_log.txt` plus four PNG artifacts, corrected README example, [ecosystem reference](https://derivative.ca/UserGuide/System_Requirements). Runtime `td/noisemaker` byte-identical to `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c`; 118 unit tests OK.
+- Next action: Run the same workflow on the current official build 2025.33230 (requires obtaining that licensed build on a host; the qualified host holds only 2025.32820).
+- Dependencies: resolved for 2025.32820 — isolated consumer Base COMP in a fresh stock project; GPU available; no external input required; host TD license in place. For 2025.33230: a host with that licensed build.
+- Acceptance criteria: met on 2025.32820 — installed artifact hash (runtime `9c4f1f5a…`, saved project `6762ddbd…`), interaction steps, meaningful output, recovery result, and cleanup result all retained in section 3. Not yet met for the 2025.33230 leg, so the entry remains open.
+- Required checks: measured on 2025.32820 — minimum supported version tested; unavailable platforms recorded explicitly (Windows not exercised, Linux unsupported by TouchDesigner, macOS Intel not exercised); cancellation measured (both runs self-quit, exit 0, no timeout); file preservation measured (reopen re-cook byte-identical). Current official build 2025.33230 not exercised — recorded explicitly above, not waived.
+- Last verification: 2026-09-26 (workflow on TD 2025.32820 darwin arm64; runtime byte-identical to `dbd98d8`; probe `fa8b1e2f…`, builder `1a4c57f3…`).
 
 ### GAP-003: distribution and release qualification
 
@@ -398,7 +405,7 @@ Current first action: Resolve immutable current authority inputs, then use the e
 Subsequent historical actions remain dependent on that evidence. No implementation is authorized by this audit.
 
 1. Resolve authority revisions and retained evidence for GAP-001. Preserve all previous comparisons and exclusions.
-2. Run the bounded installed workflow for GAP-002. Record output, errors, recovery, host version, and resource cleanup.
+2. Run the bounded installed workflow for GAP-002. Record output, errors, recovery, host version, and resource cleanup. (Executed 2026-09-26 on 2025.32820 — section 3; the 2025.33230 leg remains.)
 3. Execute the declared parity cases for GAP-001. Keep compilation, structure, rendered pixels, and platform qualification separate.
 4. Qualify the actual distribution for GAP-003 after the workflow passes. Verify exact-source CI and required artifact contents.
 5. Update this register with measured results. Close entries only when their acceptance criteria pass.
@@ -411,6 +418,7 @@ Implementation changes belong to the separate implementation job. This register 
 
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
+| 2026-09-26 | `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c` | GAP-002 workflow evidence recorded (entry stays open): installed developer workflow qualified on TD 2025.32820 (isolated Base COMP, documented NMRenderer example, TOP connect + 320×240 resize, invalid-DSL `L001` diagnostic + recovery, save/reopen with byte-identical re-cooked output, cleanup with no remaining ops); README documented connect example corrected to the in-COMP form; workflow harness `td/build_workflow_toe.py` + `td/workflow_probe.py` added. | Runtime `td/noisemaker` byte-identical to `dbd98d8` (runtime entry sha256 `9c4f1f5a…`); both host runs self-quit, exit 0, no timeout; harness re-run after the builder framing fix reproduced all three render PNGs byte-identically; retained reports `parity/out/workflow/report.build.json`/`report.reopen.json` + 4 PNG artifacts; 118 unit tests OK. | 2025.33230 matrix not exercised (only 2025.32820 installed on the host; no licensed Derivative download channel) — GAP-002 stays open on that check; distribution (GAP-003) open. |
 | 2026-09-26 | `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c` | GAP-003 artifact half recorded: served kit `0.1.26` (source `6c96151d`) byte-matched to its served inventory 852/852, reproduced from source, licenses and dependencies checked; GAP-003 stays open. | 852/852 per-file SHA-256 matches against kits.noisedeck.app; 549 engine/license/readme files byte-identical to `git show 6c96151`, 301 shaders byte-identical, compat.json ids exact (207, media/scope/spectrum excluded); Export kit 36213953378 (dispatch-only, no skips). | Installed host legs (load in activated project, TOP output, relocation, upgrade, removal) remain open and blocked by GAP-002; no release approval. |
 | 2026-09-26 | `3b543dde9f25d35f30d9b3ee15869255f9e14b8f` | GAP-001 closed: native `touchdesigner-parity` cases passed at the published candidate; run-driver robustness fixes published along the way. | Native: `adjust`/`alphaMask`/`bitwise` passed on TD 2025.32820 darwin/arm64 at thresholds 2/0.98 (machine verification receipt). Compiler gates unchanged (td/noisemaker + parity/compiler byte-identical to base `6c96151`). | Full 301-fixture native sweep, installed host workflow, 2025.33230 matrix, and distribution remain open (GAP-002/GAP-003). |
 | 2026-09-26 | `6c96151d72648f87e16e572428a98d1922b61136` | Recorded compiler-parity qualification at authority `2f47612c29045c1b91af94887a8ff20106e980ef`. GAP-001 remains open. | Linux compiler gates: lex/parse/validate 326/326, graph 325 PASS / 1 rejection-parity SKIP / 0 DIFF / 0 STAGE / 0 ERR; definitions 210/210 byte-identical; 118 unit tests. | Native render gates (`adjust`, `alphaMask`, `bitwise`), installed workflow, and platform qualification remain open. |

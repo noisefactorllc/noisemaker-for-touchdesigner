@@ -299,7 +299,9 @@ def reopen_phase():
         dpath = next((s.get('display_top') for s in build['steps'] if s.get('display_top')), None)
         out = root.op(dpath) if dpath else None
     step('top-connected', display_top=out.path if out else None,
-         consumer_output=(build.get('output_path') and root.op(build['output_path']).path) if build.get('output_path') else None)
+         consumer_output=(root.op(build['output_path']).path
+                          if build.get('output_path') and root.op(build['output_path']) else None),
+         consumer_output_present=bool(build.get('output_path') and root.op(build['output_path'])))
     # 2. re-cook after reopen and compare bytes with the build-phase recovered render
     if out is not None:
         out.cook(force=True)
