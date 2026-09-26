@@ -123,6 +123,75 @@ class MrtStorageFormatTests(unittest.TestCase):
         self.assertEqual(select.par.format, "rgba8fixed")
 
 
+class DepositRefreshEngineUniformsTests(unittest.TestCase):
+    """set_time must keep the engine globals a deposit MAT's shader declares.
+
+    _build_points merges engine uniforms into the deposit binding (the deposit
+    vertex shader declares `resolution`), so its refresh record must resolve
+    against the same engine+pass source at refresh time; otherwise the
+    re-binding silently drops `resolution` and truncates the last Vectors slot.
+    """
+
+    @staticmethod
+    def _fake_op(name):
+        class FakeConnector:
+            def connect(self, _op):
+                pass
+
+            def disconnect(self):
+                pass
+
+        op = SimpleNamespace(name=name, par=SimpleNamespace(), children=[],
+                             inputConnectors=[FakeConnector()])
+
+        def create(_operator_type, child_name):
+            child = DepositRefreshEngineUniformsTests._fake_op(child_name)
+            op.children.append(child)
+            return child
+
+        op.create = create
+        return op
+
+    def test_set_time_keeps_declared_engine_resolution_on_deposit_mat(self):
+        from noisemaker.runtime.render_graph import Pass
+
+        class FakeParent:
+            def create(self, _operator_type, name):
+                return self._fake_op(name)
+
+            @staticmethod
+            def _fake_op(name):
+                return DepositRefreshEngineUniformsTests._fake_op(name)
+
+        backend = td_backend.TDBackend(FakeParent(), "/unused", width=256, height=256, time=0)
+        backend.tex_top = {
+            "xyz": self._fake_op("xyz_top"),
+            "rgba": self._fake_op("rgba_top"),
+        }
+        backend._tex_res["xyz"] = (16, 16)
+        render_pass = Pass.from_dict({
+            "id": "agents_deposit", "drawMode": "points",
+            "inputs": {"xyzTex": "xyz", "rgbaTex": "rgba"},
+            "outputs": {"fragColor": "trail"},
+        })
+        graph = SimpleNamespace(spec_for=lambda tex_id: None)
+
+        with mock.patch.object(td_backend, "_td", return_value="op"):
+            backend._build_points(render_pass, graph)
+
+        record = backend._dynamic_uniforms[-1]
+        # Build-time precondition: the deposit shader declares `resolution` and
+        # it was bound from the engine merge.
+        self.assertIn("resolution", record["bound"])
+        self.assertEqual(record["bound"]["resolution"], [256.0, 256.0])
+
+        with mock.patch.object(td_backend, "_td", return_value="op"):
+            backend.refresh_uniforms(0.5)
+
+        self.assertIn("resolution", record["bound"])
+        self.assertEqual(record["bound"]["resolution"], [256.0, 256.0])
+
+
 class TexturePolicyFieldsTests(unittest.TestCase):
     """GAP-004: mipmaps/persistent/filter ride through the graph data model."""
 

@@ -760,10 +760,15 @@ class TDBackend:
             bound['outputAreaScale'] = (tw * th) / float(self.width * self.height)
         uniform_binder.bind_uniforms(mat, bound)
         self._effect_uniforms.append((mat, bound))
+        # 'engine': True — this record's build-time source is the SAME engine ∪
+        # pass merge (see above), and the deposit shaders declare engine globals
+        # (`resolution`). A False here would make refresh_uniforms re-bind from
+        # pass uniforms only, dropping `resolution` and truncating the last
+        # Vectors slot on every set_time/external-state refresh.
         self._dynamic_uniforms.append({
             'op': mat, 'bound': bound, 'pass': p,
             'source': p.uniforms, 'specs': p.uniform_specs,
-            'declared': declared, 'engine': False,
+            'declared': declared, 'engine': True,
         })
         _try(lambda: setattr(geo.par, 'material', mat))
 
