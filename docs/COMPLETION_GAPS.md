@@ -125,14 +125,27 @@ export NM_REFERENCE_ROOT
 
 Each gate was invoked with no file arguments, so it used its full declared
 default corpus: `parity/corpus/*.dsl` (25 files) + `parity/programs/*.dsl`
-(301 files) = 326. Raw summary lines as emitted:
+(301 files) = 326. Raw summary lines as emitted (exact byte strings):
 
 ```
-=== lexer parity: 326/326 PASS=***
-=== parser parity: 326/326 PASS=***
-=== validator parity: 326/326 PASS=***
+=== lexer parity: 326/326 PASS ===
+=== parser parity: 326/326 PASS ===
+=== validator parity: 326/326 PASS ===
 === graph parity: 325 PASS / 0 DIFF / 0 STAGE / 1 SKIP / 0 ERR  (of 326) ===
 ```
+
+All four gates exited 0. The gates ran at base revision
+`6c96151d72648f87e16e572428a98d1922b61136`; the candidate commits that record
+this run (`94dbb373`, `184e1b6`) and this provenance add only documentation,
+so the harness files, corpus, and `td/` sources are byte-identical across
+base and candidate.
+
+Authority provenance: the reference checkout was fetched as a fresh clone of
+`https://github.com/noisefactorllc/noisemaker.git` and pinned with
+`git checkout 2f47612c29045c1b91af94887a8ff20106e980ef`, the revision named in
+port commit `6c96151`'s message ("sync(reference): update to
+noisemaker@2f47612c2904"). The checkout stays untracked and gitignored; the
+clone URL plus pinned SHA make the oracle reproducible without vendoring it.
 
 Harness-file SHA-256 at this revision: `parity/compiler/check_lex.py`
 `ac8aa6ff580840a6403ab052eaa167ad6e428488c8cdcb86bd936d4e87ed22f3`,
