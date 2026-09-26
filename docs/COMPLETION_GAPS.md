@@ -198,8 +198,7 @@ Port file SHA-256 at this revision: `td/noisemaker/compiler/lang/lexer.py`
 
 These results qualify the compiler half of GAP-001's required checks. The
 native render half (`adjust`, `alphaMask`, `bitwise` under the declared
-`touchdesigner-parity` profile) still requires the activated macOS host and
-remains the open condition for closing the gap.
+`touchdesigner-parity` profile) is qualified at the published candidate below.
 
 Infrastructure observation (records no qualification, closure, or per-case
 native result): the declared native check at source `5ba51bb3` (check
@@ -217,6 +216,35 @@ README qualification engine (2025.32820) versus the current official build
 (2025.33230) remains the recorded version-matrix uncertainty; no claim about
 the newer build is made.
 
+### 2026-09-26 native render qualification at the published candidate
+
+After the run-driver fixes above were published, the declared native check
+re-ran successfully at source
+`3b543dde9f25d35f30d9b3ee15869255f9e14b8f` (machine verification receipt,
+`verified_at 2026-09-26T05:37:35.380Z`, review `01a1d4ac`): TouchDesigner
+2025.32820, darwin arm64, GPU available, runtime binary
+`/Applications/TouchDesigner.app/Contents/MacOS/TouchDesigner` (version from
+installed bundle metadata). All three declared `touchdesigner-parity` cases
+passed at the declared thresholds `max_abs_diff ≤ 2 / ssim ≥ 0.98`, each with
+golden + candidate PNG artifacts and a per-case report, and every declared
+command (runtime-version, setup, per-case golden renders, bootstrap, render,
+per-case compares) exited 0 with no timeouts:
+
+| Case | Verdict | Artifacts |
+|---|---|---|
+| `adjust` | passed | golden + candidate PNG, `adjust.report.json` |
+| `alphaMask` | passed | golden + candidate PNG, `alphaMask.report.json` |
+| `bitwise` | passed | golden + candidate PNG, `bitwise.report.json` |
+
+Both halves of GAP-001's declared contract are now qualified: the compiler
+gates above at authority `2f47612c2904` over the full 326-file default corpus
+with the single documented rejection-parity SKIP, and the declared native
+render cases above at the exact published candidate. GAP-001 closes on these
+criteria with the scoping stated in the gap entry below; the earlier failed
+native attempts (`753f86fe`, `3632a413`, `34156eb1`, `077a584e`) are retained
+as the repair trail that produced the run-driver fixes
+(`b502e32`/`c727965`/`40114b8`/`699f6d2`/`3b543dd`).
+
 ## 4. Known gaps
 
 P1 means false completion or major correctness failure. P2 means coverage or integration uncertainty. P3 means documentation inconsistency.
@@ -224,16 +252,16 @@ These initial entries record missing qualification, not inferred implementation 
 
 ### GAP-001: current authority and parity qualification
 
-- Status: open. Priority: P2. Category: verification.
+- Status: closed (2026-09-26). Priority: P2. Category: verification.
 - Affected scope: td/noisemaker/, td/make_bootstrap.py, parity/, README.md, STATUS.md
 - Expected behavior: Each supported claim has reproducible evidence tied to the port and authority revisions.
-- Observed behavior: Compiler parity at the resolved authority revision is qualified (see the 2026-09-26 compiler gates in section 3): lex/parse/validate 326/326, graph 325 PASS / 1 rejection-parity SKIP / 0 DIFF / 0 STAGE / 0 ERR, definitions 210/210 byte-identical, 118 unit tests passing. The native render half (`adjust`, `alphaMask`, `bitwise` under the declared `touchdesigner-parity` profile) and the complete host workflow remain unqualified. The current official build is 2025.33230, newer than README qualification 2025.32820. [Official releases](https://derivative.ca/UserGuide/Release_Notes).
-- Evidence: [Historical claim](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/STATUS.md) and the bounded checks in section 3.
-- Next action: Run the native render gates in an activated host (`adjust`, `alphaMask`, `bitwise` under the declared `touchdesigner-parity` profile); compiler gates are complete per section 3. Preserve chaotic, timed, skipped, and platform-specific cases.
-- Dependencies: Resolve immutable authority inputs before comparison. Retain historical goldens and their provenance.
-- Acceptance criteria: Record every applicable case, parameter choice, exclusion, error, and tolerance. Pass the declared contract without silently reducing coverage.
-- Required checks: Existing compiler and parity entry points from the README, with raw results and exact source hashes.
-- Last verification: 2026-09-24. Full behavior qualification remains unverified.
+- Observed behavior: Both declared halves qualified. Compiler: lex/parse/validate 326/326, graph 325 PASS / 1 rejection-parity SKIP (`parity/corpus/B5oBsA.dsl`, both producers reject) / 0 DIFF / 0 STAGE / 0 ERR at authority `2f47612c29045c1b91af94887a8ff20106e980ef`, definitions 210/210 byte-identical, 118 unit tests — section 3, with exact commands, raw summary lines, and port/harness SHA-256 hashes. Native: `adjust`, `alphaMask`, `bitwise` passed on TouchDesigner 2025.32820 (darwin arm64, GPU) at source `3b543dde9f25d35f30d9b3ee15869255f9e14b8f`, thresholds max_abs_diff ≤ 2 / ssim ≥ 0.98, per-case reports and PNG artifacts retained — section 3. Parameters/exclusions on record: render size/time per `parity/run.sh` defaults (SIZE=256, TIME=0.25), declared profile thresholds, one rejection-parity skip preserved and not reclassified. Repair trail: four failed runner attempts (checks `753f86fe`, `3632a413`, `34156eb1`, `077a584e`) traced to run-driver install discovery, fixed in `b502e32`/`c727965`/`40114b8`/`699f6d2`/`3b543dd`; no gate, tolerance, or coverage was reduced.
+- Evidence: Section 3 (compiler gates and native qualification at `3b543dd`), the machine verification receipt (verified_at 2026-09-26T05:37:35.380Z, review `01a1d4ac`), and the historical claim.
+- Next action: none for GAP-001. Remaining qualification (full 301-fixture native sweep, installed host workflow, 2025.33230 build matrix, distribution) stays open under GAP-002/GAP-003 and this register.
+- Dependencies: resolved — authority inputs pinned at `2f47612c2904`; historical goldens and provenance retained unchanged.
+- Acceptance criteria: met — every applicable declared case, parameter choice, exclusion, error, and tolerance recorded; the declared contract passed without silently reducing coverage.
+- Required checks: satisfied — compiler entry points (`parity/compiler/check_{lex,parse,validate,graph}.py`) and the declared native `touchdesigner-parity` cases, with raw results and exact source hashes in section 3.
+- Last verification: 2026-09-26 (native at `3b543dd`; compiler at base `6c96151` with `td/noisemaker` + `parity/compiler` byte-identical through `3b543dd`).
 
 ### GAP-002: installed developer workflow qualification
 
@@ -280,6 +308,7 @@ Implementation changes belong to the separate implementation job. This register 
 
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
+| 2026-09-26 | `3b543dde9f25d35f30d9b3ee15869255f9e14b8f` | GAP-001 closed: native `touchdesigner-parity` cases passed at the published candidate; run-driver robustness fixes published along the way. | Native: `adjust`/`alphaMask`/`bitwise` passed on TD 2025.32820 darwin/arm64 at thresholds 2/0.98 (machine verification receipt). Compiler gates unchanged (td/noisemaker + parity/compiler byte-identical to base `6c96151`). | Full 301-fixture native sweep, installed host workflow, 2025.33230 matrix, and distribution remain open (GAP-002/GAP-003). |
 | 2026-09-26 | `6c96151d72648f87e16e572428a98d1922b61136` | Recorded compiler-parity qualification at authority `2f47612c29045c1b91af94887a8ff20106e980ef`. GAP-001 remains open. | Linux compiler gates: lex/parse/validate 326/326, graph 325 PASS / 1 rejection-parity SKIP / 0 DIFF / 0 STAGE / 0 ERR; definitions 210/210 byte-identical; 118 unit tests. | Native render gates (`adjust`, `alphaMask`, `bitwise`), installed workflow, and platform qualification remain open. |
 | 2026-09-24 | `66426bc41c2b85940322ae843ba04f41b7905ce4` | Created the requested six-section register and README link. No closures. | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. | Full audit, current parity, installed workflows, platform qualification, and release readiness remain open. |
 
