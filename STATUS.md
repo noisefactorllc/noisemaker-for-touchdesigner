@@ -207,6 +207,40 @@ gates: check_lex (326/326 PASS), check_parse (326/326 PASS), check_validate (326
 check_graph (325 PASS / 0 DIFF / 0 STAGE / 1 SKIP), and unit test suite
 (`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`, 118/118 PASS).*
 
+*Incrementally synced 2026-09-26 to reference `403c2a4bf2cb` — **range audit:** the declared
+upstream range `8eeb7b5ac14e..403c2a4bf2cb` is force-pushed/non-contiguous; the observed delivery
+ranges are `66b8ce7d8610..19fdcb56e22d` and `19fdcb56e22d..403c2a4bf2cb`. Machine-checkable
+ancestry facts: the declared start `8eeb7b5ac14e` IS an ancestor of the declared end `403c2a4`
+(→ exit 0), both observed-range endpoints `66b8ce7d8610` and `19fdcb56e22d` are ancestors of the
+end (→ exit 0), and the last audited tree `6a0af04d3c4f` (whose `shaders/` tree the prior round
+verified identical to HEAD `a651c075`) is also an ancestor of the end (→ exit 0) — so the audit
+against the endpoint tree diff `6a0af04d3c4f..403c2a4bf2cb` loses no upstream content. That diff
+touches exactly two port-affecting upstream commits — `b35361e0` (GAP-009: temporal
+no-animation and universal low-variety metrics from `renderEffectFrame`) and `403c2a4` (GAP-008:
+replacement preflight prediction in `shaders/src/lang/transform.js` plus new read-only
+`shaders/src/lang/paramAliases.js`) — plus docs/CI-only files (`LEDGER.md`, `docs/shaders/
+compiler.rst`, `docs/shaders/pipeline.rst`, `llms-full.txt`, `scripts/run-js-tests.js`). No effect
+definitions, no `.glsl`/`.wgsl` sources, no runtime/backend, and no validator/expander changes
+(`tools/convert-definitions.mjs` re-run against the pinned tree: 210/210 effects byte-identical;
+`tools/convert-shaders.mjs` byte-identical after re-applying the documented navierStokes
+port-guard flow for `ns.frag`/`nsSplat.frag`). `b35361e0` changes only the reference's test
+harness (`shaders/tests/frame-metrics.js`, `test-harness.js`, `test_frame_metrics.js`) — no
+shipped surface. **Audit-only round — no code change required.** GAP-008 extends
+`shaders/src/lang/transform.js` (`replaceEffect()`/`getCompatibleReplacements()`), a live
+compiled-program mutation API (clone/replace/list steps at runtime, backed by the engine's
+populated runtime registry) that this port has never carried: the TD port statically compiles a
+DSL program once into a fixed TOP network (rebuilt only on `set_resolution`), has no
+step-replacement or live-edit surface, and its conversion tools (`projectPass()`,
+`export-graph.mjs`) never import `transform.js` — so the new preflight prediction, the
+`preflight:true` opt-in, and the `getParamAliases()` accessor have no TD consumption path and no
+effect on the compiled program corpus (matching prior audit-only rounds for browser-runtime-only
+machinery). **Reference fidelity baseline:** the reference's own new suites were run from a
+`git archive` extraction of the pinned end SHA: `node shaders/tests/test_transform.js`
+(33 PASS / 0 FAIL) and `node shaders/tests/test_frame_metrics.js` (all cases PASS). Verified
+compiler parity gates: check_lex (326/326 PASS), check_parse (326/326 PASS), check_validate
+(326/326 PASS), check_graph (325 PASS / 0 DIFF / 0 STAGE / 1 SKIP), and unit test suite
+(`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`, 119/119 PASS).*
+
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
 the first to actually exercise): (1) pass-level `defines`/`conditions` (the clone pattern itself) had
