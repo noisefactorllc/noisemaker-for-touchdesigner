@@ -135,10 +135,13 @@ default corpus: `parity/corpus/*.dsl` (25 files) + `parity/programs/*.dsl`
 ```
 
 All four gates exited 0. The gates ran at base revision
-`6c96151d72648f87e16e572428a98d1922b61136`; the candidate commits that record
-this run (`94dbb373`, `184e1b6`) and this provenance add only documentation,
-so the harness files, corpus, and `td/` sources are byte-identical across
-base and candidate.
+`6c96151d72648f87e16e572428a98d1922b61136`. `git diff 6c96151..b502e3240 -- \
+td/noisemaker parity/compiler` is empty: the port compiler sources and the
+gate harness files are byte-identical from base through candidate tip
+`b502e3240`, so these results remain valid at the candidate. Later candidate
+commits add only gap-record documentation plus commit `b502e32`'s
+run-driver portability fix (`parity/run.sh`, `td/build_parity_toe.py`) —
+neither file is part of the gated compiler or the gate harnesses.
 
 Authority provenance: the reference checkout was fetched as a fresh clone of
 `https://github.com/noisefactorllc/noisemaker.git` and pinned with

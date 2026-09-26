@@ -46,7 +46,12 @@ if [ -z "$TD_BIN" ]; then
 fi
 TD="$TD_BIN"
 [ -n "$TD" ] && [ -x "$TD" ] || { echo "TouchDesigner binary not found (set TD_BIN)."; exit 2; }
-TD_APP="${TD_APP:-$(dirname "$(dirname "$TD")")}"   # for build_parity_toe.py discovery
+# Give build_parity_toe.py a discovery root derived from the binary only when it is a
+# real install dir (contains toe tools); otherwise let its own root probing run.
+_td_app="$(dirname "$(dirname "$TD")")"
+{ [ -e "$_td_app/toeexpand" ] && [ -e "$_td_app/toecollapse" ]; } || \
+  { [ -e "$_td_app/bin/toeexpand" ] && [ -e "$_td_app/bin/toecollapse" ]; } \
+  && TD_APP="${TD_APP:-$_td_app}"
 export TD_APP
 PY="$REPO/parity/.venv/bin/python"; [ -x "$PY" ] || PY=python3   # needs numpy + pillow
 SIZE="${SIZE:-256}"; TIME="${TIME:-0.25}"; TOL="${TOL:-2}"; SSIM="${SSIM:-0.98}"
