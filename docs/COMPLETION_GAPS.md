@@ -357,6 +357,36 @@ connect refusal was repaired in this pass: README.md now instructs creating
 the display TOP inside the COMP (`comp.create(nullTOP, 'out')`) and connecting
 it there, the form the workflow proved working on 2025.32820.
 
+### 2026-09-26 machine verification receipt at the published candidate `c12c335`
+
+The supervisor's machine verification succeeded on the exact published commits
+(no changes since the approved review): candidate
+`noisefactorllc/noisemaker-for-touchdesigner` at
+`c12c3350eee02fd6b76f755c85fa9e05119e2b8f`, receipt review id
+`15591661-7fce-4bdf-9c7b-55bd9b115654`, `verified_at
+2026-09-26T09:41:49.339Z`. Declared native check `native-parity` (profile
+`touchdesigner-parity` version 1, profile sha256
+`933110e9e04a2591e19cd72d818705b069a3c134762d8a1b63cdead67a7a501a`): runtime
+TouchDesigner `2025.32820` (`installed_bundle_metadata`,
+`/Applications/TouchDesigner.app/Contents/MacOS/TouchDesigner`), darwin arm64,
+GPU available. All ten declared commands exited 0 with no timeouts
+(runtime-version, setup-0, golden-adjust, golden-alphaMask, golden-bitwise,
+bootstrap, render, compare-adjust, compare-alphaMask, compare-bitwise).
+All three required cases passed at thresholds `max_abs_diff 2 / ssim_min 0.98`
+(received_at 2026-09-26T09:39:11.276Z):
+
+| Case | Verdict | Report sha256 | Golden PNG sha256 | Candidate PNG sha256 |
+|---|---|---|---|---|
+| `adjust` | passed | `361f76f626abda052f498e28e1d87f929e582867ccafa1b2704bc619fab50417` | `b1d9f6eaf374726a50e5e4c8c836891e03e3c4a79e02435b83db55460c5a32e0` (222042 bytes) | `d3ffc7617c36269fa6dd17f27a274af64c0ac626da70ed19247a18bb0a524b6a` (327409 bytes) |
+| `alphaMask` | passed | `7e5790e164943aaf867b499857c0444654bf93bc9b4935d1a1cea7a1594bfe75` | `3598684e11134d9cac187e05e5aea63e917d48f8941aca241b8e3c8c19153242` (222040 bytes) | `87249f7fd81167066b38f3c6f384f0874340712ed32b888b80f299a157b96307` (327741 bytes) |
+| `bitwise` | passed | `bf0b90b784f51aa6aa9a19db0c71452a03d5b61c71dbb74189947606cda29f5b` | `d3c5a3928a01848f015f808b7e2d98436cb1130daa0cfc5d91ac642adee764ab` (4042 bytes) | `48c44a700937bfd6feb703b5d60c61def67a92cd71db0d6d02c404b290a3afaf` (3717 bytes) |
+
+This receipt is the second successful native qualification (after the
+`3b543dd`/`01a1d4ac` receipt in section 3) and covers the exact published
+candidate that carries the GAP-002 workflow evidence above; `ci` and
+`deployments` are declared empty for this job, so no additional observed check
+runs exist.
+
 ## 4. Known gaps
 
 P1 means false completion or major correctness failure. P2 means coverage or integration uncertainty. P3 means documentation inconsistency.
