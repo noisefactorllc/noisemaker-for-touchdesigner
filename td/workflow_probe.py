@@ -39,7 +39,7 @@ def _find_repo():
 
 REPO = _find_repo()
 TD_DIR = os.path.join(REPO, 'td')
-OUT = os.path.join(REPO, 'parity', 'out', 'workflow')
+OUT = os.path.join(REPO, 'parity', 'evidence', 'workflow')
 PHASE = os.environ.get('NM_WORKFLOW_PHASE') or 'build'
 # The documented example (README "Use it in your own TouchDesigner project"), verbatim.
 DOC_DSL = 'search synth\nsolid(color: [0.9, 0.3, 0.5]).write(o0)\nrender(o0)'
