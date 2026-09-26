@@ -41,7 +41,7 @@ The matrix below retains the earlier measured scope. A historical verified row i
 | Installed package and first useful result | verified | Served kit `0.1.26` installed per its README on TD 2025.32820 (isolated project, kit `onStart` build at load, meaningful 1280×1280 render from the kit's own output TOP, mean 0.674927); the kit's documented sibling-`out` wiring is silently refused (cross-network connect, as GAP-002 measured). [Completion gaps](COMPLETION_GAPS.md), section 3, 2026-09-26. |
 | Parameters, external inputs, state, and chains | unverified | Full current-authority combinations remain unmeasured. |
 | Invalid input and recovery | unverified | Unit checks do not establish every installed public entry point. |
-| Upgrade, removal, and resource cleanup | partial | Saved-project relocation, reinstall-over, and removal verified with the served kit on TD 2025.32820 (byte-identical renders; uninstall leaves no ops). Version-to-version upgrade not exercisable: kits.noisedeck.app serves a single rolling deployment, so the upgrade criterion is unmet as stated. [Completion gaps](COMPLETION_GAPS.md), section 3, 2026-09-26. |
+| Upgrade, removal, and resource cleanup | verified | Saved-project relocation, version-delta upgrade (older kit from source history `66426bc` → served `0.1.26`, in place, reopen/rebuild byte-identical), reinstall-over, and removal verified with the served kit on TD 2025.32820. A served-version-to-served-version upgrade pass does not exist (single rolling deployment). [Completion gaps](COMPLETION_GAPS.md), section 3, 2026-09-26. |
 | Accessibility of provided controls | unverified | Keyboard, focus, labels, and diagnostics need host observations where applicable. |
 | Release readiness | blocked | Full parity and host/workflow evidence remain incomplete; installation, kit legs, and artifact evidence are qualified (2026-09-26 — [completion gaps](COMPLETION_GAPS.md), section 3). |
 
@@ -313,7 +313,7 @@ See [GAP-001 and the complete gap register](COMPLETION_GAPS.md#4-known-gaps) for
 
 1. Reconcile the current authority and complete case inventory, including parameters, inputs, stateful frames, and host versions.
 2. Run the existing actual-renderer suite without skip options. Record every missing, failed, refused, or timed-out case.
-3. Installation, useful output, relocation, reinstall-over upgrade, and removal were executed with the actual distribution on TD 2025.32820 (2026-09-26 — [completion gaps](COMPLETION_GAPS.md), section 3). Parameters, external inputs, cook failure, and recovery against the installed kit entry points remain unmeasured; version-to-version upgrade is not exercisable (single served deployment).
+3. Installation, useful output, relocation, version-delta upgrade (source-history kit → served kit), reinstall-over, and removal were executed with the actual distribution on TD 2025.32820 (2026-09-26 — [completion gaps](COMPLETION_GAPS.md), section 3). Parameters, external inputs, cook failure, and recovery against the installed kit entry points remain unmeasured; a served-version-to-served-version upgrade pass does not exist (single rolling deployment).
 4. Inspect exact-source CI and retain artifact hashes. Keep unresolved qualification failed or unverified.
 
 All eligible ports have equal priority. Full parity and zero skipped cases remain the goal.

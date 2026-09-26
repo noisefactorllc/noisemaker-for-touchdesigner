@@ -40,7 +40,7 @@ def _find_repo():
 
 
 REPO = _find_repo()
-OUT = os.path.join(REPO, 'parity', 'out', 'kit-qual')
+OUT = os.environ.get('NM_KIT_OUT') or os.path.join(REPO, 'parity', 'out', 'kit-qual')
 PHASE = os.environ.get('NM_KIT_PHASE') or 'build'
 HOST_COMP = 'noisemaker'
 OUT_TOP = 'out'
