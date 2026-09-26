@@ -37,7 +37,7 @@ Exact commit, remote document hashes, and downstream results are retained in the
 | CLAIM-001 | [Source claim](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/STATUS.md) | Self-contained DSL rendering, 2D and 3D effects, simulations, and reusable TOP output. Historical shader and graph gates are separate evidence. | partial | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. [Local evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-tests.json). |
 | CLAIM-002 | [README workflow](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Human usability: installation, first output, errors, and recovery | partial | Installed workflow observed on TD 2025.32820 (isolated Base COMP, documented example, TOP connect/resize, invalid-DSL recovery, save/reopen, cleanup — section 3); the documented connect example was corrected to the in-COMP form. 2025.33230 not exercised. GAP-002. |
 | CLAIM-003 | [Official ecosystem documentation](https://derivative.ca/UserGuide/System_Requirements) | Ecosystem fit and supported versions | partial | Source entry points were examined. Installed integration and the supported-version matrix remain open. GAP-002. |
-| CLAIM-004 | [Distribution description](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Release readiness | partial | Artifact byte identity (852/852), notices, dependencies, and the installed kit legs (install, first result, relocation, reinstall-over, removal) qualified on TD 2025.32820 — section 3; GAP-003 stays open on the GAP-002 dependency and the version-delta upgrade criterion. Not a release approval: GAP-002's 2025.33230 leg and the platform matrix remain open. |
+| CLAIM-004 | [Distribution description](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Release readiness | partial | Artifact byte identity (852/852), notices, dependencies, and the installed kit legs (install, first result, relocation, version-delta upgrade from source history, reinstall-over, removal) qualified on TD 2025.32820 — section 3; GAP-003 stays open on its declared GAP-002 dependency (the 2025.33230 leg). Not a release approval: GAP-002's 2025.33230 leg and the platform matrix remain open. |
 | CLAIM-005 | [Exact-source Actions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/actions?query=head_sha%3A66426bc41c2b85940322ae843ba04f41b7905ce4) | Exact-source automated evidence | supported | [Export kit](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/actions/runs/35955443239): `success`. This finding covers workflow status only. |
 
 ## 3. Methods and evidence
@@ -461,8 +461,9 @@ therefore materialized from this repository's own source history at
 `66426bc41c2b85940322ae843ba04f41b7905ce4` — the source the served kit `0.1.20`
 recorded — with a new `--git-source` mode in `tools/materialize_kit.py`
 (same path mappings as the served inventory; compat ids synthesized from the
-effect definitions at that commit minus the declared excludeNames; the upstream
-MIT notice vendored from the pinned reference checkout). Then:
+effect definitions at that commit minus the declared bare-name excludeNames,
+enforced by `parity/test_materialize_kit.py`; the upstream MIT notice vendored
+from the pinned reference checkout). Then:
 
 1. The old kit (851/851 inventory entries materialized; summary sha256
    `49a182c90fb71b677bb997ba1a8580b11e79792d33d0236e281d77512124124d`,
@@ -472,7 +473,13 @@ MIT notice vendored from the pinned reference checkout). Then:
    0.674927, `kit.build.png` sha256
    `93af6b3c70088499e863c01bfd3d22072eba9327ba73c5286ca7ce479067543a`
    (`report.build.json` sha256
-   `bd099525cbfaa16bab35e3b202e5591bf0e2c30c3dcac33318d926486bb4e4e9`).
+   `0fb8dea375c4226589130d144298ce4690b1ef9e66fe34644eb2aac15cf20796`).
+   The old kit's compat ids are export-faithful: 207 ids with the declared
+   bare-name exclusions (`media`, `scope`, `spectrum`) applied — enforced by a
+   contract test (`parity/test_materialize_kit.py`, 119 unit tests OK) after an
+   earlier revision of the filter compared the namespaced id against the bare
+   names and never fired (found in review; the leg was re-materialized and
+   re-run after the fix — this subsection's hashes are from the corrected run).
    The old kit's engine genuinely differs from the served one (its compiler,
    runtime, validator, and definitions predate the later upstream syncs:
    `dsl_compiler.py`, `parser.py`, `validator.py`, `diagnostics.py`,
@@ -646,7 +653,7 @@ Subsequent historical actions remain dependent on that evidence. No implementati
 1. Resolve authority revisions and retained evidence for GAP-001. Preserve all previous comparisons and exclusions.
 2. Run the bounded installed workflow for GAP-002. Record output, errors, recovery, host version, and resource cleanup. (Executed 2026-09-26 on 2025.32820 — section 3; the 2025.33230 leg remains.)
 3. Execute the declared parity cases for GAP-001. Keep compilation, structure, rendered pixels, and platform qualification separate.
-4. Qualify the actual distribution for GAP-003 after the workflow passes. Verify exact-source CI and required artifact contents. (Artifact half and installed kit legs executed 2026-09-26 — section 3; the entry stays open on the GAP-002 dependency and the version-delta upgrade criterion.)
+4. Qualify the actual distribution for GAP-003 after the workflow passes. Verify exact-source CI and required artifact contents. (Artifact half, installed kit legs, and the version-delta upgrade executed 2026-09-26 — section 3; the entry stays open on the GAP-002 dependency.)
 5. Update this register with measured results. Close entries only when their acceptance criteria pass.
 
 Implementation changes belong to the separate implementation job. This register does not authorize further effect ports or checkpoint advancement.

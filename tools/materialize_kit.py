@@ -91,8 +91,12 @@ def build_git_inventory(sha, reference_root):
         rel = os.path.relpath(p, 'td/noisemaker/effects')
         ns, _, fn = rel.replace('.json', '').replace(os.sep, '/').rpartition('/')
         ident = '%s/%s' % (ns, fn)
-        if ident not in exclude:
-            ids.append(ident)
+        # kit.config.json excludeNames holds bare func names (e.g. 'media');
+        # exclude on the func name, and on the full id defensively.
+        if fn in exclude or ident in exclude:
+            continue
+        ids.append(ident)
+    files['compat.json'] = None  # synthesized in main from ids
     notice = os.path.join(reference_root, 'LICENSE')
     if not os.path.isfile(notice):
         raise SystemExit('NM_REFERENCE_ROOT has no LICENSE (upstream MIT notice)')
