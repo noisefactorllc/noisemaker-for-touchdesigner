@@ -53,12 +53,17 @@ if [ -z "$TD_BIN" ]; then
 fi
 TD="$TD_BIN"
 [ -n "$TD" ] && [ -x "$TD" ] || { echo "TouchDesigner binary not found (set TD_BIN)."; exit 2; }
-# Give build_parity_toe.py a discovery root derived from the binary only when it is a
-# real install dir (contains toe tools); otherwise let its own root probing run.
+# Give build_parity_toe.py a discovery root derived from the binary when the surrounding
+# dir holds the toe tools; otherwise point TD_APP at the binary's own bin dir so a custom
+# TD_BIN location is honored regardless of where the install lives.
 _td_app="$(dirname "$(dirname "$TD")")"
-{ [ -e "$_td_app/toeexpand" ] && [ -e "$_td_app/toecollapse" ]; } || \
-  { [ -e "$_td_app/bin/toeexpand" ] && [ -e "$_td_app/bin/toecollapse" ]; } \
-  && TD_APP="${TD_APP:-$_td_app}"
+_td_bin="$(dirname "$TD")"
+if { [ -e "$_td_app/toeexpand" ] && [ -e "$_td_app/toecollapse" ]; } || \
+   { [ -e "$_td_app/bin/toeexpand" ] && [ -e "$_td_app/bin/toecollapse" ]; }; then
+  TD_APP="${TD_APP:-$_td_app}"
+else
+  TD_APP="${TD_APP:-$_td_bin}"
+fi
 export TD_APP
 PY="$REPO/parity/.venv/bin/python"; [ -x "$PY" ] || PY=python3   # needs numpy + pillow
 SIZE="${SIZE:-256}"; TIME="${TIME:-0.25}"; TOL="${TOL:-2}"; SSIM="${SSIM:-0.98}"
@@ -71,8 +76,10 @@ for p in $PROGS; do
   DSL="$REPO/parity/programs/$p.dsl"; [ -f "$DSL" ] || DSL="$REPO/parity/corpus/$p.dsl"   # comps live in corpus/
   NM_REFERENCE_ROOT="$REF" node "$REPO/tools/export-graph.mjs" --file "$DSL" "$OUT/$p.graph.json" >/dev/null 2>&1 \
     || { echo "FAIL: export-graph $p"; exit 1; }
-  [ -f "$OUT/$p.golden.png" ] || NM_REFERENCE_ROOT="$REF" node "$REPO/parity/export-and-render.mjs" \
-    "$DSL" "$OUT" --size "$SIZE" --time "$TIME" --backend webgl2 >/dev/null 2>&1 || true
+  [ -f "$OUT/$p.golden.png" ] || { NM_REFERENCE_ROOT="$REF" node "$REPO/parity/export-and-render.mjs" \
+    "$DSL" "$OUT" --size "$SIZE" --time "$TIME" --backend webgl2 >/dev/null 2>&1; }
+  # A missing golden means no comparison happened — never silently pass (GAP-001 contract).
+  [ -f "$OUT/$p.golden.png" ] || { echo "FAIL: golden render $p (no parity comparison possible)"; exit 1; }
 done
 
 # 2. bootstrap .toe
