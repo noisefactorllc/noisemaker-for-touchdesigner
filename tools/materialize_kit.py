@@ -74,6 +74,11 @@ def main():
     for entry in kit['files']:
         path = dest / entry['path']
         rel = entry['path']
+        # Paths come from the remote inventory; never let one escape the destination.
+        p = pathlib.PurePosixPath(rel)
+        if p.is_absolute() or '..' in p.parts or not p.parts:
+            skipped.append({'path': rel, 'error': 'unsafe inventory path refused'})
+            continue
         try:
             data = fetch_bytes(BASE + '/' + urllib.request.quote(rel))
         except Exception as err:  # noqa: BLE001

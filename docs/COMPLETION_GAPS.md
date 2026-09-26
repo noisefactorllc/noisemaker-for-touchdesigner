@@ -427,6 +427,30 @@ manual release occurred. The kit has no install surface beyond its own
 directory: the engine is placed on `sys.path` per-session from `engine/` inside
 the export, and both notices ship inside the kit.
 
+Retained-artifact SHA-256 hashes (run checkout; byte-verify any copy against
+these): `report.build.json`
+`817af397b929c4efdcdc2996af3ff68a4c81d61539b6e686bede00da7f213984`,
+`report.relocate.json`
+`6a50a30dec9d88c933c1bc995ad23624e1d74012938af5a94914689d34f6eeac`,
+`report.reinstall.json`
+`198ce69925e87a6bdc1318185ca5d0bd31c2e85ee34ed0a5924b745f35d65eb9`,
+`report.remove.json`
+`db847720285cc3fb4bba5071476d55efc8ceef71dd3c5e6289c355dddeb28775`,
+`_kit_log.build.txt`
+`91773d970335fadddfd6c9a1a7ff54aad45f9475506b22c7710f2e05f5b9dcee`,
+`_kit_log.relocate.txt`
+`850b8d630b1bdba4b6e9d64c63da534092255d2ebedf686a3c1a1a82e7788988`,
+`_kit_log.reinstall.txt`
+`69f4c1c78dc1b3bfd81b84073abf4572d4fc72f0c31a62574131aa9486fec079`,
+`_kit_log.remove.txt`
+`5a1b192648a2d7bf024691165f9bb806a5e097d2b346e58e4f2da2fc83fe3d08`,
+`export/materialize-summary.json`
+`f310a383c976a9d2abcae66de851544f706a0d5079bc685b22f7a19f21016723` (regenerated
+after the harness hardening below; its measured content — deployment meta,
+852/852 match counts, injected-content hashes — is identical to the summary
+used at the runs; the only run-time difference is the recorded `dest` path
+string).
+
 ### 2026-09-26 machine verification receipt at the published candidate `c12c335`
 
 The supervisor's machine verification succeeded on the exact published commits
@@ -494,7 +518,7 @@ These initial entries record missing qualification, not inferred implementation 
 - Affected scope: Distribution artifact, dependency metadata, notices, platform promises, and release evidence.
 - Expected behavior: The delivered artifact contains required files and supports its documented installation and first useful result.
 - Observed behavior: The served artifact (`0.1.26`, source `6c96151d72648f87e16e572428a98d1922b61136`) was byte-matched file-by-file to its served inventory (852/852 SHA-256, zero mismatches or skips), reproduced from the source tree, and its license notices and dependency surface were checked — section 3, 2026-09-26. The installed legs were then executed on TouchDesigner 2025.32820 (darwin arm64 GPU, macOS 26.5): the kit was re-materialized from the served deployment (852/852 re-verified), installed per the kit README (kit `.toe` beside `program.dsl`, the kit's own `integrate.py` Execute DAT with Start enabled, reopened per the documented steps), the `onStart` build ran during load, the documented `rebuild()` re-read the program, the kit tree (program, integrate.py, README, export manifest, compat.json, both license notices, bundled engine, 301 shaders) was verified in place, the kit's own output TOP cooked 1280×1280 with meaningful non-error output (mean 0.674927, PNG byte-identical to the GAP-002 example render), the export directory with the saved project was relocated and reopened with a byte-identical render, the kit was re-installed over the installed directory with a byte-identical render, and removal destroyed the built COMP with no remaining ops — section 3, 2026-09-26, with all four runs self-quit (exit 0, no timeout). Three scope records: the kit's documented sibling-`out` wiring is silently refused by 2025.32820 (the cross-network connect form GAP-002 measured; first result verified from the kit's own `nm.Output` TOP; the `export-kit/kit` template correction belongs to the implementation job); version-to-version upgrade is not exercisable (kits.noisedeck.app serves a single rolling deployment; upgrade was exercised as in-place reinstall-over with a byte-identical result, and no version-delta upgrade is claimed — the upgrade criterion is therefore not met as stated); and only the declared minimum supported build 2025.32820 is exercised.
-- Evidence: [Package instructions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md), [served inventory](https://kits.noisedeck.app/touchdesigner/0/kit.json), exact-source CI in section 2/3, recorded distribution observations in section 1, and the 2026-09-26 kit sections in section 3. Retained in the run checkout (`parity/out/` is gitignored, so these are not in the published tree; the register records the hashes): `parity/out/kit-qual/report.{build,relocate,reinstall,remove}.json`, `_kit_log.*.txt`, three PNG artifacts (`kit.build.png`, `kit.relocate.png`, `kit.reinstall.png`), `export/materialize-summary.json`; harnesses `tools/materialize_kit.py`, `td/build_kit_toe.py`, `td/kit_probe.py` (committed); 118 unit tests OK.
+- Evidence: [Package instructions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md), [served inventory](https://kits.noisedeck.app/touchdesigner/0/kit.json), exact-source CI in section 2/3, recorded distribution observations in section 1, and the 2026-09-26 kit sections in section 3. Retained in the run checkout (`parity/out/` is gitignored, so these are not in the published tree): `parity/out/kit-qual/report.{build,relocate,reinstall,remove}.json`, `_kit_log.*.txt`, three PNG artifacts (`kit.build.png`, `kit.relocate.png`, `kit.reinstall.png`), `export/materialize-summary.json` — per-file SHA-256 hashes recorded in the kit qualification section of section 3 (report.build `817af397…`, relocate `6a50a30d…`, reinstall `198ce699…`, remove `db847720…`, logs `91773d97…`/`850b8d63…`/`69f4c1c7…`/`5a1b1926…`, summary `f310a383…` (regenerated after harness hardening; measured content identical)); harnesses `tools/materialize_kit.py`, `td/build_kit_toe.py`, `td/kit_probe.py` (committed); 118 unit tests OK.
 - Next action: GAP-003 stays open on its recorded acceptance criteria: the declared blocker (complete GAP-002 for the release candidate — the 2025.33230 leg) is unmet, the version-to-version upgrade criterion is unmet as stated (single served deployment), and only 2025.32820 is exercised. The `export-kit/kit` sibling-`out` template correction is recorded for the implementation job.
 - Dependencies: Complete GAP-002 for the release candidate (still open — GAP-002's 2025.32820 workflow qualified the activated host the kit legs used, but its 2025.33230 leg remains). Distinguish source CI from downstream publication and host qualification.
 - Acceptance criteria: partially met — artifact bytes matched to the inventory (met); licenses and dependencies checked (met); installation, example execution, saved-project relocation, reinstall-over, and removal executed on 2025.32820 (met on the minimum supported build); upgrade as a version delta not exercisable and therefore not met as stated (single served deployment 0, `/1/` and `/2/` 404 — recorded, not silently waived); the entry stays open on the unmet criteria and the GAP-002 dependency.

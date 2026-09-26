@@ -186,6 +186,9 @@ def main():
         if ln.strip() in ('project1.panel', 'project1.parm') and not done:
             out.extend(entries)
             done = True
+    if not done:
+        sys.exit('toc anchor (project1.panel/project1.parm) not found in the expanded '
+                 'NewProject toc — DAT entries would have been silently dropped')
     open(toc, 'w').write('\n'.join(out) + '\n')
 
     out_toe = os.path.join(export, 'kit.toe')
