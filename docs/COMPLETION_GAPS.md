@@ -481,6 +481,62 @@ candidate that carries the GAP-002 workflow evidence above; `ci` and
 `deployments` are declared empty for this job, so no additional observed check
 runs exist.
 
+### 2026-09-26 native parity reproduction at the published candidate `26a9177`
+
+With the working tree clean at published `main`
+`26a9177888d10718b45cb36d36f8a89caf4230de` (`td/noisemaker` and
+`parity/compiler` byte-identical to `9be5b83`; renderer entry
+`9c4f1f5abc1fef1513aeef79e84518fc9b32eaa91a3694a6f300cb43fa0c37d3`), the three
+declared `touchdesigner-parity` cases were re-run in this job's checkout with
+the repository's own harness:
+
+- Goldens re-rendered from the pinned authority
+  `2f47612c29045c1b91af94887a8ff20106e980ef` (fresh clone, checked out at that
+  SHA; `parity/export-and-render.mjs`, webgl2, 256×256, time 0.25). Golden
+  SHA-256: `adjust` `0d86de7141489e3fe5bc77a04ec2727ce5eb8b09b4263638c24807f548b27d37`
+  (the declared program is `noise(seed: 1, scaleX: 50, scaleY: 50).adjust()`,
+  and `adjust()` with default parameters is an identity pass, so the golden
+  equals the plain-noise render — cross-checked), `alphaMask`
+  `0d86de7141489e3fe5bc77a04ec2727ce5eb8b09b4263638c24807f548b27d37` (the
+  declared program masks `gradient(seed: 1)` with the fully opaque noise, so
+  the mask passes the texture through — consistent with the historical
+  max-abs-diff-1 verdict), `bitwise`
+  `a876c23a0fb1fdb073b7e7ed61bff5be279e1c029f93b8a4fe422a801abf0b9d`. Graph
+  JSON SHA-256: `adjust`
+  `f49d6fa0ee8dd30547c0e65e69e29f176aaed1e645f72016f8cdaa2da7275f0a`,
+  `alphaMask`
+  `162d95d011bfa5e18c40b919e27b56884b57492180eee21c3661f05b07775989`,
+  `bitwise`
+  `6ab4eb3101f03944afa4caceed611aa70a8e844e165416428e7dbfac0a0f6bb2`.
+- Environment fault and fix (not a product failure): the first browser launch
+  failed with `spawn chrome-headless-shell EACCES` because HOME is a `noexec`
+  tmpfs; the browser tree was moved to an exec-mounted path
+  (`PLAYWRIGHT_BROWSERS_PATH`) and the run repeated from there.
+- Candidates rendered on TouchDesigner 2025.32820 (broker runs, job `d7c2e3ba`)
+  via the repository bootstrap (`td/build_parity_toe.py`, sha256
+  `a13c311bf7a18cd188aeee2f9a1ed2080b1782ac69c155e1016f3c015ac2338d`; render
+  log `=== DONE 3/3 rendered ===`, self-quit, exit 0, `timed_out=false`).
+- `parity/compare.py` at the declared thresholds (tol 2, ssim_min 0.98):
+
+| Case | Verdict | Detail |
+|---|---|---|
+| `adjust` | PASS | max-abs-diff 1.000, mean-abs-diff 0.1559, ssim 0.99998 |
+| `alphaMask` | PASS | max-abs-diff 1.000, mean-abs-diff 0.1514, ssim 0.99998 |
+| `bitwise` | PASS | max-abs-diff 0.000, mean-abs-diff 0.0000, ssim 1.00000 |
+
+Candidate PNG SHA-256 — `adjust`
+`d3ffc7617c36269fa6dd17f27a274af64c0ac626da70ed19247a18bb0a524b6a`,
+`alphaMask`
+`87249f7fd81167066b38f3c6f384f0874340712ed32b888b80f299a157b96307`,
+`bitwise`
+`48c44a700937bfd6feb703b5d60c61def67a92cd71db0d6d02c404b290a3afaf` — each
+byte-identical to the per-case candidate artifacts recorded in the machine
+verification receipt above, so this reproduction matches the retained
+qualification artifacts exactly. Boundary: this is an in-job reproduction in
+the run checkout; the supervisor's declared `native-parity` check remains the
+controlling receipt for the published candidate and was pending at the
+controller when this reproduction was recorded.
+
 ## 4. Known gaps
 
 P1 means false completion or major correctness failure. P2 means coverage or integration uncertainty. P3 means documentation inconsistency.
