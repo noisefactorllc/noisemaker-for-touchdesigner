@@ -152,6 +152,20 @@ removed, the residual failure is attributable to the runner environment
 (missing/failed TouchDesigner GUI-license session), which no repository
 change can supply.
 
+Scope note: commit `0628e9f` changes only `td/build_parity_toe.py`'s install
+discovery (Windows `.exe` tool names, `TD_APP` pointing at the TD binary,
+`~/Applications` bundles, searched-roots diagnostics) — on hosts where the
+previous discovery already succeeded its behavior is unchanged. The standing
+STATUS.md limitations (aperture-defocus wide-footprint blur not ported and
+defocus-buffer normalization unresolved; the force-pushed, non-contiguous
+upstream range `4891b9953f9f..2f47612c2904` audited via endpoint tree diff;
+`projectPass()` `defines` coverage asserted via the byte-identical
+`convert-definitions.mjs` gate rather than re-rendered) are pre-existing
+recorded items: the defocus port and any TD-session re-render belong to the
+separate implementation job and to this gap's unqualified native half, and
+the upstream range audit is a recorded fact of upstream history. None are
+regressions of the run-driver fix, and none are closed here.
+
 Authority provenance: the reference checkout was fetched as a fresh clone of
 `https://github.com/noisefactorllc/noisemaker.git` and pinned with
 `git checkout 2f47612c29045c1b91af94887a8ff20106e980ef`, the revision named in
