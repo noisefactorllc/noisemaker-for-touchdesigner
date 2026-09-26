@@ -108,6 +108,41 @@ Compiler gates (default corpus = all DSL files in `parity/corpus` +
 | `parity/compiler/check_validate.py` | 326/326 PASS |
 | `parity/compiler/check_graph.py` | 325 PASS / 0 DIFF / 0 STAGE / 1 SKIP / 0 ERR (of 326) |
 
+Exact commands and environment (working tree `main` at
+`6c96151d72648f87e16e572428a98d1922b61136`, clean except the untracked
+`upstream-noisemaker/` checkout and `parity/.venv/`):
+
+```sh
+NM_REFERENCE_ROOT=/workspace/repos/noisemaker-for-touchdesigner/upstream-noisemaker
+git -C "$NM_REFERENCE_ROOT" rev-parse HEAD   # 2f47612c29045c1b91af94887a8ff20106e980ef
+export NM_REFERENCE_ROOT
+./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"
+./parity/.venv/bin/python3 parity/compiler/check_lex.py
+./parity/.venv/bin/python3 parity/compiler/check_parse.py
+./parity/.venv/bin/python3 parity/compiler/check_validate.py
+./parity/.venv/bin/python3 parity/compiler/check_graph.py
+```
+
+Each gate was invoked with no file arguments, so it used its full declared
+default corpus: `parity/corpus/*.dsl` (25 files) + `parity/programs/*.dsl`
+(301 files) = 326. Raw summary lines as emitted:
+
+```
+=== lexer parity: 326/326 PASS=***
+=== parser parity: 326/326 PASS=***
+=== validator parity: 326/326 PASS=***
+=== graph parity: 325 PASS / 0 DIFF / 0 STAGE / 1 SKIP / 0 ERR  (of 326) ===
+```
+
+Harness-file SHA-256 at this revision: `parity/compiler/check_lex.py`
+`ac8aa6ff580840a6403ab052eaa167ad6e428488c8cdcb86bd936d4e87ed22f3`,
+`parity/compiler/check_parse.py`
+`554d5e73c826aef5519aaf22f8d49b5d7f48ca5efd54c23108c6be1ba40cb633`,
+`parity/compiler/check_validate.py`
+`bfd01fcfa8fface8069f35fb05695d06072ffaa3fe3a00e4532be619d1ac60ec`,
+`parity/compiler/check_graph.py`
+`b1ce88fa64889aaa552b553b1810eff806dc31c96ef7a8409fa73b455c5183a6`.
+
 The single graph SKIP is `parity/corpus/B5oBsA.dsl`, an intentionally invalid
 program the reference oracle rejects (`ERR_COMPILATION_FAILED`) and the port
 rejects as well — rejection parity, not a port defect. It is preserved here and
