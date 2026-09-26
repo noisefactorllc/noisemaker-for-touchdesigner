@@ -10,6 +10,17 @@ Full rendered parity remains **unverified**. No release approval follows from th
 Current synced reference: `403c2a4bf2cb` (port commit `143a899`, audit-only round). Upstream head at review: `0ac5250052e2b2e683f086959451c3bad8369a68`, docs-only above `403c2a4bf2cb` with an identical `shaders/` tree. Published Noisemaker authority: `1.0.185`, 210 effect IDs, recorded source `6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa` ([manifest](https://shaders.noisedeck.app/1.0.185/effects/manifest.json), retrieved 2026-09-26).
 Authority reconciliation, measured by this review: `git diff --stat 6a0af04d..403c2a4 -- shaders/` lists exactly 8 changed files. They are `src/lang/transform.js`, `src/lang/paramAliases.js` (new), `src/index.js`, `src/lang/index.js`, and four test-harness files. That is the GAP-008/009 delivery. The port's `143a899` range audit classified it as having no TD consumption path. The compiler oracle surface (`lexer.js`, `parser.js`, `validator.js`, `diagnostics.js`) and the effect definitions are unchanged between `6a0af04d` and the tested reference. The re-run compiler gates therefore cover the same compiled surface as the published authority. Rendered goldens for the planned sweep must come from the published authority source `6a0af04d` (or a tree with an identical `shaders/` surface).
 The observations below retain their original source and authority identities. They do not qualify later updates.
+Later sync (same day, port commit `433e8ebdc6f42ee32940c7be99f10e93f91118a4`): the reference
+advanced to `9f85687d1bafc445dcd38e28cf5f0c6dfba562f8` (audit-only round, STATUS.md). The
+declared range `403c2a4bf2cb..9f85687d1baf` is flagged force-pushed/non-contiguous; the observed
+delivery range `0ac5250052e2..9f85687d1baf` subsumes it (the declared start is an ancestor of
+both the observed start and the end). Measured endpoint diff `git diff --name-status
+403c2a4bf2cb..9f85687d1baf -- shaders/`: exactly 3 files, all reference test harness
+(`shaders/tests/test-harness.js` modified; `shaders/tests/uniform-status.js` and
+`shaders/tests/test_uniform_status.js` added — upstream GAP-010 uniform-status aggregation);
+`shaders/effects`, `shaders/scripts`, and `shaders/src` diffs are empty. The only other
+upstream changes are docs (`LEDGER.md`, `llms-full.txt`) and test registration
+(`scripts/run-js-tests.js`). Full rendered parity remains unverified as stated above.
 Current served kit: `0.1.27`, source `3064d0dc9c58840bf7a1510ffd37f7707b6cc9ba`, retrieved and spot-verified 2026-09-26 (section 3, daily-review verification). Artifact identity does not establish host qualification.
 Served kit `0.1.26` at source `6c96151d72648f87e16e572428a98d1922b61136` was byte-verified earlier against its own served inventory and the source tree (2026-09-26, section 3). The rolling deployment replaced it with `0.1.27` from the corrected `3064d0dc` tree. Artifact identity still does not establish host qualification.
 

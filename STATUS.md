@@ -260,7 +260,11 @@ suite `shaders/tests/test_uniform_status.js` registered in `scripts/run-js-tests
 runtime/backend, and no validator/expander changes (`tools/convert-definitions.mjs` re-run
 against the pinned end tree: 210/210 effects byte-identical; `tools/convert-shaders.mjs`
 byte-identical after re-applying the documented navierStokes port-guard flow for
-`ns.frag`/`nsSplat.frag`). **Audit-only round — no code change required.** The uniform-status
+`ns.frag`/`nsSplat.frag`). **Audit-only round — no code change required.** Per-subtree diff
+counts (`git diff --name-only 403c2a4bf2cb..9f85687d1baf -- shaders/<subdir> | wc -l`):
+`effects` 0, `scripts` 0, `src` 0, `tests` 3 — the only shaders/ changes are
+`shaders/tests/test-harness.js` (modified), `shaders/tests/uniform-status.js` (added), and
+`shaders/tests/test_uniform_status.js` (added). The uniform-status
 aggregation is a browser-test-harness gate for the reference's own CI; this port has never
 carried `shaders/tests/test-harness.js` or the Shade MCP uniform-responsiveness surface (no
 `--uniforms`/`--strict-uniforms` consumer anywhere in `td/`, `parity/`, or `tools/`), so the new
@@ -270,7 +274,10 @@ precedent. **Reference fidelity baseline:** the reference's own new suite was ru
 assertions passed). Verified compiler parity gates: check_lex (326/326 PASS), check_parse
 (326/326 PASS), check_validate (326/326 PASS), check_graph (325 PASS / 0 DIFF / 0 STAGE / 1
 SKIP), and unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s parity -p
-"test_*.py"`, 120/120 OK).*
+"test_*.py"`, 120/120 OK). Unit-count reconciliation: the prior `403c2a4bf2cb` round recorded
+119/119; the +1 case is pre-existing in this round's parent — port commit `18db29e` added
+69 lines of cases to `parity/test_td_backend.py` before this round, unrelated to
+GAP-010/uniform-status (no strict-uniforms or test-harness consumer exists in the port tree).*
 
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
