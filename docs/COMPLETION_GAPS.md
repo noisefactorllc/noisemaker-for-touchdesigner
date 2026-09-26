@@ -83,6 +83,50 @@ The staged inventory contains 301 program fixtures: two executed and 299 unexecu
 [Command and runtime evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-native.json). [Input hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-native-input-hashes.json).
 [Exact comparisons](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-native-comparisons.json). [Unexecuted fixture IDs](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-fixture-inventory.json).
 
+### 2026-09-26 compiler-parity qualification (Linux runner)
+
+Immutable authority inputs were resolved by checking out upstream
+`noisefactorllc/noisemaker` at the port's current synced reference revision
+`2f47612c29045c1b91af94887a8ff20106e980ef` (the revision named by port commit
+`6c96151d72648f87e16e572428a98d1922b61136`) and running the declared compiler
+gates against it with `NM_REFERENCE_ROOT` bound to that checkout. The
+checkout is untracked (`upstream-noisemaker/`, gitignored); the pinned SHA
+makes it reproducible. `node tools/convert-definitions.mjs` regenerated 210/210
+effect JSON files with zero failures and produced no working-tree diff, so the
+committed effect catalog is byte-identical to the authority revision. The
+Python unit suite passed: 118 tests, 0 failures
+(`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`,
+Python 3.11.2, numpy 2.5.3, Pillow 12.3.0).
+
+Compiler gates (default corpus = all DSL files in `parity/corpus` +
+`parity/programs`, 326 files), reference oracle `2f47612c`:
+
+| Gate | Result |
+|---|---|
+| `parity/compiler/check_lex.py` | 326/326 PASS |
+| `parity/compiler/check_parse.py` | 326/326 PASS |
+| `parity/compiler/check_validate.py` | 326/326 PASS |
+| `parity/compiler/check_graph.py` | 325 PASS / 0 DIFF / 0 STAGE / 1 SKIP / 0 ERR (of 326) |
+
+The single graph SKIP is `parity/corpus/B5oBsA.dsl`, an intentionally invalid
+program the reference oracle rejects (`ERR_COMPILATION_FAILED`) and the port
+rejects as well — rejection parity, not a port defect. It is preserved here and
+not reclassified.
+
+Port file SHA-256 at this revision: `td/noisemaker/compiler/lang/lexer.py`
+`d06460b5b3b8880eec7367ad71a014c336dddb8cc0e532e14e771a163ae588ab`,
+`td/noisemaker/compiler/lang/parser.py`
+`019db836ef868b788aeacf26b9b166488a033497c9c0a4f389188fdc17a7d782`,
+`td/noisemaker/compiler/lang/validator.py`
+`c1bbc8586430abb0f3b42187c2fc6bbcc155af4ddc5becb89ed53b1464d723c9`,
+`td/noisemaker/compiler/dsl_compiler.py`
+`c93ed547a03404dc9eb37223d87c3e4b5b4c4db8cd03adb6569d2b490befe22a`.
+
+These results qualify the compiler half of GAP-001's required checks. The
+native render half (`adjust`, `alphaMask`, `bitwise` under the declared
+`touchdesigner-parity` profile) still requires the activated macOS host and
+remains the open condition for closing the gap.
+
 ## 4. Known gaps
 
 P1 means false completion or major correctness failure. P2 means coverage or integration uncertainty. P3 means documentation inconsistency.
@@ -93,9 +137,9 @@ These initial entries record missing qualification, not inferred implementation 
 - Status: open. Priority: P2. Category: verification.
 - Affected scope: td/noisemaker/, td/make_bootstrap.py, parity/, README.md, STATUS.md
 - Expected behavior: Each supported claim has reproducible evidence tied to the port and authority revisions.
-- Observed behavior: Two native probes ran, but 299 staged fixtures and the complete host workflow remain unqualified. The current official build is 2025.33230, newer than README qualification 2025.32820. [Official releases](https://derivative.ca/UserGuide/Release_Notes).
+- Observed behavior: Compiler parity at the resolved authority revision is qualified (see the 2026-09-26 compiler gates in section 3): lex/parse/validate 326/326, graph 325 PASS / 1 rejection-parity SKIP / 0 DIFF / 0 STAGE / 0 ERR, definitions 210/210 byte-identical, 118 unit tests passing. The native render half (`adjust`, `alphaMask`, `bitwise` under the declared `touchdesigner-parity` profile) and the complete host workflow remain unqualified. The current official build is 2025.33230, newer than README qualification 2025.32820. [Official releases](https://derivative.ca/UserGuide/Release_Notes).
 - Evidence: [Historical claim](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/STATUS.md) and the bounded checks in section 3.
-- Next action: Run current compiler and native render gates in an activated host. Preserve chaotic, timed, skipped, and platform-specific cases.
+- Next action: Run the native render gates in an activated host (`adjust`, `alphaMask`, `bitwise` under the declared `touchdesigner-parity` profile); compiler gates are complete per section 3. Preserve chaotic, timed, skipped, and platform-specific cases.
 - Dependencies: Resolve immutable authority inputs before comparison. Retain historical goldens and their provenance.
 - Acceptance criteria: Record every applicable case, parameter choice, exclusion, error, and tolerance. Pass the declared contract without silently reducing coverage.
 - Required checks: Existing compiler and parity entry points from the README, with raw results and exact source hashes.
@@ -146,6 +190,7 @@ Implementation changes belong to the separate implementation job. This register 
 
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
+| 2026-09-26 | `6c96151d72648f87e16e572428a98d1922b61136` | Recorded compiler-parity qualification at authority `2f47612c29045c1b91af94887a8ff20106e980ef`. GAP-001 remains open. | Linux compiler gates: lex/parse/validate 326/326, graph 325 PASS / 1 rejection-parity SKIP / 0 DIFF / 0 STAGE / 0 ERR; definitions 210/210 byte-identical; 118 unit tests. | Native render gates (`adjust`, `alphaMask`, `bitwise`), installed workflow, and platform qualification remain open. |
 | 2026-09-24 | `66426bc41c2b85940322ae843ba04f41b7905ce4` | Created the requested six-section register and README link. No closures. | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. | Full audit, current parity, installed workflows, platform qualification, and release readiness remain open. |
 
 Native follow-up: `solid` was exact; `noise` differed by one byte maximum. Full current-authority qualification remains open.
