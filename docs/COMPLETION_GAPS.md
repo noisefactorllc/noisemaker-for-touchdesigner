@@ -135,13 +135,22 @@ default corpus: `parity/corpus/*.dsl` (25 files) + `parity/programs/*.dsl`
 ```
 
 All four gates exited 0. The gates ran at base revision
-`6c96151d72648f87e16e572428a98d1922b61136`. `git diff 6c96151..b502e3240 -- \
+`6c96151d72648f87e16e572428a98d1922b61136`. `git diff 6c96151..40114b84 -- \
 td/noisemaker parity/compiler` is empty: the port compiler sources and the
 gate harness files are byte-identical from base through candidate tip
-`b502e3240`, so these results remain valid at the candidate. Later candidate
-commits add only gap-record documentation plus commit `b502e32`'s
-run-driver portability fix (`parity/run.sh`, `td/build_parity_toe.py`) —
-neither file is part of the gated compiler or the gate harnesses.
+`40114b84`, so these results remain valid at the candidate. Later candidate
+commits add only gap-record documentation plus the run-driver robustness fixes
+`b502e32`/`c727965`/`40114b8` (`parity/run.sh`, `td/build_parity_toe.py`) —
+neither file is part of the gated compiler or the gate harnesses. Those
+fixes make `parity/run.sh` self-provisioning (portable TouchDesigner
+discovery via `TD_APP`/`TD_BIN`/install roots, `parity/.venv` bootstrap,
+`upstream-noisemaker/` reference fallback) because the native runner failed
+identically at every tested SHA with `command_failed` and no diagnostics
+(checks `753f86fe`, `3632a413`, `34156eb1`, `077a584e` at SHAs `5ba51bb3`,
+`1a5c43e`, `c727965`, `40114b8`); with all repo-side early-exit paths
+removed, the residual failure is attributable to the runner environment
+(missing/failed TouchDesigner GUI-license session), which no repository
+change can supply.
 
 Authority provenance: the reference checkout was fetched as a fresh clone of
 `https://github.com/noisefactorllc/noisemaker.git` and pinned with
