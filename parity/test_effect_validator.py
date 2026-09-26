@@ -389,6 +389,79 @@ class TestEffectValidator(unittest.TestCase):
         print(f'[effect-validator corpus] files={len(files)} pass={len(files) - len(failures)} '
               f'failure={len(failures)} skip=0 unexecuted=0')
 
+    # ------------------------------------------------------------------
+    # GAP-004 texture-policy fields (mirrors shaders/tests/test_mip_controls.js
+    # @2f47612c29045c1b91af94887a8ff20106e980ef, Part 1: 5 cases)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _mip_probe_definition(textures, textures3d):
+        """The reference suite's baseDefinition (message-identical shape)."""
+        return {
+            'name': 'Mip Probe',
+            'namespace': 'synth',
+            'func': 'mipProbe',
+            'description': 'Texture policy probe used by tests',
+            'tags': ['noise', 'util'],
+            'textures': textures,
+            'textures3d': textures3d,
+            'passes': [
+                {
+                    'program': 'probe',
+                    'inputs': {},
+                    'outputs': {'color': 'acc'},
+                },
+            ],
+        }
+
+    def test_validator_accepts_policy_fields_on_their_declared_containers(self):
+        errors = validate_effect_definition(self._mip_probe_definition(
+            {'acc': {'width': 64, 'height': 64, 'format': 'rgba16f',
+                     'mipmaps': True, 'persistent': True}},
+            {'vol': {'width': 8, 'height': 8, 'depth': 8, 'format': 'rgba16f',
+                     'filter': 'nearest'}},
+        ))
+        self.assertEqual(errors, [], f'expected no errors, got: {errors}')
+
+    def test_validator_rejects_unknown_texture_spec_fields_typo_protection(self):
+        errors = validate_effect_definition(self._mip_probe_definition(
+            {'acc': {'width': 64, 'height': 64, 'mipps': True}},
+            None,
+        ))
+        self.assertTrue(any("unknown field 'mipps'" in e for e in errors),
+                         f'missing unknown-field report: {errors}')
+
+    def test_validator_rejects_filter_outside_textures3d(self):
+        errors = validate_effect_definition(self._mip_probe_definition(
+            {'acc': {'width': 64, 'height': 64, 'filter': 'nearest'}},
+            None,
+        ))
+        self.assertTrue(any('"filter" is only supported on 3D' in e for e in errors),
+                         f'missing filter-container report: {errors}')
+
+    def test_validator_rejects_unknown_filter_values(self):
+        errors = validate_effect_definition(self._mip_probe_definition(
+            None,
+            {'vol': {'width': 8, 'height': 8, 'depth': 8, 'filter': 'bilinear'}},
+        ))
+        self.assertTrue(any("unknown filter 'bilinear'" in e for e in errors),
+                         f'missing filter-value report: {errors}')
+
+    def test_validator_rejects_mipmaps_persistent_on_3d_specs_and_non_booleans(self):
+        errors = validate_effect_definition(self._mip_probe_definition(
+            {'acc': {'width': 64, 'height': 64, 'mipmaps': 'yes', 'persistent': 1}},
+            {'vol': {'width': 8, 'height': 8, 'depth': 8, 'mipmaps': True,
+                     'persistent': True}},
+        ))
+        for fragment in (
+            '"mipmaps" must be a boolean',
+            '"persistent" must be a boolean',
+            '"mipmaps" is only supported on 2D',
+            '"persistent" is only supported on 2D',
+        ):
+            self.assertTrue(any(fragment in e for e in errors),
+                            f'missing report for {fragment}: {errors}')
+
 
 if __name__ == '__main__':
     unittest.main()

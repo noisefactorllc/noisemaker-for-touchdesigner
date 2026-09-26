@@ -15,6 +15,13 @@ class TextureSpec:
     is3D: bool = False
     fmt: str = "rgba16f"           # rgba16f | rgba32f | rgba8
     usage: list[str] = field(default_factory=list)
+    # GAP-004 texture policies (opt-in; absent on plain specs). `filter` is
+    # authorable on 3D textures only; `mipmaps`/`persistent` on 2D only (the
+    # definition validator enforces the container split). TD semantics are
+    # documented in the TDBackend docstring (GAP-004 round).
+    filter: Optional[str] = None   # 'nearest' | 'linear'
+    mipmaps: Optional[bool] = None
+    persistent: Optional[bool] = None
 
     @staticmethod
     def from_dict(d: dict) -> "TextureSpec":
@@ -25,6 +32,9 @@ class TextureSpec:
             is3D=bool(d.get("is3D", False)),
             fmt=d.get("format", "rgba16f"),
             usage=list(d.get("usage", [])),
+            filter=d.get("filter"),
+            mipmaps=d.get("mipmaps"),
+            persistent=d.get("persistent"),
         )
 
 

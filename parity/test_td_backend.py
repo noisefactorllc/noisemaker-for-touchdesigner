@@ -123,5 +123,42 @@ class MrtStorageFormatTests(unittest.TestCase):
         self.assertEqual(select.par.format, "rgba8fixed")
 
 
+class TexturePolicyFieldsTests(unittest.TestCase):
+    """GAP-004: mipmaps/persistent/filter ride through the graph data model."""
+
+    def test_texture_spec_carries_policy_fields(self):
+        from noisemaker.runtime.render_graph import TextureSpec
+
+        spec = TextureSpec.from_dict({
+            "width": 64, "height": 64, "format": "rgba16f",
+            "mipmaps": True, "persistent": True,
+        })
+
+        self.assertTrue(spec.mipmaps)
+        self.assertTrue(spec.persistent)
+        self.assertIsNone(spec.filter)
+
+    def test_texture_spec_carries_3d_filter(self):
+        from noisemaker.runtime.render_graph import TextureSpec
+
+        spec = TextureSpec.from_dict({
+            "width": 8, "height": 8, "depth": 8, "is3D": True,
+            "format": "rgba16f", "filter": "nearest",
+        })
+
+        self.assertEqual(spec.filter, "nearest")
+        self.assertIsNone(spec.mipmaps)
+        self.assertIsNone(spec.persistent)
+
+    def test_plain_specs_keep_policy_fields_absent(self):
+        from noisemaker.runtime.render_graph import TextureSpec
+
+        spec = TextureSpec.from_dict({"width": 64, "height": 64})
+
+        self.assertIsNone(spec.mipmaps)
+        self.assertIsNone(spec.persistent)
+        self.assertIsNone(spec.filter)
+
+
 if __name__ == "__main__":
     unittest.main()

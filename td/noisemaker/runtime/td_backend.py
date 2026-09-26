@@ -124,6 +124,21 @@ def _parse_input_order(frag_text):
 
 
 class TDBackend:
+    """Builds the static TouchDesigner TOP network for a Render Graph.
+
+    GAP-004 texture-policy fields carried on TextureSpec (`filter` on 3D,
+    `mipmaps`/`persistent` on 2D) are validated contract-parity (the port's
+    effect_validator mirrors the reference) and are round-tripped through the
+    graph loader, but TD's static-TOP pipeline has no per-texture allocation
+    policy to apply them to: TOPs never allocate mip chains (TD sampling is
+    single-level; the reference's WebGL2/WebGPU mip machinery is
+    browser-backend-only), textures are recreated only by a full network
+    rebuild on `set_resolution` (there is no incremental recreation path to
+    preserve contents across), and 3D "textures" are volume ATLASes sampled
+    manually in-shader (`atlasTexel`), so no sampler filter applies. The
+    fields ride along inert until a TD-native equivalent exists.
+    """
+
     def __init__(self, parent_comp, shaders_root, *, width=256, height=256, time=0.25,
                  surface_manager=None, external_state=None):
         self.parent = parent_comp

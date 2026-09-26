@@ -122,6 +122,44 @@ re-applying the repo's documented hand-guard flow for the two navierStokes port 
 (`ns.frag`/`nsSplat.frag`, commit `9406590`: "marked as port guards, re-apply after
 re-transpile" — restored from HEAD before the diff, every other program byte-identical).*
 
+*Incrementally synced 2026-09-26 to reference `2f47612c2904` — **range audit:** the declared
+upstream range `4891b9953f9f..2f47612c2904` is again force-pushed/non-contiguous; the observed
+delivery start is `13a8a0491dcf` (an ancestor of the end — `git merge-base --is-ancestor
+13a8a0491dcf 2f47612c2904` → exit 0 — and the last synced reference `9d3474dfdc6c` is also an
+ancestor, so the endpoint tree diff loses no upstream content). The `9d3474dfdc6c..13a8a0491dcf`
+slice is docs/CI-only (LEDGER.md, docs/plans, llms-full.txt). The audited endpoint tree diff
+`git diff --stat 9d3474dfdc6c 2f47612c2904` touches three port-affecting upstream commits —
+`a021a283` (GAP-004: authorable mipmaps/persistent/3D filter texture policies),
+`62eb56fa` (WebGL2 mip-chain allocation + WebGPU mip bind-group caching), `2f47612c` (stop
+double-creating global surfaces on allocation change) — plus docs/CI wiring (LEDGER.md,
+docs/plans, llms-full.txt, package.json, scripts/run-js-tests.js, new test-only
+`shaders/tests/test_mip_controls.js`). No effect definitions, shaders, or compiler operations
+changed upstream (`tools/convert-definitions.mjs` re-run against the pinned tree: 210/210
+effects byte-identical). Ported the GAP-004 definition-grammar texture-policy contract into
+`td/noisemaker/runtime/effect_validator.py` @2f47612c: `TEXTURE_SPEC_KEYS` now admits `filter`
+(3D only, `'nearest'`|`'linear'`), `mipmaps` and `persistent` (2D `textures` only, booleans),
+with the reference's message-identical diagnostics (container-placement and type errors, typo
+protection via the unknown-field report); no previously accepted input changed. Extended
+`TextureSpec` (`td/noisemaker/runtime/render_graph.py`) to round-trip `filter`/`mipmaps`/
+`persistent` from the exported graph JSON (absent → `None`, plain specs unchanged). Documented
+the TD platform deviations in the `TDBackend` docstring: TD's static TOP pipeline has no
+per-texture allocation policy — TOPs never allocate mip chains (the reference's WebGL2/WebGPU
+mip machinery is browser-backend-only; TD sampling is single-level), textures are recreated
+only by a full network rebuild on `set_resolution` (no incremental recreation path to preserve
+contents across — the reference's `recreateTexturePreserving`/`persistent` resample path and
+the `2f47612c` double-create fix target a per-texture incremental path TD does not have; the
+TD rebuild creates every TOP exactly once by construction), and 3D "textures" are volume
+ATLASes sampled manually in-shader (`atlasTexel`), so no sampler-filter policy applies — the
+policy fields ride along inert until a TD-native equivalent exists. Added 5 validator tests
+porting `test_mip_controls.js` Part 1 (accept/typo/container/type cases) to
+`parity/test_effect_validator.py`, and 3 `TextureSpec` round-trip tests to
+`parity/test_td_backend.py`. **Reference fidelity baseline:** the reference's own new suite
+`shaders/tests/test_mip_controls.js` was run from the pinned end SHA (`node
+shaders/tests/test_mip_controls.js`, 15/15 PASS). Verified compiler parity gates: check_lex
+(326/326 PASS), check_parse (326/326 PASS), check_validate (326/326 PASS), check_graph
+(325 PASS / 0 DIFF / 0 STAGE / 1 SKIP), and unit test suite
+(`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`, 118/118 PASS).*
+
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
 the first to actually exercise): (1) pass-level `defines`/`conditions` (the clone pattern itself) had

@@ -1,7 +1,8 @@
 """effect_validator.py — validate an effect definition against the definition
 grammar consumed by the port's runtime/registry. Faithful Python port of
 noisefactorllc/noisemaker `shaders/src/runtime/effect-validator.js` @
-9d3474dfdc6cb737ebb7b2f3598b16d940af1544 (upstream GAP-003).
+2f47612c29045c1b91af94887a8ff20106e980ef (upstream GAP-003 + GAP-004 texture
+policy fields).
 
 Contract (identical to the reference): deterministic and side-effect-free.
 `validate_effect_definition(def)` returns a list of error strings — [] for
@@ -58,7 +59,11 @@ PASS_KEYS = [
     'defines', 'uniforms', 'inputs', 'outputs',
 ]
 
-TEXTURE_SPEC_KEYS = ['width', 'height', 'depth', 'format', 'is3D']
+TEXTURE_SPEC_KEYS = ['width', 'height', 'depth', 'format', 'is3D', 'filter', 'mipmaps', 'persistent']
+
+# Filtering policies are authorable on 3D textures only. 2D surfaces keep
+# the engine-wide nearest filtering for backend parity.
+TEXTURE_FILTERS = ['nearest', 'linear']
 
 CONDITION_CONTAINER_KEYS = ['runIf', 'skipIf']
 
@@ -599,6 +604,21 @@ def _validate_texture_map(textures, errors, container_name):
                 errors.append(f"{label}: unknown format '{spec['format']}'")
         if 'is3D' in spec and not isinstance(spec['is3D'], bool):
             errors.append(f"{label}: \"is3D\" must be a boolean")
+        if 'filter' in spec:
+            if container_name != 'textures3d':
+                errors.append(f"{label}: \"filter\" is only supported on 3D texture specs (\"textures3d\")")
+            elif spec['filter'] not in TEXTURE_FILTERS:
+                errors.append(f"{label}: unknown filter '{spec['filter']}' (expected 'nearest' or 'linear')")
+        if 'mipmaps' in spec:
+            if container_name == 'textures3d':
+                errors.append(f"{label}: \"mipmaps\" is only supported on 2D texture specs (\"textures\")")
+            elif not isinstance(spec['mipmaps'], bool):
+                errors.append(f"{label}: \"mipmaps\" must be a boolean")
+        if 'persistent' in spec:
+            if container_name == 'textures3d':
+                errors.append(f"{label}: \"persistent\" is only supported on 2D texture specs (\"textures\")")
+            elif not isinstance(spec['persistent'], bool):
+                errors.append(f"{label}: \"persistent\" must be a boolean")
 
 
 def _references_global(name, context):
