@@ -175,6 +175,18 @@ native render half (`adjust`, `alphaMask`, `bitwise` under the declared
 `touchdesigner-parity` profile) still requires the activated macOS host and
 remains the open condition for closing the gap.
 
+Native render check at source `5ba51bb3` (check `753f86fe`,
+profile `touchdesigner-parity` v1, engine TouchDesigner 2025.32820): failed on
+runner `native-spare` with `command_failed` and no command, stderr, or artifact
+captured; the runner did not deliver per-case results for any of the three
+required cases. These historical ledger rows remain the last recorded per-case
+native verdicts: `adjust` PASS (max_abs_diff 1.000003695487976, ssim
+0.9999804496765137, tol 2.001/0.98), `alphaMask` PASS (max_abs_diff
+1.000003695487976, ssim 0.9999801516532898), `bitwise` PASS (max_abs_diff 0.0,
+ssim 1.0) — all against goldens rendered from the reference engine under the
+declared tolerances. The gap stays open on the missing current-source native
+run, not on any recorded per-case failure.
+
 ## 4. Known gaps
 
 P1 means false completion or major correctness failure. P2 means coverage or integration uncertainty. P3 means documentation inconsistency.
