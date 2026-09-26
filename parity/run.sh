@@ -18,9 +18,16 @@ set -u
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/.." && pwd)"
-# Reference engine via NM_REFERENCE_ROOT (no default — this repo assumes no sibling project on clone).
+# Reference engine via NM_REFERENCE_ROOT; falls back to the repo-local conventional
+# checkout (upstream-noisemaker/, gitignored — see .gitignore) when unset.
 REF="${NM_REFERENCE_ROOT:-}"
+if [ -z "$REF" ] && [ -d "$REPO/upstream-noisemaker/shaders" ]; then REF="$REPO/upstream-noisemaker"; fi
 [ -n "$REF" ] && [ -d "$REF/shaders" ] || { echo "set NM_REFERENCE_ROOT to the upstream Noisemaker engine (the tree containing shaders/) — no sibling is assumed on clone"; exit 2; }
+# Ensure the venv exists with numpy + pillow (fresh clones / runners lack parity/.venv).
+if [ ! -x "$REPO/parity/.venv/bin/python" ] && ! python3 -c 'import numpy, PIL' >/dev/null 2>&1; then
+  python3 -m venv "$REPO/parity/.venv" && "$REPO/parity/.venv/bin/pip" install -q -r "$REPO/requirements.txt" \
+    || { echo "could not provision parity/.venv (numpy + pillow required)"; exit 2; }
+fi
 TD_BIN="${TD_BIN:-}"
 if [ -z "$TD_BIN" ]; then
   for cand in /Applications/TouchDesigner.app/Contents/MacOS/TouchDesigner \
