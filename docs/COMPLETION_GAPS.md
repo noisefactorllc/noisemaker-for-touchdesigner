@@ -601,6 +601,18 @@ candidate PNGs are byte-identical to this reproduction's (`d3ffc761…`,
 `d3c5a392…` match the per-case goldens recorded in the GAP-001 receipt table
 above; per-case report SHA-256 `09caf207…`/`fdc337d4…`/`dd7078ab…`.
 
+Controlling receipt for the final candidate: a further declared `native-parity`
+machine verification ran at the exact published candidate
+`280e88c67e6ac4244b4525f264106eff0cc3009b` (review id
+`673e08f9-dcda-47d6-b0b5-b983ca574a69`, received_at
+`2026-09-26T14:06:35.980Z`, verified_at `2026-09-26T14:16:47.108Z`, same
+profile sha256 `933110e9…`, TouchDesigner 2025.32820 darwin arm64, GPU
+available, all ten declared commands exit 0): `adjust`, `alphaMask`, and
+`bitwise` passed at thresholds `max_abs_diff 2 / ssim_min 0.98`; goldens are
+byte-identical to the receipts above (`b1d9f6ea…`/`3598684e…`/`d3c5a392…`),
+candidates byte-identical to this reproduction (`d3ffc761…`/`87249f7f…`/
+`48c44a70…`); per-case report SHA-256 `1e24e28d…`/`aea11b78…`/`6a364235…`.
+
 ## 4. Known gaps
 
 P1 means false completion or major correctness failure. P2 means coverage or integration uncertainty. P3 means documentation inconsistency.
