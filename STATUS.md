@@ -160,6 +160,53 @@ shaders/tests/test_mip_controls.js`, 15/15 PASS). Verified compiler parity gates
 (325 PASS / 0 DIFF / 0 STAGE / 1 SKIP), and unit test suite
 (`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`, 118/118 PASS).*
 
+*Incrementally synced 2026-09-26 to reference `8eeb7b5ac14e` — **range audit:** the declared
+upstream range `4891b9953f9f..8eeb7b5ac14e` is force-pushed/non-contiguous; the observed
+delivery ranges are `27590caad94d..8eeb7b5ac14e`, `428ea29bf8fb..957436216964`, and
+`957436216964..6a0af04d3c4f`. Machine-checkable ancestry facts: the declared start
+`4891b9953f9f` IS an ancestor of the declared end `8eeb7b5` and the last synced reference
+`2f47612c2904` is also an ancestor of it (both `git merge-base --is-ancestor` → exit 0), but
+the observed-range endpoints `957436216964` and `6a0af04d3c4f` are NOT ancestors of `8eeb7b5`
+— the delivery extends beyond the declared end: `8eeb7b5` is an ancestor of `6a0af04d`
+(exit 0), and `6a0af04d`'s `shaders/` tree is identical to upstream HEAD `a651c075` (empty
+diff), so the audit was run against the endpoint tree diff `2f47612c2904..6a0af04d3c4f` to
+lose no upstream content. That diff touches four port-affecting upstream commits — `fa83eeab`
+(GAP-005: copy name/viewport/clear/samplerTypes/type onto expanded passes + per-frame
+`Pipeline.resolvePassViewport()`), `6113da00` (GAP-006: texturePooling opt-in resource
+allocation plan), `95743621` (viewport passes without `clear` count as partially written under
+pooling), and `f83a427e` (GAP-007: structured `ShaderDiagnostic` union for backend
+compile/link failures) — everything else is docs/CI-only (LEDGER.md, docs/plans, llms-full.txt,
+package.json run-js-tests wiring). `git diff --name-only 2f47612c 6a0af04d -- shaders/` lists
+ONLY `src/runtime/backends/diagnostics.js` (new), `backends/webgl2.js`, `backends/webgpu.js`,
+`expander.js`, `pipeline.js`, and three test-only files — no effect definitions, no `.glsl`/
+`.wgsl` sources, no DSL/lang, no effect-validator change (`tools/convert-definitions.mjs`
+re-run against the pinned tree: 210/210 byte-identical; `tools/convert-shaders.mjs`
+byte-identical after re-applying the documented navierStokes port-guard flow for
+`ns.frag`/`nsSplat.frag`). **Audit-only round — no code change required.** Each upstream
+change targets a runtime mechanism TouchDesigner's statically built TOP network does not have:
+(a) GAP-005's per-frame `resolvePassViewport()` + backend `viewportResolved` preference —
+TD sizes every TOP from its output surface's textureSpec via `resolve_dimension`
+(`td_backend._apply_res_format`), and every authored `viewport` in the effect catalog mirrors
+its target surface spec (all eight synth3d precompute viewports use the same
+`volumeSize`-param grammar as their `volumeCache`/`geoBuffer` specs), so the resolved box
+equals the full TOP render area; TD has no gl.viewport sub-rect concept, and the propagated
+`name`/`type`/`clear`/`samplerTypes` metadata is browser-backend-only (`clear` drives the
+WebGPU loadOp, `samplerTypes` selects WebGPU per-binding samplers) with no TD consumption
+path — the converter's `projectPass()` continues to drop `viewport`/`samplerTypes`, and the
+graph gate's `export-graph.mjs` normalization never emitted them, so parity is unchanged;
+(b) GAP-006 texture pooling is opt-in per-frame surface reuse on the reference's incremental
+allocation path — TD rebuilds every TOP exactly once per network build (documented in the
+GAP-004 round) and has no incremental allocation plan to consume; `95743621` refines only
+that pooling machinery; (c) GAP-007 normalizes the WebGL2/WebGPU backends' throwing
+compile/link surfaces — TD's GLSL compile/link errors surface through TouchDesigner's own TOP
+error system and `td_backend` has no throwing compile path to normalize. **Reference fidelity
+baseline:** the reference's own new suite `shaders/tests/test_pass_fields.js` was run from a
+`git archive` extraction of the pinned end SHA (`node shaders/tests/test_pass_fields.js`,
+8/8 PASS) against the same upstream tree the parity gates consume. Verified compiler parity
+gates: check_lex (326/326 PASS), check_parse (326/326 PASS), check_validate (326/326 PASS),
+check_graph (325 PASS / 0 DIFF / 0 STAGE / 1 SKIP), and unit test suite
+(`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`, 118/118 PASS).*
+
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
 the first to actually exercise): (1) pass-level `defines`/`conditions` (the clone pattern itself) had
