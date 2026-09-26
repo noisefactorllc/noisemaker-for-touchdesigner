@@ -2,11 +2,11 @@
 
 ## 1. Source and authority revisions
 
-Daily review: 2026-09-25. Current inspected source: [`de416d7606e231bf6e38027316269640a1d7d096`](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/commit/de416d7606e231bf6e38027316269640a1d7d096).
-Full rendered parity remains **unverified**. No release approval or new closure follows from this review.
-Current upstream discovery: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published Noisemaker authority: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`, 210 effect IDs.
+Daily review: 2026-09-26. Current inspected source: [`143a89915429f97b16c4f85efedafd739ca8c0b7`](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/commit/143a89915429f97b16c4f85efedafd739ca8c0b7).
+Full rendered parity remains **unverified**. No release approval follows from this review.
+Current synced reference: `403c2a4bf2cb` (port commit `143a899`, audit-only round). Upstream head at review: `0ac5250052e2b2e683f086959451c3bad8369a68`, docs-only above `403c2a4bf2cb` with an identical `shaders/` tree. Published Noisemaker authority: `1.0.185`, 210 effect IDs, recorded source `6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa` ([manifest](https://shaders.noisedeck.app/1.0.185/effects/manifest.json), retrieved 2026-09-26). Authority reconciliation, measured by this review: `git diff --stat 6a0af04d..403c2a4 -- shaders/` lists exactly 8 changed files. They are `src/lang/transform.js`, `src/lang/paramAliases.js` (new), `src/index.js`, `src/lang/index.js`, and four test-harness files — the GAP-008/009 delivery that the port's `143a899` range audit classified as having no TD consumption path. The compiler oracle surface (`lexer.js`, `parser.js`, `validator.js`, `diagnostics.js`) and the effect definitions are unchanged between `6a0af04d` and the tested reference. The re-run compiler gates therefore cover the same compiled surface as the published authority. Rendered goldens for the planned sweep must come from the published authority source `6a0af04d` (or a tree with an identical `shaders/` surface).
 The observations below retain their original source and authority identities. They do not qualify later updates.
-Current served kit: `0.1.26`, source `6c96151d72648f87e16e572428a98d1922b61136` (retrieved 2026-09-26). At the 2026-09-25 review the served kit was `0.1.23`, source `de416d7606e231bf6e38027316269640a1d7d096`. [Retrieved inventory and hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-served-inventories.json). Artifact identity does not establish host qualification; the installed kit legs were executed 2026-09-26 (see [completion gaps](COMPLETION_GAPS.md), section 3).
+Current served kit: `0.1.27`, source `3064d0dc9c58840bf7a1510ffd37f7707b6cc9ba` (retrieved and spot-verified 2026-09-26; the served `integrate.py` and `README.template.md` carry the corrected in-COMP `out` wiring, byte-identical to the `3064d0dc` tree). At the 2026-09-25 review the served kit was `0.1.23`, source `de416d7606e231bf6e38027316269640a1d7d096`. The intervening `0.1.26` artifact (source `6c96151d`) was byte-verified and then replaced by the rolling deployment. Artifact identity does not establish host qualification. The executed kit host legs ran on the frozen `0.1.26` artifact (2026-09-26, see [completion gaps](COMPLETION_GAPS.md), section 3). No `0.1.27` host install exists.
 
 ### Earlier source observations
 
@@ -34,18 +34,33 @@ The matrix below retains the earlier measured scope. A historical verified row i
 
 | Dimension | Status | Measured scope or limit |
 |---|---|---|
-| Source-level checks | verified | 76 Python unit tests passed. Installation, license activation, saved projects, and accessibility were not exercised. |
-| Actual host rendering | verified | Two native probes rendered. Complete host workflow and full parity remain unverified. |
-| Minimum and current host versions | blocked (minimum verified) | Minimum supported build 2025.32820 qualified: compiler gates (326/326 lex/parse/validate, graph 325 PASS/1 SKIP) run on Linux at source `6c96151` per the pass history and native `touchdesigner-parity` cases `adjust`/`alphaMask`/`bitwise` passed at thresholds 2/0.98, plus the full installed workflow (isolated Base COMP, documented NMRenderer example, TOP connect/resize, invalid-DSL recovery, save/reopen, cleanup) and the native-parity machine-verification receipts — [Completion gaps](COMPLETION_GAPS.md), section 3, 2026-09-26. The current official build 2025.33230 leg is blocked for automation: not installed on the only reachable host and obtainable only via a licensed Derivative download channel. |
+| Source-level checks | verified | 119 Python unit tests passed at `143a899` (review re-run 2026-09-26; earlier 76-test and 118-test runs retained in the pass history). License activation on fresh installs and accessibility were not exercised. |
+| Actual host rendering | verified | Three declared native `touchdesigner-parity` cases (`adjust`/`alphaMask`/`bitwise`) passed at thresholds 2/0.98 across four machine-verification receipts; the 2026-09-26 review re-ran the workflow probe on TD 2025.32820 and reproduced the documented-example render byte-identically. The full 301-fixture sweep remains unexecuted (GAP-004). |
+| Minimum and current host versions | blocked (minimum verified) | Minimum supported build 2025.32820 qualified: compiler gates (326/326 lex/parse/validate, graph 325 PASS/1 SKIP) run on Linux at source `6c96151` per the pass history and re-run at `143a899` by the review, native `touchdesigner-parity` cases `adjust`/`alphaMask`/`bitwise` passed at thresholds 2/0.98, plus the full installed workflow (isolated Base COMP, documented NMRenderer example, TOP connect/resize, invalid-DSL recovery, save/reopen, cleanup) and the native-parity machine-verification receipts — [Completion gaps](COMPLETION_GAPS.md), section 3, 2026-09-26. The current official build 2025.33230 leg is blocked for automation: not installed on the only reachable host and obtainable only via a licensed Derivative download channel. |
 | Supported operating systems and backends | unverified | This pass does not establish Windows, Linux, and macOS coverage. |
-| Installed package and first useful result | verified | Served kit `0.1.26` installed per its README on TD 2025.32820 (isolated project, kit `onStart` build at load, meaningful 1280×1280 render from the kit's own output TOP, mean 0.674927); the kit's documented sibling-`out` wiring is silently refused (cross-network connect, as GAP-002 measured). [Completion gaps](COMPLETION_GAPS.md), section 3, 2026-09-26. |
+| Installed package and first useful result | verified for `0.1.26`; `0.1.27` unverified | The executed install/render legs ran on the frozen served kit `0.1.26` (source `6c96151d`) on TD 2025.32820. It was installed per its README: isolated project, kit `onStart` build at load, meaningful 1280×1280 render from the kit's own output TOP, mean 0.674927. The current served kit `0.1.27` (source `3064d0dc`) received a file-level spot check only (4 of 852 files inventory- and tree-verified; the corrected in-COMP `out` wiring is present in the served bytes). No `0.1.27` install or first-result on a host exists, and the corrected wiring has not been exercised through a kit install. [Completion gaps](COMPLETION_GAPS.md), section 3, 2026-09-26. |
 | Parameters, external inputs, state, and chains | unverified | Full current-authority combinations remain unmeasured. |
-| Invalid input and recovery | unverified | Unit checks do not establish every installed public entry point. |
+| Invalid input and recovery | verified (documented example entry point) | Invalid DSL at the documented example raises `DslSyntaxError` with a structured `L001` lexer diagnostic and recovers to a valid render (workflow probe, re-verified by the review re-run 2026-09-26). Other installed public entry points remain unmeasured. |
 | Upgrade, removal, and resource cleanup | verified | Saved-project relocation, version-delta upgrade (older kit from source history `66426bc` → served `0.1.26`, in place, reopen/rebuild byte-identical), reinstall-over, and removal verified with the served kit on TD 2025.32820. A served-version-to-served-version upgrade pass does not exist (single rolling deployment). [Completion gaps](COMPLETION_GAPS.md), section 3, 2026-09-26. |
 | Accessibility of provided controls | unverified | Keyboard, focus, labels, and diagnostics need host observations where applicable. |
-| Release readiness | blocked | Full parity and host/workflow evidence remain incomplete; installation, kit legs, and artifact evidence are qualified (2026-09-26 — [completion gaps](COMPLETION_GAPS.md), section 3). |
+| Release readiness | blocked | Full parity and the platform matrix remain incomplete; installation, kit legs, and artifact evidence are qualified (2026-09-26 — [completion gaps](COMPLETION_GAPS.md), section 3). |
 
 ## 3. Parity coverage
+
+### Daily review, 2026-09-26
+
+The reviewer re-executed the recorded gates at head `143a899` (Linux x86_64, reference checkout at `0ac52500`, content-equivalent to the synced `403c2a4bf2cb`): 119/119 unit tests, lexer/parser/validator parity 326/326 each, definitions conversion 210/210 with an empty tree diff. The declared native `touchdesigner-parity` cases `adjust`/`alphaMask`/`bitwise` passed at thresholds 2/0.98 across four machine-verification receipts at published candidates. The workflow probe was re-run on TD 2025.32820 and reproduced the documented-example render byte-identically. See [completion gaps](COMPLETION_GAPS.md), section 3.
+
+| Gate | Expected cases | Executed | Strict passes | Failures | Skips | Status |
+|---|---|---|---|---|---|---|
+| Compiler lexer parity | 326 | 326 | 326 | 0 | 0 | verified (review re-run) |
+| Compiler parser parity | 326 | 326 | 326 | 0 | 0 | verified (review re-run) |
+| Compiler validator parity | 326 | 326 | 326 | 0 | 0 | verified (review re-run) |
+| Compiler graph parity | 326 | 326 | 325 | 0 | 1 rejection-parity SKIP | verified (both producers reject `B5oBsA.dsl`) |
+| Declared native parity cases | 3 | 3 | 3 at thresholds 2/0.98 | 0 | 0 | verified (four machine receipts; review re-ran the workflow probe) |
+| Full 301-fixture native sweep | 301 | 5 | not measured | not measured | not measured | unverified (GAP-004) |
+
+The full sweep denominator is 301 program fixtures plus corpus, per-mode, stateful, and cubemap coverage. Five fixtures have native evidence; 296 remain unexecuted at the current authority. Unknown values mean `not measured`, never zero.
 
 ### Daily review, 2026-09-25
 
@@ -69,7 +84,7 @@ Earlier served compatibility inventory declares 207 effect IDs. Declaration does
 IDs absent from the served declaration: `synth/media`, `synth/scope`, `synth/spectrum`.
 Missing effects remain visible toward the full-parity goal. Contract exclusions do not become successful tests.
 
-Current served declaration: 207 effect IDs. This inventory is not evidence of execution. The declaration column below reflects kit `0.1.23`.
+Current served declaration: 207 effect IDs (kit `0.1.27`, `compat.json` sha256 `b4c57ae75efe…`, unchanged from the `0.1.26` verification). This inventory is not evidence of execution. The declaration column below reflects the current served kit.
 
 ### Effect inventory
 
@@ -306,14 +321,14 @@ The staged inventory contains 301 program fixtures: two executed and 299 unexecu
 
 ## 5. Open compatibility limits
 
-Next bounded check: Resolve immutable current authority inputs, then use the existing build_parity_toe.py and native TouchDesigner capture entry points for every tracked fixture. Require no missing or skipped cases. The served component was installed and exercised in a fresh project on 2026-09-26 (install, TOP output, relocation, reinstall-over, removal — [completion gaps](COMPLETION_GAPS.md), section 3); parameters, cook failure, and recovery against the installed kit entry points, and the unsupported host/version matrix, remain to be recorded.
+Next bounded check: Run the full fixture sweep (GAP-004) on the qualified TD host — goldens from the published authority source `6a0af04d`, then `parity/run.sh`, `sweep.sh`, `accumulate.sh`, and `cubemap.sh` over every tracked fixture, with every mismatch, skip, and missing case itemized. A fresh install of the served `0.1.27` kit (none exists yet), parameters, cook failure, and recovery against its entry points, and the unsupported host/version matrix, remain to be recorded.
 See the stable entries in [completion gaps](COMPLETION_GAPS.md).
 
-See [GAP-001 and the complete gap register](COMPLETION_GAPS.md#4-known-gaps) for evidence, dependencies, and acceptance criteria.
+See [the complete gap register](COMPLETION_GAPS.md#4-known-gaps) for evidence, dependencies, and acceptance criteria.
 
 1. Reconcile the current authority and complete case inventory, including parameters, inputs, stateful frames, and host versions.
 2. Run the existing actual-renderer suite without skip options. Record every missing, failed, refused, or timed-out case.
-3. Installation, useful output, relocation, version-delta upgrade (source-history kit → served kit), reinstall-over, and removal were executed with the actual distribution on TD 2025.32820 (2026-09-26 — [completion gaps](COMPLETION_GAPS.md), section 3). Parameters, external inputs, cook failure, and recovery against the installed kit entry points remain unmeasured; a served-version-to-served-version upgrade pass does not exist (single rolling deployment).
+3. Installation, useful output, relocation, version-delta upgrade (source-history kit → served kit), reinstall-over, and removal were executed with the frozen served kit `0.1.26` on TD 2025.32820 (2026-09-26 — [completion gaps](COMPLETION_GAPS.md), section 3). A `0.1.27` host install, parameters, external inputs, cook failure, and recovery against its entry points remain unmeasured. A served-version-to-served-version upgrade pass does not exist (single rolling deployment).
 4. Inspect exact-source CI and retain artifact hashes. Keep unresolved qualification failed or unverified.
 
 All eligible ports have equal priority. Full parity and zero skipped cases remain the goal.
@@ -323,8 +338,11 @@ Implementation corrections remain with the separate job. This report does not ad
 
 2026-09-25 daily review at `de416d7606e231bf6e38027316269640a1d7d096`: source freshness and bounded evidence reviewed. Open qualification limits retained. [Retained review evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-native-comparisons.json). No new closure claimed.
 
+2026-09-26 daily review at `143a89915429f97b16c4f85efedafd739ca8c0b7`: implementation range `7d533b9e..143a899` reviewed. Gates re-executed, workflow probe re-run natively, served deployment re-fetched as `0.1.27` at `3064d0dc` (file-level check, no host install). GAP-004 added for the unexecuted fixture sweep. Evidence in [completion gaps](COMPLETION_GAPS.md), section 3.
+
 | Date | Source | Result | Change |
 |---|---|---|---|
+| 2026-09-26 | `143a89915429f97b16c4f85efedafd739ca8c0b7` | Full qualification unverified; GAP-001 closed (verified), GAP-002/GAP-003 blocked, GAP-004 open | Daily review: gates re-executed (119/119 unit, 326/326 lex/parse/validate, graph 325 PASS/1 SKIP, 210/210 definitions), workflow probe re-run on TD 2025.32820 with byte-identical renders, served kit `0.1.27` file-level spot check (no host install), matrix refreshed. |
 | 2026-09-24 | `66426bc41c2b85940322ae843ba04f41b7905ce4` | Full qualification unverified | Created the requested maintained compatibility report. Preserved historical evidence and open gaps. |
 
 Native follow-up: recorded two rendered probes and 299 unexecuted staged fixtures. No gap was closed.

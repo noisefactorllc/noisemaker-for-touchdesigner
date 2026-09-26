@@ -4,12 +4,14 @@ Current compatibility matrix: [compatibility report](COMPATIBILITY.md).
 
 ## 1. Scope and source revisions
 
-Daily review: 2026-09-25. Current inspected source: [`de416d7606e231bf6e38027316269640a1d7d096`](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/commit/de416d7606e231bf6e38027316269640a1d7d096).
-Full rendered parity remains **unverified**. No release approval or new closure follows from this review.
-Current upstream discovery: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published Noisemaker authority: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`, 210 effect IDs.
+Daily review: 2026-09-26. Current inspected source: [`143a89915429f97b16c4f85efedafd739ca8c0b7`](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/commit/143a89915429f97b16c4f85efedafd739ca8c0b7).
+No worker audit result exists since `20260924-remaining-gap-documents-touchdesigner`. This review covers the implementation range `7d533b9e..143a899` and the current documents.
+Full rendered parity remains **unverified**. No release approval follows from this review.
+Current synced reference: `403c2a4bf2cb` (port commit `143a899`, audit-only round). Upstream head at review: `0ac5250052e2b2e683f086959451c3bad8369a68`, docs-only above `403c2a4bf2cb` with an identical `shaders/` tree. Published Noisemaker authority: `1.0.185`, 210 effect IDs, recorded source `6a0af04d3c4f345ffab5e9f8e54e532216b4cdaa` ([manifest](https://shaders.noisedeck.app/1.0.185/effects/manifest.json), retrieved 2026-09-26).
+Authority reconciliation, measured by this review: `git diff --stat 6a0af04d..403c2a4 -- shaders/` lists exactly 8 changed files. They are `src/lang/transform.js`, `src/lang/paramAliases.js` (new), `src/index.js`, `src/lang/index.js`, and four test-harness files. That is the GAP-008/009 delivery. The port's `143a899` range audit classified it as having no TD consumption path. The compiler oracle surface (`lexer.js`, `parser.js`, `validator.js`, `diagnostics.js`) and the effect definitions are unchanged between `6a0af04d` and the tested reference. The re-run compiler gates therefore cover the same compiled surface as the published authority. Rendered goldens for the planned sweep must come from the published authority source `6a0af04d` (or a tree with an identical `shaders/` surface).
 The observations below retain their original source and authority identities. They do not qualify later updates.
-Current served kit: `0.1.23`, source `de416d7606e231bf6e38027316269640a1d7d096`. [Retrieved inventory and hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-served-inventories.json). Artifact identity does not establish host qualification.
-Served kit `0.1.26` at source `6c96151d72648f87e16e572428a98d1922b61136` was later byte-verified against its own served inventory and the source tree (2026-09-26, section 3). Artifact identity still does not establish host qualification.
+Current served kit: `0.1.27`, source `3064d0dc9c58840bf7a1510ffd37f7707b6cc9ba`, retrieved and spot-verified 2026-09-26 (section 3, daily-review verification). Artifact identity does not establish host qualification.
+Served kit `0.1.26` at source `6c96151d72648f87e16e572428a98d1922b61136` was byte-verified earlier against its own served inventory and the source tree (2026-09-26, section 3). The rolling deployment replaced it with `0.1.27` from the corrected `3064d0dc` tree. Artifact identity still does not establish host qualification.
 
 ### Earlier source observations
 
@@ -457,7 +459,12 @@ Two scope records, stated explicitly rather than waived:
    re-fetched; the later candidates (`b159bd5`, `90c384d`, `f29c6ab`,
    `b68859f`, `b6c178d`, `9277aa5` — documentation and evidence records
    only, no `export-kit/` paths) touch no trigger paths, so the `3064d0dc`
-   run covers the latest `export-kit/` content.
+   run covers the latest `export-kit/` content. The 2026-09-26 review then
+   re-fetched the served deployment directly. It serves `0.1.27` at source
+   `3064d0dc`. The served `integrate.py` and `README.template.md` carry the
+   corrected in-COMP wiring, byte-identical to the `3064d0dc` tree (see the
+   daily-review verification section). The served artifact no longer ships the
+   refused sibling-`out` form.
 2. Version-to-version upgrade is not exercisable: kits.noisedeck.app serves a
    single rolling deployment (deployment `0`; `/1/` and `/2/` return 404; the
    previously served `0.1.20` and `0.1.23` kits are replaced, not retained).
@@ -658,14 +665,84 @@ candidates byte-identical to this reproduction (`d3ffc761…`/`87249f7f…`/
 Controlling receipt for the final integrated candidate: a further declared
 `native-parity` machine verification ran at the exact published candidate
 `00c579dd2ffa87cf48291022b9c4f7e50296a6da` (review id
-`65e7756d-aca7-48fb-8c49-8a7018a404bf`, received_at
-`2026-09-26T16:16:53.585Z`, verified_at `2026-09-26T16:37:01.243Z`, same
-profile sha256 `933110e9…`, TouchDesigner 2025.32820 darwin arm64, GPU
-available, all ten declared commands exit 0): `adjust`, `alphaMask`, and
-`bitwise` passed at thresholds `max_abs_diff 2 / ssim_min 0.98`; goldens
-byte-identical to the receipts above (`b1d9f6ea…`/`3598684e…`/`d3c5a392…`),
-candidates byte-identical to this reproduction (`d3ffc761…`/`87249f7f…`/
-`48c44a70…`); per-case report SHA-256 `26302e6b…`/`8f7e938c…`/`030bd059…`.
+`65e7756d-aca7-48fb-8c49-8a7018a404bf`, received_at `2026-09-26T16:16:53.585Z`,
+verified_at `2026-09-26T16:37:01.243Z`, same profile sha256 `933110e9…`,
+TouchDesigner 2025.32820 darwin arm64, GPU available, all ten declared commands
+exit 0): `adjust`, `alphaMask`, and `bitwise` passed at thresholds
+`max_abs_diff 2 / ssim 0.98`; goldens byte-identical to the receipts above
+(`b1d9f6ea…`/`3598684e…`/`d3c5a392…`), candidates byte-identical to this
+reproduction (`d3ffc761…`/`87249f7f…`/`48c44a70…`); per-case report SHA-256
+`26302e6b…`/`8f7e938c…`/`030bd059…`.
+
+### 2026-09-26 daily-review verification (independent)
+
+The daily reviewer re-executed the recorded gates and probes at the current
+head `143a89915429f97b16c4f85efedafd739ca8c0b7` on Linux x86_64 (Python 3.11.2,
+numpy 2.5.3, Pillow 12.3.0, Node 26.5.1) with `NM_REFERENCE_ROOT` bound to the
+upstream checkout at `0ac5250052e2b2e683f086959451c3bad8369a68` (docs-only above
+the synced reference `403c2a4bf2cb`; `shaders/` tree identical, verified by
+tree diff). Authority reconciliation measured in the same checkout:
+`git diff --stat 6a0af04d..403c2a4 -- shaders/` lists exactly 8 changed files.
+They are the GAP-008/009 delivery, which the port's range audit found to have
+no TD consumption path. The compiler oracle surface and the effect definitions
+are unchanged. These gates therefore cover the published authority's compiled
+surface (section 1):
+
+| Check | Command | Result |
+|---|---|---|
+| Unit suite | `./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"` | 119/119 OK, exit 0 |
+| Lexer parity | `./parity/.venv/bin/python3 parity/compiler/check_lex.py` | 326/326 PASS, exit 0 |
+| Parser parity | `./parity/.venv/bin/python3 parity/compiler/check_parse.py` | 326/326 PASS, exit 0 |
+| Validator parity | `./parity/.venv/bin/python3 parity/compiler/check_validate.py` | 326/326 PASS, exit 0 |
+| Graph parity | `./parity/.venv/bin/python3 parity/compiler/check_graph.py` | 325 PASS / 0 DIFF / 0 STAGE / 1 rejection-parity SKIP / 0 ERR (of 326), exit 0 |
+| Definitions conversion | `NM_REFERENCE_ROOT=… node tools/convert-definitions.mjs` | wrote 210 effects, 0 failed; `git diff` on `td/noisemaker/effects` empty |
+| Runtime byte-identity | `git diff dbd98d8..143a899 -- td/noisemaker parity/compiler` | empty |
+| Committed workflow evidence | `git cat-file blob HEAD:parity/evidence/workflow/*` + `sha256sum` | `workflow.example-1280.png` `93af6b3c…`, `nm_workflow_saved.toe` `908296be…`, `workflow.resized-320x240.png` `88d7c715…` all match this register |
+
+Environment note: this review container held a shallow clone (51 commits). The
+`git ls-tree 66426bc…`-based upgrade-leg contract test errored until the clone
+was unshallowed; the 119/119 result above is from the full-history clone. The
+shallow-clone failure was an environment artifact, not a product defect.
+
+Independent native re-run on the TouchDesigner host broker (TD 2025.32820,
+macOS): the reviewer rebuilt `td/nm_workflow.toe` with
+`td/build_workflow_toe.py` and ran both workflow phases at head `143a899`.
+
+| Phase | Result |
+|---|---|
+| build | documented example cooked 1280×1280, `workflow.example-1280.png` sha256 `93af6b3c70088499e863c01bfd3d22072eba9327ba73c5286ca7ce479067543a` — byte-identical to the committed GAP-002 artifact; resized/recovered renders `88d7c715…` byte-identical |
+| reopen | saved project reopened, consumer and display TOP present, re-cooked render `88d7c715…` byte-identical to the build render (`bytes_match_build_render: true`), cleanup `remaining_ops: []` |
+| both runs | `project.quit(force=True)`, host exit 0, `timed_out=false` |
+
+A fresh project save produces different `.toe` bytes than the retained
+`908296be…` artifact (TouchDesigner save metadata is not byte-deterministic);
+the reopen comparison is internal to the run and passed. The reviewer restored
+the tracked evidence files to their committed bytes after the re-run.
+
+Served kit re-verification (kits.noisedeck.app, reachable from this review
+environment on 2026-09-26, unlike the earlier 403): deployment metadata reports
+version `0.1.27`, source `3064d0dc9c58840bf7a1510ffd37f7707b6cc9ba`. The served
+inventory lists 852 files. Spot-verified served files against both the
+inventory and the `3064d0dc` tree: `integrate.py` sha256 `0b925f32ccbe…`,
+`README.template.md` `c65620cb4038…` (both inventory- and tree-identical),
+`LICENSES/noisemaker-for-touchdesigner-LICENSE.txt` `e502d1baf14c…`
+(inventory- and tree-identical), `compat.json` `b4c57ae75efe…`
+(inventory-identical, unchanged from the `0.1.26` verification). The served
+`integrate.py` contains the corrected in-COMP `out` wiring
+(`create(nullTOP…`): the served artifact no longer ships the silently refused
+sibling-`out` form recorded for the frozen `0.1.26` artifact. This was a
+file-level check only (4 of 852 files). No `0.1.27` kit was installed on a
+host, and the corrected wiring has not been exercised through a kit install.
+The executed kit host legs ran on the frozen `0.1.26` artifact (GAP-003). A
+fresh `0.1.27` install is a recorded next action (section 5).
+
+Exact-source Actions re-checked: no workflow runs at `143a899`, `36586bd`, or
+`9277aa5` (docs/`STATUS.md`-only commits; no trigger paths). Export kit run
+`36213953378` completed `success` at `6c96151` and run `36262052983` completed
+`success` at `3064d0dc` (the run that serves `0.1.27`), both matching this
+register. The `export-kit.yml` push filters (`export-kit/**`, the workflow
+file, `LICENSE`, `td/noisemaker/**`) match no `docs/` path, so this review's
+document commit triggers no workflow.
 
 ## 4. Known gaps
 
@@ -679,7 +756,7 @@ These initial entries record missing qualification, not inferred implementation 
 - Expected behavior: Each supported claim has reproducible evidence tied to the port and authority revisions.
 - Observed behavior: Both declared halves qualified. Compiler: lex/parse/validate 326/326, graph 325 PASS / 1 rejection-parity SKIP (`parity/corpus/B5oBsA.dsl`, both producers reject) / 0 DIFF / 0 STAGE / 0 ERR at authority `2f47612c29045c1b91af94887a8ff20106e980ef`, definitions 210/210 byte-identical, 118 unit tests — section 3, with exact commands, raw summary lines, and port/harness SHA-256 hashes. Native: `adjust`, `alphaMask`, `bitwise` passed on TouchDesigner 2025.32820 (darwin arm64, GPU) at source `3b543dde9f25d35f30d9b3ee15869255f9e14b8f`, thresholds max_abs_diff ≤ 2 / ssim ≥ 0.98, per-case reports and PNG artifacts retained — section 3. Parameters/exclusions on record: render size/time per `parity/run.sh` defaults (SIZE=256, TIME=0.25), declared profile thresholds, one rejection-parity skip preserved and not reclassified. Repair trail: four failed runner attempts (checks `753f86fe`, `3632a413`, `34156eb1`, `077a584e`) traced to run-driver install discovery, fixed in `b502e32`/`c727965`/`40114b8`/`699f6d2`/`3b543dd`; no gate, tolerance, or coverage was reduced.
 - Evidence: Section 3 (compiler gates and native qualification at `3b543dd`), the machine verification receipt (verified_at 2026-09-26T05:37:35.380Z, review `01a1d4ac`), and the historical claim.
-- Next action: none for GAP-001. Remaining qualification (full 301-fixture native sweep, installed host workflow, 2025.33230 build matrix) stays open under GAP-002 and this register; GAP-003's installed distribution legs were executed 2026-09-26 and its entry stays open on its recorded criteria.
+- Next action: none for GAP-001. The full fixture sweep stays open under GAP-004 (added by the 2026-09-26 review). The installed host workflow and 2025.33230 build matrix stay open under GAP-002. GAP-003's installed distribution legs were executed 2026-09-26 and its entry stays blocked on its recorded dependency.
 - Dependencies: resolved — authority inputs pinned at `2f47612c2904`; historical goldens and provenance retained unchanged.
 - Acceptance criteria: met — every applicable declared case, parameter choice, exclusion, error, and tolerance recorded; the declared contract passed without silently reducing coverage.
 - Required checks: satisfied — compiler entry points (`parity/compiler/check_{lex,parse,validate,graph}.py`) and the declared native `touchdesigner-parity` cases, with raw results and exact source hashes in section 3.
@@ -709,17 +786,30 @@ These initial entries record missing qualification, not inferred implementation 
 - Dependencies: Complete GAP-002 for the release candidate (blocked — GAP-002's 2025.32820 workflow qualified the activated host the kit legs used, but its 2025.33230 leg requires a licensed Derivative build installed on a host, which this job cannot obtain; the GAP-002 entry records this blocker). Distinguish source CI from downstream publication and host qualification.
 - Acceptance criteria: met except the declared GAP-002 dependency — artifact bytes matched to the inventory (met); licenses and dependencies checked (met); installation, example execution, saved-project relocation, version-delta upgrade (source-history kit → served kit, in place, byte-identical reopen/rebuild), and removal all executed on 2025.32820. A served-version-to-served-version upgrade pass does not exist and cannot be created (single rolling deployment — recorded, not silently waived); the entry is blocked on the GAP-002 dependency.
 - Required checks: no declared CI or deployment checks cover the kit host legs (`ci` and `deployments` are empty for this job); the artifact-half boundary is unchanged (Export kit 36213953378 is dispatch-only, no skips, no render legs; the byte checks carry the artifact evidence).
-- Last verification: 2026-09-26 (installed legs on TD 2025.32820 darwin arm64; artifact `0.1.26`, source `6c96151d`). No package or release approval follows from this register.
+- Last verification: 2026-09-26. The installed legs ran on TD 2025.32820 darwin arm64 with artifact `0.1.26` (source `6c96151d`). The review re-fetched the served deployment as `0.1.27` at `3064d0dc` (file-level check only, no host install). No package or release approval follows from this register.
+
+### GAP-004: full rendered parity sweep across the complete fixture inventory
+
+- Status: open (added 2026-09-26). Priority: P2. Category: verification.
+- Affected scope: `parity/programs/` (301 fixtures), `parity/corpus/` (25 files), per-mode and stateful coverage, `parity/run.sh`, `parity/sweep.sh`, `parity/accumulate.sh`, `parity/cubemap.sh`, `parity/ledger.tsv`, `td/build_parity_toe.py`.
+- Expected behavior: every tracked fixture renders on the actual TouchDesigner host against goldens from the pinned current authority, with every case executed and every mismatch, skip, and missing case itemized.
+- Observed behavior: five of the 301 program fixtures have native evidence at or near the current tree. Three are the declared `touchdesigner-parity` cases (`adjust`, `alphaMask`, `bitwise`) covered by GAP-001's four machine receipts. Two are the 2026-09-25 review probes (`solid`, `noise`) against retained historical goldens. The remaining 296 fixtures have no current-authority native result. The historical ledger (300 graded cases at the 2026-07-14 crystallization, reference `75507112`) is bound to an older authority and older goldens. It does not qualify the current tree.
+- Evidence: section 3 (native qualification and machine receipts; 2026-09-25 review probes), the fixture inventory retained in the 2026-09-24 worker evidence, `parity/ledger.tsv`.
+- Next action: run the existing `parity/run.sh`, `sweep.sh`, `accumulate.sh`, and `cubemap.sh` entry points on the qualified TD host for every tracked fixture. Render goldens from the published authority source `6a0af04d` (or a tree with an identical `shaders/` surface — see the section-1 reconciliation). Record expected, executed, strict-pass, mismatch, skip, and missing counts per case. Do not change thresholds or goldens.
+- Dependencies: qualified TD host (available: 2025.32820 license-activated through the host broker). Golden generation needs the published authority via `NM_REFERENCE_ROOT` and the browser golden harness.
+- Acceptance criteria: every tracked fixture executes. No silent skip. Every mismatch is itemized by stable identifier. Exact-equality results are reported separately from tolerance acceptance. The historical NEAR and CHAOS classes are re-graded or explicitly re-scoped at the current authority.
+- Required checks: `parity/run.sh` per fixture, `parity/sweep.sh`, `parity/accumulate.sh`, `parity/cubemap.sh`, `parity/compare.py` at the declared thresholds.
+- Last verification: 2026-09-26. Five native cases verified. The sweep has not started.
 
 ## 5. Ordered next actions
 
-Current first action: Resolve immutable current authority inputs, then use the existing build_parity_toe.py and native TouchDesigner capture entry points for every tracked fixture. Require no missing or skipped cases. The delivered component was installed and exercised in a fresh project on 2026-09-26 (install, TOP output, relocation, version-delta upgrade, reinstall-over, removal — GAP-003 installed legs recorded, entry blocked on GAP-002; parameters, cook failure, and recovery against the installed kit entry points remain to be recorded).
-Subsequent historical actions remain dependent on that evidence. No implementation is authorized by this audit.
+Current first action: Run the full fixture sweep for GAP-004 on the qualified TD host (2025.32820). Render goldens from the published authority source `6a0af04d` (or a tree with an identical `shaders/` surface), then execute `parity/run.sh`, `parity/sweep.sh`, `parity/accumulate.sh`, and `parity/cubemap.sh` over every tracked fixture. Require every case executed, with mismatches, skips, and missing cases itemized.
+Subsequent actions remain dependent on that evidence. No implementation is authorized by this review.
 
-1. Resolve authority revisions and retained evidence for GAP-001. Preserve all previous comparisons and exclusions.
-2. Run the bounded installed workflow for GAP-002. Record output, errors, recovery, host version, and resource cleanup. (Executed 2026-09-26 on 2025.32820 — section 3; the 2025.33230 leg remains.)
-3. Execute the declared parity cases for GAP-001. Keep compilation, structure, rendered pixels, and platform qualification separate.
-4. Qualify the actual distribution for GAP-003 after the workflow passes. Verify exact-source CI and required artifact contents. (Artifact half, installed kit legs, and the version-delta upgrade executed 2026-09-26 — section 3; the entry is blocked on the GAP-002 dependency.)
+1. Execute the GAP-004 sweep. Record expected, executed, strict-pass, mismatch, skip, and missing counts per case. Preserve thresholds and goldens.
+2. Install the served kit `0.1.27` fresh on 2025.32820 and record parameters, cook failure, and recovery against its entry points. No `0.1.27` host install exists yet. The executed legs ran on the frozen `0.1.26` artifact.
+3. GAP-002's 2025.33230 leg stays blocked for automation (license-gated build). Re-run the workflow there when a licensed host exists.
+4. GAP-003 stays blocked on the GAP-002 dependency. Keep the served-artifact checks current at each deployment.
 5. Update this register with measured results. Close entries only when their acceptance criteria pass.
 
 Implementation changes belong to the separate implementation job. This register does not authorize further effect ports or checkpoint advancement.
@@ -728,8 +818,11 @@ Implementation changes belong to the separate implementation job. This register 
 
 2026-09-25 daily review at `de416d7606e231bf6e38027316269640a1d7d096`: source freshness and bounded evidence reviewed. Open qualification limits retained. [Retained review evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-native-comparisons.json). No new closure claimed.
 
+2026-09-26 daily review at `143a89915429f97b16c4f85efedafd739ca8c0b7`: implementation range `7d533b9e..143a899` and the current documents reviewed. GAP-001 closure, the GAP-002 and GAP-003 blocked records, and the machine receipts were independently checked and retained. GAP-004 was added for the unexecuted fixture sweep. The served deployment was re-fetched as `0.1.27` at `3064d0dc` (file-level check; no host install).
+
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
+| 2026-09-26 | `143a89915429f97b16c4f85efedafd739ca8c0b7` | Daily review: implementation range `7d533b9e..143a899` reviewed. GAP-001 closure verified and retained; GAP-002/GAP-003 blocked records verified; GAP-004 added (296 of 301 fixtures unexecuted at the current authority); section 1 refreshed to the current source, upstream head `0ac52500`, published authority `1.0.185`, and served kit `0.1.27` at `3064d0dc` (re-fetched; corrected in-COMP wiring confirmed served); ordered next actions rewritten around GAP-004. | Independent re-execution at head `143a899`: 119/119 unit tests; lexer/parser/validator parity 326/326 each; graph parity 325 PASS / 1 rejection-parity SKIP / 0 DIFF / 0 ERR; definitions conversion 210/210 with an empty tree diff; runtime byte-identity `dbd98d8..143a899` empty; committed workflow evidence hashes verified from git blobs; workflow probe build and reopen phases re-run on TD 2025.32820 through the host broker, reproducing the documented-example render `93af6b3c…` and resize/recovery/reopen renders `88d7c715…` byte-identically; served kit `0.1.27` file-level spot check (4 of 852 files; no host install); authority reconciliation measured (`6a0af04d..403c2a4` shaders diff = 8 files, GAP-008/009 delivery); exact-source Actions re-checked (no runs at the docs-only heads; Export kit `36213953378` and `36262052983` both success). | Full fixture sweep (GAP-004), the 2025.33230 leg (license-gated), Windows and macOS-Intel platforms, and full current-authority rendered parity remain open. No release approval. |
 | 2026-09-26 | `9be5b838ba2aa9a2d3f8ef7e576f9441e67220ef` | GAP-003 installed legs recorded (entry stays open): served kit `0.1.26` (source `6c96151d`) exercised on TD 2025.32820 (install per kit README with the kit's own `integrate.py` onStart build at load, first result from the kit's output TOP mean 0.674927 at 1280×1280 byte-identical to the GAP-002 example render, saved-project relocation byte-identical, reinstall-over byte-identical, removal clean); new harness `tools/materialize_kit.py` + `td/build_kit_toe.py` + `td/kit_probe.py`; 118 unit tests OK. | Kit verified 852/852 against the served inventory at materialization and again at reinstall-over; four broker runs (job `d7c2e3ba`) all self-quit, exit 0, no timeout; retained in the run checkout: reports `parity/out/kit-qual/report.{build,relocate,reinstall,remove}.json` + 3 render PNGs (the remove leg saves none) + `materialize-summary.json`. | Sibling-`out` wiring silently refused by 2025.32820 (cross-network connect; measured in the GAP-002 workflow, and corrected in-tree since candidate `90c384d` — `export-kit/kit/integrate.py` wires `out` inside the COMP and `README.template.md` documents it); version-delta upgrade exercised from source history (66426bc kit → served 0.1.26, byte-identical reopen/rebuild); a served-version delta is impossible (single served deployment 0, `/1/`/`2/` 404); GAP-002's 2025.33230 leg (the declared GAP-003 blocker) and full parity remain open — GAP-003 stays open. |
 | 2026-09-26 | `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c` | GAP-002 workflow evidence recorded (entry stays open): installed developer workflow qualified on TD 2025.32820 (isolated Base COMP, documented NMRenderer example, TOP connect + 320×240 resize, invalid-DSL `L001` diagnostic + recovery, save/reopen with byte-identical re-cooked output, cleanup with no remaining ops); README documented connect example corrected to the in-COMP form; workflow harness `td/build_workflow_toe.py` + `td/workflow_probe.py` added. | Runtime `td/noisemaker` byte-identical to `dbd98d8` (runtime entry sha256 `9c4f1f5a…`); both host runs self-quit, exit 0, no timeout; harness re-run after the builder framing fix reproduced all three render PNGs byte-identically; retained reports `parity/evidence/workflow/report.build.json`/`report.reopen.json` + 4 PNG artifacts; 118 unit tests OK. | 2025.33230 matrix not exercised (only 2025.32820 installed on the host; no licensed Derivative download channel) — GAP-002 stays open on that check; distribution (GAP-003) open. |
 | 2026-09-26 | `ddf59d8327f8771dd79ef1d56e0da98337730c77` | Published candidate carrying the GAP-002 blocked record (workflow qualified on 2025.32820; 2025.33230 leg blocked on the license-gated build) plus the machine-verification receipt for the native-parity check. | Native-parity machine verification at published `00c579d` (review `65e7756d`): `adjust`/`alphaMask`/`bitwise` passed at thresholds 2/0.98, goldens/candidates byte-identical to the in-register reproduction; `td/noisemaker` byte-identical from `dbd98d8` through `ddf59d8`; 119 unit tests OK. | The 2025.33230 leg stays blocked on a licensed Derivative download (license-gated); GAP-002 remains blocked on that leg. |
