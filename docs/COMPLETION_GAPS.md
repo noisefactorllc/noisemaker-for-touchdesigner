@@ -317,10 +317,10 @@ The runtime used is byte-identical to source
 `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c` (`git diff dbd98d8 -- td/noisemaker
 parity/compiler` is empty) and remains byte-identical through the published
 candidates `c12c335`, `280e88c`, `00c579d`, `ddf59d8`, `90c384d`,
-`3064d0dc9c58840bf7a1510ffd37f7707b6cc9ba` and
-`b68859f21dbec3bf5e1e447de4eb60e41705fe2a` (`git diff dbd98d8..b68859f --
+`3064d0dc9c58840bf7a1510ffd37f7707b6cc9ba`, `b68859f21dbec3bf5e1e447de4eb60e41705fe2a`
+and `9277aa5a89eccf50129b02d6199ab48d6b468dae` (`git diff dbd98d8..9277aa5 --
 td/noisemaker parity/compiler` is empty), so the workflow evidence above is
-bound to the published tree at `b68859f` (the
+bound to the published tree at `9277aa5` (the
 compiler-gate results cited in the COMPATIBILITY matrix were run separately at
 source `6c96151` on Linux per the pass history, not during this host workflow);
 the evidence directory is tracked at `parity/evidence/workflow/` in the
@@ -455,8 +455,9 @@ Two scope records, stated explicitly rather than waived:
    this environment returns 403 (nginx) on `https://kits.noisedeck.app/`,
    so the deployed kit content is recorded as updated-by-run rather than
    re-fetched; the later candidates (`b159bd5`, `90c384d`, `f29c6ab`,
-   `b68859f`, `b6c178d`) touch no trigger paths, so the `3064d0dc` run
-   covers the latest `export-kit/` content.
+   `b68859f`, `b6c178d`, `9277aa5` — documentation and evidence records
+   only, no `export-kit/` paths) touch no trigger paths, so the `3064d0dc`
+   run covers the latest `export-kit/` content.
 2. Version-to-version upgrade is not exercisable: kits.noisedeck.app serves a
    single rolling deployment (deployment `0`; `/1/` and `/2/` return 404; the
    previously served `0.1.20` and `0.1.23` kits are replaced, not retained).
@@ -735,6 +736,7 @@ Implementation changes belong to the separate implementation job. This register 
 | 2026-09-26 | `3064d0dc9c58840bf7a1510ffd37f7707b6cc9ba` | GAP-002 evidence bound to the published tree: byte-identity chain extended through `3064d0d` (`git diff dbd98d8..3064d0d -- td/noisemaker parity/compiler` empty); workflow evidence artifacts committed; kit `out` wiring corrected to the verified in-COMP form. | Native receipts at `280e88c`/`00c579d` apply unchanged (runtime byte-identical); 119 unit tests OK. | 2025.33230 leg stays blocked (license-gated). |
 | 2026-09-26 | `b159bd54c68d6c4b13962c412bff0d1e403544c7` | Workflow evidence relocated to the tracked path `parity/evidence/workflow/` (outside gitignored `parity/out/`) so every recorded hash is verifiable from the repository; probe writes there; byte-identity chain extended to `b159bd5` (`git diff dbd98d8..b159bd5 -- td/noisemaker parity/compiler` empty). | Native receipts at `280e88c`/`00c579d` apply unchanged (runtime byte-identical); 119 unit tests OK. | 2025.33230 leg stays blocked (license-gated); GAP-002 remains blocked, not closed. |
 | 2026-09-26 | `f29c6ab9eaeaad1495c178c0a850f192b5f9ac65` | Gap-002 evidence binding reconciled: pass-history rows added for every published candidate carrying the record; the 2025.33230 leg stated as an explicit recorded automation blocker; probe output path reconciled with the committed artifacts; GAP-003 row updated to the in-tree sibling-out correction. | `td/noisemaker` byte-identical from `dbd98d8` through `f29c6ab`; 119 unit tests OK. | 2025.33230 leg stays blocked (license-gated); GAP-002 remains blocked, not closed. |
+| 2026-09-26 | `9277aa5a89eccf50129b02d6199ab48d6b468dae` | Final-acceptance fix: register records the successful exact-source Export kit run at the trigger-path commit `3064d0dc` (run `36262052983`, completed/success, 2026-09-26T18:18:10Z, dispatching the scaffold export-kit release to kits.noisedeck.app; served-artifact re-fetch returns 403, recorded as updated-by-run), and the section-3 kit text distinguishes the frozen served `0.1.26` artifact (source `6c96151d`) from the in-tree in-COMP correction. | `td/noisemaker` byte-identical from `dbd98d8` through `9277aa5` (`git diff` empty); documentation-only commit, no trigger paths; 119 unit tests OK. | 2025.33230 leg stays blocked (license-gated); GAP-002 remains blocked, not closed. |
 | 2026-09-26 | `b68859f21dbec3bf5e1e447de4eb60e41705fe2a` | Probe records only the meaningful `td.build` identity (noisy `app.version` '099' dropped from new reports); README documented example prints a Textport diagnostic when `nm.Output` is None instead of silently leaving `out` unconnected. | `td/noisemaker` byte-identical from `dbd98d8` through `b68859f`; 119 unit tests OK. | 2025.33230 leg stays blocked (license-gated); GAP-002 remains blocked, not closed. |
 | 2026-09-26 | `90c384d8422bfdf7734105dcdba303fa87667b10` | GAP-002 evidence bound to the published tree: byte-identity chain extended to `90c384d`; workflow evidence artifacts committed (`parity/evidence/workflow/`); kit `out` wiring corrected to the verified in-COMP form (`export-kit/kit/integrate.py` + `README.template.md`). | Native receipts at `280e88c` (review `673e08f9`) and `00c579d` (review `65e7756d`) apply — recorded in the published register commits `a76028e`/`ddf59d8`; declared native_checks run post-publication: `td/noisemaker` byte-identical from `dbd98d8` through `90c384d` (`git diff` empty), so the workflow qualification and native cases cover the published tree; 119 unit tests OK. | The 2025.33230 leg stays blocked on a licensed Derivative download (license-gated); GAP-002 remains blocked on that leg. |
 | 2026-09-26 | `a76028ec2309b0cdf1cd999ae76a9ae19827ee36` | GAP-002 and GAP-003 recorded as blocked on the 2025.33230 leg (licensed Derivative build not installed on the only host, no licensed download channel; automation cannot satisfy it). All other GAP-003 criteria are met and recorded, including the version-delta upgrade (source-history kit `66426bc` → served `0.1.26`, byte-identical reopen/rebuild). | Native-parity machine verification at published `280e88c67e6ac4244b4525f264106eff0cc3009b` (review `673e08f9`): `adjust`/`alphaMask`/`bitwise` passed at thresholds 2/0.98, goldens/candidates byte-identical to the in-register reproduction; compiler gates 326/326 lex/parse/validate, graph 325 PASS / 1 documented SKIP / 0 DIFF; 119 unit tests. | Served-version-to-served-version upgrade remains impossible (single rolling deployment); the 2025.33230 leg and full platform matrix stay blocked on a licensed host build; no release approval. |
