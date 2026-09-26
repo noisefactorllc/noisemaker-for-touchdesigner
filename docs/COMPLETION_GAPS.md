@@ -532,10 +532,20 @@ Candidate PNG SHA-256 — `adjust`
 `48c44a700937bfd6feb703b5d60c61def67a92cd71db0d6d02c404b290a3afaf` — each
 byte-identical to the per-case candidate artifacts recorded in the machine
 verification receipt above, so this reproduction matches the retained
-qualification artifacts exactly. Boundary: this is an in-job reproduction in
-the run checkout; the supervisor's declared `native-parity` check remains the
-controlling receipt for the published candidate and was pending at the
-controller when this reproduction was recorded.
+qualification artifacts exactly. Controlling receipt: the supervisor's declared
+`native-parity` check then completed on the exact published candidate
+`26a9177888d10718b45cb36d36f8a89caf4230de`→`6437b43200ef7984812986a0ea94f6e924e3f361`
+(machine verification, review id `6b28de0c-f1de-497a-acf8-941bc5668ab8`,
+received_at `2026-09-26T12:07:03.347Z`, verified_at
+`2026-09-26T12:25:54.355Z`): TouchDesigner 2025.32820 darwin arm64, GPU
+available, profile sha256
+`933110e9e04a2591e19cd72d818705b069a3c134762d8a1b63cdead67a7a501a`; all ten
+declared commands exited 0 with no timeouts; `adjust`, `alphaMask`, and
+`bitwise` passed at thresholds `max_abs_diff 2 / ssim_min 0.98`. Controller
+candidate PNGs are byte-identical to this reproduction's (`d3ffc761…`,
+`87249f7f…`, `48c44a70…`); controller goldens `b1d9f6ea…`/`3598684e…`/
+`d3c5a392…` match the per-case goldens recorded in the GAP-001 receipt table
+above; per-case report SHA-256 `09caf207…`/`fdc337d4…`/`dd7078ab…`.
 
 ## 4. Known gaps
 
