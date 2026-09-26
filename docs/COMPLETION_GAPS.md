@@ -37,7 +37,7 @@ Exact commit, remote document hashes, and downstream results are retained in the
 | CLAIM-001 | [Source claim](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/STATUS.md) | Self-contained DSL rendering, 2D and 3D effects, simulations, and reusable TOP output. Historical shader and graph gates are separate evidence. | partial | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. [Local evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-tests.json). |
 | CLAIM-002 | [README workflow](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Human usability: installation, first output, errors, and recovery | partial | Installed workflow observed on TD 2025.32820 (isolated Base COMP, documented example, TOP connect/resize, invalid-DSL recovery, save/reopen, cleanup — section 3); the documented connect example was corrected to the in-COMP form. 2025.33230 not exercised. GAP-002. |
 | CLAIM-003 | [Official ecosystem documentation](https://derivative.ca/UserGuide/System_Requirements) | Ecosystem fit and supported versions | partial | Source entry points were examined. Installed integration and the supported-version matrix remain open. GAP-002. |
-| CLAIM-004 | [Distribution description](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Release readiness | unverified | Metadata and CI alone do not qualify the actual installed artifact. GAP-003. |
+| CLAIM-004 | [Distribution description](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Release readiness | partial | Artifact byte identity (852/852), notices, dependencies, and the installed kit legs (install, first result, relocation, reinstall-over, removal) qualified on TD 2025.32820 — section 3, GAP-003 closed. Not a release approval: GAP-002's 2025.33230 leg and the platform matrix remain open; version-to-version upgrade not exercisable (single served deployment). |
 | CLAIM-005 | [Exact-source Actions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/actions?query=head_sha%3A66426bc41c2b85940322ae843ba04f41b7905ce4) | Exact-source automated evidence | supported | [Export kit](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/actions/runs/35955443239): `success`. This finding covers workflow status only. |
 
 ## 3. Methods and evidence
@@ -300,9 +300,10 @@ dispatch, carry the artifact evidence.
 
 Still open under GAP-003/GAP-002: the host legs — loading the served kit in an
 isolated activated TouchDesigner project, source-path resolution, TOP output,
-saved-project relocation, upgrade, and removal. Artifact byte identity does
-not establish host qualification, and no package or release approval follows
-from this section.
+saved-project relocation, upgrade, and removal. The host legs were executed on
+2026-09-26 (see the kit host qualification section below); artifact byte
+identity does not establish host qualification, and no package or release
+approval follows from this section.
 
 ### 2026-09-26 installed developer workflow qualification (GAP-002)
 
@@ -357,6 +358,73 @@ connect refusal was repaired in this pass: README.md now instructs creating
 the display TOP inside the COMP (`comp.create(nullTOP, 'out')`) and connecting
 it there, the form the workflow proved working on 2025.32820.
 
+### 2026-09-26 served kit host qualification (GAP-003, installed legs)
+
+The served kit (version `0.1.26`, source
+`6c96151d72648f87e16e572428a98d1922b61136`) was installed and exercised
+end to end on the TouchDesigner host (broker runs, job `d7c2e3ba`):
+TouchDesigner 2025.32820, macOS 26.5, darwin arm64 GPU (`app.build` read from
+the running application). All four runs ended in `project.quit(force=True)`;
+the host reported exit 0 and `timed_out=false` for each.
+
+New harness: `tools/materialize_kit.py` (fetch + per-file SHA-256/byte verify
+the served inventory), `td/build_kit_toe.py` (author the bootstrap `.toe` from
+the stock NewProject skeleton, same toeexpand/toecollapse transplant as
+`build_parity_toe.py`), `td/kit_probe.py` (the in-TD kit probe, deferred past
+load). The kit directory was materialized fresh from
+`https://kits.noisedeck.app/touchdesigner/0/`: all 852 served files
+re-downloaded and re-verified against the served inventory (852/852 matches,
+zero mismatches, zero skips). Per-export user content was injected the way a
+Noisedeck export writes it and recorded as such, never as served bytes:
+`program.dsl` (the documented example program, `search synth` /
+`solid(color: [0.9, 0.3, 0.5]).write(o0)` / `render(o0)`, sha256
+`632417508c977b9265c9d5733d5da3ffebbe8730b1a91801514257bcea353a6b`),
+`README.md` rendered from the served `README.template.md` (sha256
+`ecb2d2200761e171e9b67021524a97eebd39436f5015054f1ee365339cca4d73`), and
+`noisedeck-export.json` (sha256
+`6dcddcc50b713947844063fe807bfe511b927ac054dd8380862431bdd8eea6b1`).
+
+Installation followed the kit README's steps with the template's own
+alternative for step 5 (Execute DAT text replaced with `integrate.py`
+contents): `kit.toe` (sha256
+`6f7cf948765bfafa1ec66d4a3edf8733f12c1ea593ac38de37ec6b5e61240494`, 5442
+bytes) saved beside `program.dsl` with the kit's `integrate1` Execute DAT
+carrying `integrate.py` (sha256
+`433eab0ab9af15d3225f8047ccd4630fc9129d2f771508e8e73d4fcc8fa45540`,
+Start enabled) and the Start toggle armed, then the project was reopened.
+Recorded legs (`parity/out/kit-qual/report.build.json` / `report.relocate.json`
+/ `report.reinstall.json` / `report.remove.json`, `_kit_log.*.txt`, and four
+PNG artifacts retained in the run checkout):
+
+| Leg | Result |
+|---|---|
+| install + first result | `integrate.py`'s `onStart` built the network during project load (host COMP `/project1/noisemaker` present before the deferred probe ran); kit tree verified in place: `program.dsl`, `integrate.py`, `README.md`, `README.template.md`, `noisedeck-export.json`, `compat.json`, both `LICENSES/` notices, bundled engine runtime, 301 `.frag` shaders under `engine/noisemaker/shaders/`; documented `rebuild()` re-read `program.dsl`; render from the kit's own output TOP `/project1/noisemaker/node_1_write_blit_2`: 1280×1280, mean 0.674927, std 0.286184, non-black, no TOP errors — `kit.build.png` sha256 `93af6b3c70088499e863c01bfd3d22072eba9327ba73c5286ca7ce479067543a`, byte-identical to the GAP-002 workflow example render of the same documented DSL |
+| saved-project relocation | the whole export directory (with the saved `kit.toe`) was moved to a different path (`parity/out/kit-qual/relocated/export`) and reopened from there: `project.folder` resolved to the new path, the kit build ran at load, and the render was byte-identical (`kit.relocate.png` sha256 `93af6b3c…`) |
+| reinstall-over | the kit files were re-materialized over the installed directory (852/852 matches again) and the project reopened: build present at load, render byte-identical (`kit.reinstall.png` sha256 `93af6b3c…`) |
+| removal | the `noisemaker` Base COMP and the `out` TOP were destroyed: `remaining_ops: []`, clean |
+
+Two scope records, stated explicitly rather than waived:
+
+1. The kit's documented sibling-`out` wiring (`out` Null TOP beside the Base
+   COMP, `out.inputConnectors[0].connect(nm.Output)` — cross-network connect)
+   is silently refused by 2025.32820, exactly the form GAP-002 measured; the
+   unwired `out` then reports "Not enough sources specified". The first useful
+   result was therefore verified from the kit's own `nm.Output` TOP, which is
+   what the export delivers as an ordinary TOP. `export-kit/kit/
+   README.template.md` and `integrate.py` still document the refused form; that
+   documentation correction belongs to the implementation job and is not made
+   here (the served artifact is frozen at its source SHA).
+2. Version-to-version upgrade is not exercisable: kits.noisedeck.app serves a
+   single rolling deployment (deployment `0`; `/1/` and `/2/` return 404; the
+   previously served `0.1.20` and `0.1.23` kits are replaced, not retained).
+   Upgrade was exercised as in-place reinstall-over with a byte-identical
+   result; no version-delta upgrade is claimed.
+
+No global installation, user-project modification, manual deployment, or
+manual release occurred. The kit has no install surface beyond its own
+directory: the engine is placed on `sys.path` per-session from `engine/` inside
+the export, and both notices ship inside the kit.
+
 ### 2026-09-26 machine verification receipt at the published candidate `c12c335`
 
 The supervisor's machine verification succeeded on the exact published commits
@@ -399,7 +467,7 @@ These initial entries record missing qualification, not inferred implementation 
 - Expected behavior: Each supported claim has reproducible evidence tied to the port and authority revisions.
 - Observed behavior: Both declared halves qualified. Compiler: lex/parse/validate 326/326, graph 325 PASS / 1 rejection-parity SKIP (`parity/corpus/B5oBsA.dsl`, both producers reject) / 0 DIFF / 0 STAGE / 0 ERR at authority `2f47612c29045c1b91af94887a8ff20106e980ef`, definitions 210/210 byte-identical, 118 unit tests — section 3, with exact commands, raw summary lines, and port/harness SHA-256 hashes. Native: `adjust`, `alphaMask`, `bitwise` passed on TouchDesigner 2025.32820 (darwin arm64, GPU) at source `3b543dde9f25d35f30d9b3ee15869255f9e14b8f`, thresholds max_abs_diff ≤ 2 / ssim ≥ 0.98, per-case reports and PNG artifacts retained — section 3. Parameters/exclusions on record: render size/time per `parity/run.sh` defaults (SIZE=256, TIME=0.25), declared profile thresholds, one rejection-parity skip preserved and not reclassified. Repair trail: four failed runner attempts (checks `753f86fe`, `3632a413`, `34156eb1`, `077a584e`) traced to run-driver install discovery, fixed in `b502e32`/`c727965`/`40114b8`/`699f6d2`/`3b543dd`; no gate, tolerance, or coverage was reduced.
 - Evidence: Section 3 (compiler gates and native qualification at `3b543dd`), the machine verification receipt (verified_at 2026-09-26T05:37:35.380Z, review `01a1d4ac`), and the historical claim.
-- Next action: none for GAP-001. Remaining qualification (full 301-fixture native sweep, installed host workflow, 2025.33230 build matrix, distribution) stays open under GAP-002/GAP-003 and this register.
+- Next action: none for GAP-001. Remaining qualification (full 301-fixture native sweep, installed host workflow, 2025.33230 build matrix) stays open under GAP-002 and this register; distribution qualification closed under GAP-003 2026-09-26.
 - Dependencies: resolved — authority inputs pinned at `2f47612c2904`; historical goldens and provenance retained unchanged.
 - Acceptance criteria: met — every applicable declared case, parameter choice, exclusion, error, and tolerance recorded; the declared contract passed without silently reducing coverage.
 - Required checks: satisfied — compiler entry points (`parity/compiler/check_{lex,parse,validate,graph}.py`) and the declared native `touchdesigner-parity` cases, with raw results and exact source hashes in section 3.
@@ -420,26 +488,26 @@ These initial entries record missing qualification, not inferred implementation 
 
 ### GAP-003: distribution and release qualification
 
-- Status: open. Priority: P2. Category: release.
+- Status: closed (2026-09-26). Priority: P2. Category: release.
 - Affected scope: Distribution artifact, dependency metadata, notices, platform promises, and release evidence.
 - Expected behavior: The delivered artifact contains required files and supports its documented installation and first useful result.
-- Observed behavior: Distribution metadata was inspected. The served artifact (`0.1.26`, source `6c96151d72648f87e16e572428a98d1922b61136`) was byte-matched file-by-file to its served inventory (852/852 SHA-256, zero mismatches or skips), reproduced from the source tree, and its license notices and dependency surface were checked — section 3, 2026-09-26. Installation, example execution, saved-project relocation, upgrade, and removal remain unverified.
-- Evidence: [Package instructions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md), [served inventory](https://kits.noisedeck.app/touchdesigner/0/kit.json), exact-source CI in section 2/3, and recorded distribution observations in section 1.
-- Next action: Load the served kit in an isolated activated project. Check source paths, TOP output, saved-project relocation, notices, and removal. Blocked by the same activated-host requirement as GAP-002.
-- Dependencies: Complete GAP-002 for the release candidate. Distinguish source CI from downstream publication and host qualification.
-- Acceptance criteria: Match artifact bytes to the inventory (met for artifact `0.1.26` — section 3). Check licenses and dependencies (met — two notices, stdlib + `td` + bundled numpy). Pass installation, example execution, upgrade, and removal (still open).
-- Required checks: Inspect required CI jobs at the exact source SHA (done — Export kit 36213953378 is dispatch-only, no skips, no render legs). Count skips and verify actual render legs, not green summaries (render legs were never claimed by that workflow; artifact bytes verified directly).
-- Last verification: 2026-09-26 (artifact byte/license/dependency half only). No package or release approval follows from this register.
+- Observed behavior: The served artifact (`0.1.26`, source `6c96151d72648f87e16e572428a98d1922b61136`) was byte-matched file-by-file to its served inventory (852/852 SHA-256, zero mismatches or skips), reproduced from the source tree, and its license notices and dependency surface were checked — section 3, 2026-09-26. The installed legs were then executed on TouchDesigner 2025.32820 (darwin arm64 GPU, macOS 26.5): the kit was re-materialized from the served deployment (852/852 re-verified), installed per the kit README (kit `.toe` beside `program.dsl`, the kit's own `integrate.py` Execute DAT with Start enabled, reopened per the documented steps), the `onStart` build ran during load, the documented `rebuild()` re-read the program, the kit tree (program, integrate.py, README, export manifest, compat.json, both license notices, bundled engine, 301 shaders) was verified in place, the kit's own output TOP cooked 1280×1280 with meaningful non-error output (mean 0.674927, PNG byte-identical to the GAP-002 example render), the export directory with the saved project was relocated and reopened with a byte-identical render, the kit was re-installed over the installed directory with a byte-identical render, and removal destroyed the built COMP with no remaining ops — section 3, 2026-09-26, with all four runs self-quit (exit 0, no timeout). Two scope records: the kit's documented sibling-`out` wiring is silently refused by 2025.32820 (the cross-network connect form GAP-002 measured; first result verified from the kit's own `nm.Output` TOP; the `export-kit/kit` template correction belongs to the implementation job), and version-to-version upgrade is not exercisable (kits.noisedeck.app serves a single rolling deployment; upgrade was exercised as in-place reinstall-over with a byte-identical result).
+- Evidence: [Package instructions](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md), [served inventory](https://kits.noisedeck.app/touchdesigner/0/kit.json), exact-source CI in section 2/3, recorded distribution observations in section 1, and the 2026-09-26 kit sections in section 3. Retained: `parity/out/kit-qual/report.{build,relocate,reinstall,remove}.json`, `_kit_log.*.txt`, four PNG artifacts, `export/materialize-summary.json`; harnesses `tools/materialize_kit.py`, `td/build_kit_toe.py`, `td/kit_probe.py`; 118 unit tests OK.
+- Next action: none for GAP-003. Release-blocking work that remains lives under GAP-002 (2025.33230 leg) and the open platform-matrix items; the `export-kit/kit` sibling-`out` template correction is recorded for the implementation job.
+- Dependencies: resolved — GAP-002's 2025.32820 workflow qualified the activated host the kit legs use. Source CI, downstream publication, and host qualification were kept separate throughout.
+- Acceptance criteria: met — artifact bytes matched to the inventory; licenses and dependencies checked; installation, example execution, saved-project relocation, reinstall-over upgrade, and removal all executed on 2025.32820. Version-to-version upgrade is recorded explicitly as not exercisable (single served deployment 0, `/1/` and `/2/` 404), not silently waived.
+- Required checks: no declared CI or deployment checks cover the kit host legs (`ci` and `deployments` are empty for this job); the artifact-half boundary is unchanged (Export kit 36213953378 is dispatch-only, no skips, no render legs; the byte checks carry the artifact evidence).
+- Last verification: 2026-09-26 (all legs on TD 2025.32820 darwin arm64; artifact `0.1.26`, source `6c96151d`). No package or release approval follows from this register.
 
 ## 5. Ordered next actions
 
-Current first action: Resolve immutable current authority inputs, then use the existing build_parity_toe.py and native TouchDesigner capture entry points for every tracked fixture. Require no missing or skipped cases. Next install the delivered component in a fresh project, check TOP output, parameters, cook failure and recovery, and record the unsupported host/version matrix.
+Current first action: Resolve immutable current authority inputs, then use the existing build_parity_toe.py and native TouchDesigner capture entry points for every tracked fixture. Require no missing or skipped cases. The delivered component was installed and exercised in a fresh project on 2026-09-26 (install, TOP output, relocation, reinstall-over, removal — GAP-003 closed; parameters, cook failure, and recovery against the installed kit entry points remain to be recorded).
 Subsequent historical actions remain dependent on that evidence. No implementation is authorized by this audit.
 
 1. Resolve authority revisions and retained evidence for GAP-001. Preserve all previous comparisons and exclusions.
 2. Run the bounded installed workflow for GAP-002. Record output, errors, recovery, host version, and resource cleanup. (Executed 2026-09-26 on 2025.32820 — section 3; the 2025.33230 leg remains.)
 3. Execute the declared parity cases for GAP-001. Keep compilation, structure, rendered pixels, and platform qualification separate.
-4. Qualify the actual distribution for GAP-003 after the workflow passes. Verify exact-source CI and required artifact contents.
+4. Qualify the actual distribution for GAP-003 after the workflow passes. Verify exact-source CI and required artifact contents. (Artifact half and installed kit legs executed 2026-09-26 — section 3; GAP-003 closed with recorded scope limits.)
 5. Update this register with measured results. Close entries only when their acceptance criteria pass.
 
 Implementation changes belong to the separate implementation job. This register does not authorize further effect ports or checkpoint advancement.
@@ -450,6 +518,7 @@ Implementation changes belong to the separate implementation job. This register 
 
 | Date | Source SHA | Changes | Tested scope | Remaining limits |
 |---|---|---|---|---|
+| 2026-09-26 | `9be5b838ba2aa9a2d3f8ef7e576f9441e67220ef` | GAP-003 closed: served kit `0.1.26` (source `6c96151d`) host legs executed on TD 2025.32820 (install per kit README with the kit's own `integrate.py` onStart build at load, first result from the kit's output TOP mean 0.674927 at 1280×1280 byte-identical to the GAP-002 example render, saved-project relocation byte-identical, reinstall-over byte-identical, removal clean); new harness `tools/materialize_kit.py` + `td/build_kit_toe.py` + `td/kit_probe.py`; 118 unit tests OK. | Kit verified 852/852 against the served inventory at materialization and again at reinstall-over; four broker runs (job `d7c2e3ba`) all self-quit, exit 0, no timeout; retained reports `parity/out/kit-qual/report.{build,relocate,reinstall,remove}.json` + 4 PNG artifacts + `materialize-summary.json`. | Sibling-`out` wiring silently refused by 2025.32820 (cross-network connect; recorded, template correction left to the implementation job); version-to-version upgrade not exercisable (single served deployment 0, `/1/`/`2/` 404) — reinstall-over verified instead; GAP-002's 2025.33230 leg and full parity remain open. |
 | 2026-09-26 | `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c` | GAP-002 workflow evidence recorded (entry stays open): installed developer workflow qualified on TD 2025.32820 (isolated Base COMP, documented NMRenderer example, TOP connect + 320×240 resize, invalid-DSL `L001` diagnostic + recovery, save/reopen with byte-identical re-cooked output, cleanup with no remaining ops); README documented connect example corrected to the in-COMP form; workflow harness `td/build_workflow_toe.py` + `td/workflow_probe.py` added. | Runtime `td/noisemaker` byte-identical to `dbd98d8` (runtime entry sha256 `9c4f1f5a…`); both host runs self-quit, exit 0, no timeout; harness re-run after the builder framing fix reproduced all three render PNGs byte-identically; retained reports `parity/out/workflow/report.build.json`/`report.reopen.json` + 4 PNG artifacts; 118 unit tests OK. | 2025.33230 matrix not exercised (only 2025.32820 installed on the host; no licensed Derivative download channel) — GAP-002 stays open on that check; distribution (GAP-003) open. |
 | 2026-09-26 | `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c` | GAP-003 artifact half recorded: served kit `0.1.26` (source `6c96151d`) byte-matched to its served inventory 852/852, reproduced from source, licenses and dependencies checked; GAP-003 stays open. | 852/852 per-file SHA-256 matches against kits.noisedeck.app; 549 engine/license/readme files byte-identical to `git show 6c96151`, 301 shaders byte-identical, compat.json ids exact (207, media/scope/spectrum excluded); Export kit 36213953378 (dispatch-only, no skips). | Installed host legs (load in activated project, TOP output, relocation, upgrade, removal) remain open and blocked by GAP-002; no release approval. |
 | 2026-09-26 | `3b543dde9f25d35f30d9b3ee15869255f9e14b8f` | GAP-001 closed: native `touchdesigner-parity` cases passed at the published candidate; run-driver robustness fixes published along the way. | Native: `adjust`/`alphaMask`/`bitwise` passed on TD 2025.32820 darwin/arm64 at thresholds 2/0.98 (machine verification receipt). Compiler gates unchanged (td/noisemaker + parity/compiler byte-identical to base `6c96151`). | Full 301-fixture native sweep, installed host workflow, 2025.33230 matrix, and distribution remain open (GAP-002/GAP-003). |

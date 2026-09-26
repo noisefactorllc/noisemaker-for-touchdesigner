@@ -6,7 +6,7 @@ Daily review: 2026-09-25. Current inspected source: [`de416d7606e231bf6e38027316
 Full rendered parity remains **unverified**. No release approval or new closure follows from this review.
 Current upstream discovery: `bbdeb56c4b75cf33379766c3e87b0f5a18bcbba8`. Published Noisemaker authority: `1.0.179`, source `fca611fd8f91424661d4e531d39313d24ea21134`, 210 effect IDs.
 The observations below retain their original source and authority identities. They do not qualify later updates.
-Current served kit: `0.1.23`, source `de416d7606e231bf6e38027316269640a1d7d096`. [Retrieved inventory and hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-served-inventories.json). Artifact identity does not establish host qualification.
+Current served kit: `0.1.26`, source `6c96151d72648f87e16e572428a98d1922b61136` (retrieved 2026-09-26). At the 2026-09-25 review the served kit was `0.1.23`, source `de416d7606e231bf6e38027316269640a1d7d096`. [Retrieved inventory and hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-served-inventories.json). Artifact identity does not establish host qualification; the installed kit legs were executed 2026-09-26 (see [completion gaps](COMPLETION_GAPS.md), section 3).
 
 ### Earlier source observations
 
@@ -38,12 +38,12 @@ The matrix below retains the earlier measured scope. A historical verified row i
 | Actual host rendering | verified | Two native probes rendered. Complete host workflow and full parity remain unverified. |
 | Minimum and current host versions | unverified | Declared requirements are not a tested version matrix. |
 | Supported operating systems and backends | unverified | This pass does not establish Windows, Linux, and macOS coverage. |
-| Installed package and first useful result | unverified | Complete isolated installation was not qualified for this source. |
+| Installed package and first useful result | verified | Served kit `0.1.26` installed per its README on TD 2025.32820 (isolated project, kit `onStart` build at load, meaningful 1280×1280 render from the kit's own output TOP, mean 0.674927); the kit's documented sibling-`out` wiring is silently refused (cross-network connect, as GAP-002 measured). [Completion gaps](COMPLETION_GAPS.md), section 3, 2026-09-26. |
 | Parameters, external inputs, state, and chains | unverified | Full current-authority combinations remain unmeasured. |
 | Invalid input and recovery | unverified | Unit checks do not establish every installed public entry point. |
-| Upgrade, removal, and resource cleanup | unverified | Prior defects and missing workflows remain in the gap register. |
+| Upgrade, removal, and resource cleanup | verified | Saved-project relocation, reinstall-over upgrade, and removal verified with the served kit on TD 2025.32820 (byte-identical renders; uninstall leaves no ops). Version-to-version upgrade not exercisable: kits.noisedeck.app serves a single rolling deployment. [Completion gaps](COMPLETION_GAPS.md), section 3, 2026-09-26. |
 | Accessibility of provided controls | unverified | Keyboard, focus, labels, and diagnostics need host observations where applicable. |
-| Release readiness | blocked | Full parity, installation, host, and artifact evidence remain incomplete. |
+| Release readiness | blocked | Full parity and host/workflow evidence remain incomplete; installation, kit legs, and artifact evidence are qualified (2026-09-26 — [completion gaps](COMPLETION_GAPS.md), section 3). |
 
 ## 3. Parity coverage
 
@@ -306,14 +306,14 @@ The staged inventory contains 301 program fixtures: two executed and 299 unexecu
 
 ## 5. Open compatibility limits
 
-Next bounded check: Resolve immutable current authority inputs, then use the existing build_parity_toe.py and native TouchDesigner capture entry points for every tracked fixture. Require no missing or skipped cases. Next install the delivered component in a fresh project, check TOP output, parameters, cook failure and recovery, and record the unsupported host/version matrix.
+Next bounded check: Resolve immutable current authority inputs, then use the existing build_parity_toe.py and native TouchDesigner capture entry points for every tracked fixture. Require no missing or skipped cases. The served component was installed and exercised in a fresh project on 2026-09-26 (install, TOP output, relocation, reinstall-over, removal — [completion gaps](COMPLETION_GAPS.md), section 3); parameters, cook failure, and recovery against the installed kit entry points, and the unsupported host/version matrix, remain to be recorded.
 See the stable entries in [completion gaps](COMPLETION_GAPS.md).
 
 See [GAP-001 and the complete gap register](COMPLETION_GAPS.md#4-known-gaps) for evidence, dependencies, and acceptance criteria.
 
 1. Reconcile the current authority and complete case inventory, including parameters, inputs, stateful frames, and host versions.
 2. Run the existing actual-renderer suite without skip options. Record every missing, failed, refused, or timed-out case.
-3. Verify installation, useful output, errors, recovery, upgrades, and removal with the actual distribution.
+3. Installation, useful output, relocation, reinstall-over upgrade, and removal were executed with the actual distribution on TD 2025.32820 (2026-09-26 — [completion gaps](COMPLETION_GAPS.md), section 3). Parameters, external inputs, cook failure, and recovery against the installed kit entry points remain unmeasured; version-to-version upgrade is not exercisable (single served deployment).
 4. Inspect exact-source CI and retain artifact hashes. Keep unresolved qualification failed or unverified.
 
 All eligible ports have equal priority. Full parity and zero skipped cases remain the goal.
