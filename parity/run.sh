@@ -21,7 +21,33 @@ REPO="$(cd "$HERE/.." && pwd)"
 # Reference engine via NM_REFERENCE_ROOT (no default — this repo assumes no sibling project on clone).
 REF="${NM_REFERENCE_ROOT:-}"
 [ -n "$REF" ] && [ -d "$REF/shaders" ] || { echo "set NM_REFERENCE_ROOT to the upstream Noisemaker engine (the tree containing shaders/) — no sibling is assumed on clone"; exit 2; }
-TD="${TD_BIN:-/Applications/TouchDesigner.app/Contents/MacOS/TouchDesigner}"
+TD_BIN="${TD_BIN:-}"
+if [ -z "$TD_BIN" ]; then
+  for cand in /Applications/TouchDesigner.app/Contents/MacOS/TouchDesigner \
+              /Applications/TouchDesigner*.app/Contents/MacOS/TouchDesigner; do
+    [ -x "$cand" ] && { TD_BIN="$cand"; break; }
+  done
+fi
+if [ -z "$TD_BIN" ]; then
+  for c in TouchDesigner touchdesigner; do
+    p="$(command -v "$c" 2>/dev/null)" && [ -n "$p" ] && { TD_BIN="$p"; break; }
+  done
+fi
+if [ -z "$TD_BIN" ]; then
+  for d in /opt/TouchDesigner* /opt/touchdesigner* /usr/local/TouchDesigner* \
+           /usr/local/touchdesigner* "$HOME"/TouchDesigner* "$HOME"/touchdesigner* \
+           "/c/Program Files"*/Derivative/TouchDesigner*; do
+    for c in "$d/bin/TouchDesigner" "$d/bin/touchdesigner" "$d/bin/TouchDesigner.exe" \
+             "$d/Contents/MacOS/TouchDesigner"; do
+      [ -x "$c" ] && { TD_BIN="$c"; break; }
+    done
+    [ -n "${TD_BIN:-}" ] && break
+  done
+fi
+TD="$TD_BIN"
+[ -n "$TD" ] && [ -x "$TD" ] || { echo "TouchDesigner binary not found (set TD_BIN)."; exit 2; }
+TD_APP="${TD_APP:-$(dirname "$(dirname "$TD")")}"   # for build_parity_toe.py discovery
+export TD_APP
 PY="$REPO/parity/.venv/bin/python"; [ -x "$PY" ] || PY=python3   # needs numpy + pillow
 SIZE="${SIZE:-256}"; TIME="${TIME:-0.25}"; TOL="${TOL:-2}"; SSIM="${SSIM:-0.98}"
 OUT="$REPO/parity/out"; mkdir -p "$OUT"

@@ -10,9 +10,11 @@ then quits.
 Run with stock python3 (no TD needed to BUILD the .toe; TD is needed to RUN it):
     python3 td/build_parity_toe.py
 
-Paths are derived from this file's location; the TouchDesigner app is found under /Applications
-(override with the TD_APP env var). Nothing here is machine-specific in committed form — the
-absolute repo path is baked only into the generated `.toe`, which is gitignored.
+Paths are derived from this file's location; the TouchDesigner install is discovered
+portably (override with the TD_APP env var: an .app bundle, an install root, or the
+bin directory containing toeexpand/toecollapse). Nothing here is machine-specific in
+committed form — the absolute repo path is baked only into the generated `.toe`, which
+is gitignored.
 """
 import glob
 import os
@@ -26,11 +28,76 @@ TD_DIR = os.path.join(REPO, 'td')
 RENDER = os.path.join(TD_DIR, 'parity_render_all.py')
 OUT_TOE = os.path.join(TD_DIR, 'nm_parity.toe')
 
-TD_APP = os.environ.get('TD_APP') or next(iter(sorted(glob.glob('/Applications/TouchDesigner*.app'))), None)
-if not TD_APP:
-    sys.exit('TouchDesigner.app not found under /Applications (set TD_APP).')
-TD_BIN_DIR = os.path.join(TD_APP, 'Contents', 'MacOS')
-NEWPROJ = os.path.join(TD_APP, 'Contents', 'Resources', 'tfs', 'Samples', 'Setup', 'Base', 'NewProject.toe')
+NEWPROJ_REL = ('Samples', 'Setup', 'Base', 'NewProject.toe')
+
+
+def _has_toe_tools(d):
+    return os.path.isdir(d) and os.path.exists(os.path.join(d, 'toeexpand')) \
+        and os.path.exists(os.path.join(d, 'toecollapse'))
+
+
+def _find_newproj(roots):
+    """Locate the stock NewProject.toe skeleton near a TD install (bounded search)."""
+    for root in roots:
+        direct = os.path.join(root, *NEWPROJ_REL)
+        if os.path.exists(direct):
+            return direct
+        # macOS bundles keep Samples under Contents/Resources/tfs; installs keep it
+        # beside bin/. Walk up a few levels from the bin dir without scanning the tree.
+        base = root
+        for _ in range(4):
+            base = os.path.dirname(base)
+            cand = os.path.join(base, *NEWPROJ_REL)
+            if os.path.exists(cand):
+                return cand
+            cand = os.path.join(base, 'Resources', 'tfs', *NEWPROJ_REL)
+            if os.path.exists(cand):
+                return cand
+    return None
+
+
+def discover_td():
+    """Return (bin_dir, newproj_toe) for the local TouchDesigner install.
+
+    Accepts TD_APP as an .app bundle, an install root, or the bin dir itself.
+    Candidates cover the macOS bundle layout plus Windows/Linux install roots.
+    """
+    env = os.environ.get('TD_APP')
+    roots = []
+    if env:
+        if env.endswith('.app'):
+            roots.append(os.path.join(env, 'Contents'))
+        else:
+            roots.append(env)
+            for sub in ('bin', os.path.join('Contents', 'MacOS')):
+                b = os.path.join(env, sub)
+                if _has_toe_tools(b):
+                    roots.append(b)
+    roots += [os.path.join(p, 'Contents') for p in sorted(glob.glob('/Applications/TouchDesigner*.app'))]
+    for pat in ('/opt/TouchDesigner*', '/opt/touchdesigner*', '/usr/local/TouchDesigner*',
+                '/usr/local/touchdesigner*', os.path.expanduser('~/TouchDesigner*'),
+                os.path.expanduser('~/touchdesigner*'),
+                '/c/Program Files*/Derivative/TouchDesigner*',
+                'C:/Program Files*/Derivative/TouchDesigner*'):
+        roots += sorted(glob.glob(pat))
+    # Each root may BE the bin dir, or hold it (install roots keep tools in bin/,
+    # macOS bundle roots in Contents/MacOS).
+    bins = []
+    for root in roots:
+        for cand in (root, os.path.join(root, 'bin'), os.path.join(root, 'Contents', 'MacOS')):
+            if _has_toe_tools(cand) and cand not in bins:
+                bins.append(cand)
+    for b in bins:
+        np = _find_newproj([b])
+        if np:
+            return b, np
+    return None, None
+
+
+TD_BIN_DIR, NEWPROJ = discover_td()
+if not TD_BIN_DIR or not NEWPROJ:
+    sys.exit('TouchDesigner install not found (set TD_APP to the install root or the bin '
+             'directory containing toeexpand/toecollapse and NewProject.toe).')
 WORK = os.path.join(os.environ.get('TMPDIR', '/tmp'), 'nm_parity_build')
 
 # The Execute DAT body: define onStart/onCreate, exec the render script with a namespace that
