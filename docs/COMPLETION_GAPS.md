@@ -613,6 +613,18 @@ byte-identical to the receipts above (`b1d9f6ea…`/`3598684e…`/`d3c5a392…`)
 candidates byte-identical to this reproduction (`d3ffc761…`/`87249f7f…`/
 `48c44a70…`); per-case report SHA-256 `1e24e28d…`/`aea11b78…`/`6a364235…`.
 
+Controlling receipt for the final integrated candidate: a further declared
+`native-parity` machine verification ran at the exact published candidate
+`00c579dd2ffa87cf48291022b9c4f7e50296a6da` (review id
+`65e7756d-aca7-48fb-8c49-8a7018a404bf`, received_at
+`2026-09-26T16:16:53.585Z`, verified_at `2026-09-26T16:37:01.243Z`, same
+profile sha256 `933110e9…`, TouchDesigner 2025.32820 darwin arm64, GPU
+available, all ten declared commands exit 0): `adjust`, `alphaMask`, and
+`bitwise` passed at thresholds `max_abs_diff 2 / ssim_min 0.98`; goldens
+byte-identical to the receipts above (`b1d9f6ea…`/`3598684e…`/`d3c5a392…`),
+candidates byte-identical to this reproduction (`d3ffc761…`/`87249f7f…`/
+`48c44a70…`); per-case report SHA-256 `26302e6b…`/`8f7e938c…`/`030bd059…`.
+
 ## 4. Known gaps
 
 P1 means false completion or major correctness failure. P2 means coverage or integration uncertainty. P3 means documentation inconsistency.
