@@ -47,17 +47,16 @@ def _find_newproj(roots):
         direct = os.path.join(root, *NEWPROJ_REL)
         if os.path.exists(direct):
             return direct
-        # macOS bundles keep Samples under Contents/Resources/tfs; installs keep it
-        # beside bin/. Walk up a few levels from the bin dir without scanning the tree.
+        # Walk up a few levels from the bin dir; installs keep Samples beside bin/,
+        # macOS bundles keep them under <bundle>/Contents/Resources/tfs.
         base = root
         for _ in range(4):
             base = os.path.dirname(base)
-            cand = os.path.join(base, *NEWPROJ_REL)
-            if os.path.exists(cand):
-                return cand
-            cand = os.path.join(base, 'Resources', 'tfs', *NEWPROJ_REL)
-            if os.path.exists(cand):
-                return cand
+            for rel in (NEWPROJ_REL, ('Contents', 'Resources', 'tfs') + NEWPROJ_REL,
+                        ('Resources', 'tfs') + NEWPROJ_REL):
+                cand = os.path.join(base, *rel)
+                if os.path.exists(cand):
+                    return cand
     return None
 
 
@@ -71,7 +70,7 @@ def discover_td():
     roots = []
     if env:
         if env.endswith('.app'):
-            roots.append(os.path.join(env, 'Contents'))
+            roots.append(os.path.join(env, 'Contents', 'MacOS'))   # the bundle's bin dir
         elif os.path.isfile(env):
             roots.append(os.path.dirname(os.path.abspath(env)))   # the TD binary itself
         else:
@@ -80,8 +79,9 @@ def discover_td():
                 b = os.path.join(env, sub)
                 if _has_toe_tools(b):
                     roots.append(b)
-    roots += [os.path.join(p, 'Contents') for p in sorted(glob.glob('/Applications/TouchDesigner*.app'))]
-    roots += [os.path.join(p, 'Contents') for p in sorted(glob.glob(os.path.expanduser('~/Applications/TouchDesigner*.app')))]
+    for app in sorted(glob.glob('/Applications/TouchDesigner*.app')) + \
+            sorted(glob.glob(os.path.expanduser('~/Applications/TouchDesigner*.app'))):
+        roots.append(os.path.join(app, 'Contents', 'MacOS'))
     for pat in ('/opt/TouchDesigner*', '/opt/touchdesigner*', '/usr/local/TouchDesigner*',
                 '/usr/local/touchdesigner*', os.path.expanduser('~/TouchDesigner*'),
                 os.path.expanduser('~/touchdesigner*'),
