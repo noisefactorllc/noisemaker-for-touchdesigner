@@ -316,10 +316,11 @@ NewProject skeleton, same toeexpand/toecollapse transplant as
 The runtime used is byte-identical to source
 `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c` (`git diff dbd98d8 -- td/noisemaker
 parity/compiler` is empty) and remains byte-identical through the published
-candidates `c12c335`, `280e88c`, `00c579d`, `ddf59d8` and
-`90c384d8422bfdf7734105dcdba303fa87667b10` (`git diff dbd98d8..90c384d -- td/noisemaker
-parity/compiler` is empty), so the workflow evidence above is bound to the
-published tree at `90c384d` (the
+candidates `c12c335`, `280e88c`, `00c579d`, `ddf59d8`, `90c384d`,
+`3064d0dc9c58840bf7a1510ffd37f7707b6cc9ba` and
+`b68859f21dbec3bf5e1e447de4eb60e41705fe2a` (`git diff dbd98d8..b68859f --
+td/noisemaker parity/compiler` is empty), so the workflow evidence above is
+bound to the published tree at `b68859f` (the
 compiler-gate results cited in the COMPATIBILITY matrix were run separately at
 source `6c96151` on Linux per the pass history, not during this host workflow);
 the evidence directory is tracked at `parity/evidence/workflow/` in the
@@ -371,7 +372,19 @@ instead of silently no-oping), and `export-kit/kit/README.template.md`
 documents the in-COMP form. The retained workflow evidence (reports, both
 phase logs, four PNGs, saved project) is committed at `parity/evidence/workflow/`
 so the hashes in this section are independently verifiable from the
-repository.
+repository. The PNGs and the saved `.toe` are binary git blobs in that
+directory; a sparse or filtered checkout may not materialize them as working
+tree files, but each is retrievable and hashable exactly, e.g.:
+`git cat-file blob HEAD:parity/evidence/workflow/workflow.example-1280.png | sha256sum`
+→ `93af6b3c70088499e863c01bfd3d22072eba9327ba73c5286ca7ce479067543a`,
+`git cat-file blob HEAD:parity/evidence/workflow/nm_workflow_saved.toe | sha256sum`
+→ `908296be7a18dcaba5a31a5c8de330a7c71de3f80b0d8aadc6f6215a0244f0c9` (6858
+bytes). The committed reports/logs are the retained historical run artifacts
+produced by probe revision `7943f068…` (whose output directory was then
+`parity/out/workflow/`, as their save-path strings record); the current probe
+writes to the tracked `parity/evidence/workflow/`, and a re-run there
+reproduces the same PNG bytes (byte-identity demonstrated twice in this
+section).
 
 ### 2026-09-26 served kit host qualification (GAP-003, installed legs)
 
@@ -708,6 +721,8 @@ Implementation changes belong to the separate implementation job. This register 
 | 2026-09-26 | `ddf59d8327f8771dd79ef1d56e0da98337730c77` | Published candidate carrying the GAP-002 blocked record (workflow qualified on 2025.32820; 2025.33230 leg blocked on the license-gated build) plus the machine-verification receipt for the native-parity check. | Native-parity machine verification at published `00c579d` (review `65e7756d`): `adjust`/`alphaMask`/`bitwise` passed at thresholds 2/0.98, goldens/candidates byte-identical to the in-register reproduction; `td/noisemaker` byte-identical from `dbd98d8` through `ddf59d8`; 119 unit tests OK. | The 2025.33230 leg stays blocked on a licensed Derivative download (license-gated); GAP-002 remains blocked on that leg. |
 | 2026-09-26 | `3064d0dc9c58840bf7a1510ffd37f7707b6cc9ba` | GAP-002 evidence bound to the published tree: byte-identity chain extended through `3064d0d` (`git diff dbd98d8..3064d0d -- td/noisemaker parity/compiler` empty); workflow evidence artifacts committed; kit `out` wiring corrected to the verified in-COMP form. | Native receipts at `280e88c`/`00c579d` apply unchanged (runtime byte-identical); 119 unit tests OK. | 2025.33230 leg stays blocked (license-gated). |
 | 2026-09-26 | `b159bd54c68d6c4b13962c412bff0d1e403544c7` | Workflow evidence relocated to the tracked path `parity/evidence/workflow/` (outside gitignored `parity/out/`) so every recorded hash is verifiable from the repository; probe writes there; byte-identity chain extended to `b159bd5` (`git diff dbd98d8..b159bd5 -- td/noisemaker parity/compiler` empty). | Native receipts at `280e88c`/`00c579d` apply unchanged (runtime byte-identical); 119 unit tests OK. | 2025.33230 leg stays blocked (license-gated); GAP-002 remains blocked, not closed. |
+| 2026-09-26 | `f29c6ab9eaeaad1495c178c0a850f192b5f9ac65` | Gap-002 evidence binding reconciled: pass-history rows added for every published candidate carrying the record; the 2025.33230 leg stated as an explicit recorded automation blocker; probe output path reconciled with the committed artifacts; GAP-003 row updated to the in-tree sibling-out correction. | `td/noisemaker` byte-identical from `dbd98d8` through `f29c6ab`; 119 unit tests OK. | 2025.33230 leg stays blocked (license-gated); GAP-002 remains blocked, not closed. |
+| 2026-09-26 | `b68859f21dbec3bf5e1e447de4eb60e41705fe2a` | Probe records only the meaningful `td.build` identity (noisy `app.version` '099' dropped from new reports); README documented example prints a Textport diagnostic when `nm.Output` is None instead of silently leaving `out` unconnected. | `td/noisemaker` byte-identical from `dbd98d8` through `b68859f`; 119 unit tests OK. | 2025.33230 leg stays blocked (license-gated); GAP-002 remains blocked, not closed. |
 | 2026-09-26 | `90c384d8422bfdf7734105dcdba303fa87667b10` | GAP-002 evidence bound to the published tree: byte-identity chain extended to `90c384d`; workflow evidence artifacts committed (`parity/evidence/workflow/`); kit `out` wiring corrected to the verified in-COMP form (`export-kit/kit/integrate.py` + `README.template.md`). | Native receipts at `280e88c` (review `673e08f9`) and `00c579d` (review `65e7756d`) apply — recorded in the published register commits `a76028e`/`ddf59d8`; declared native_checks run post-publication: `td/noisemaker` byte-identical from `dbd98d8` through `90c384d` (`git diff` empty), so the workflow qualification and native cases cover the published tree; 119 unit tests OK. | The 2025.33230 leg stays blocked on a licensed Derivative download (license-gated); GAP-002 remains blocked on that leg. |
 | 2026-09-26 | `a76028ec2309b0cdf1cd999ae76a9ae19827ee36` | GAP-002 and GAP-003 recorded as blocked on the 2025.33230 leg (licensed Derivative build not installed on the only host, no licensed download channel; automation cannot satisfy it). All other GAP-003 criteria are met and recorded, including the version-delta upgrade (source-history kit `66426bc` → served `0.1.26`, byte-identical reopen/rebuild). | Native-parity machine verification at published `280e88c67e6ac4244b4525f264106eff0cc3009b` (review `673e08f9`): `adjust`/`alphaMask`/`bitwise` passed at thresholds 2/0.98, goldens/candidates byte-identical to the in-register reproduction; compiler gates 326/326 lex/parse/validate, graph 325 PASS / 1 documented SKIP / 0 DIFF; 119 unit tests. | Served-version-to-served-version upgrade remains impossible (single rolling deployment); the 2025.33230 leg and full platform matrix stay blocked on a licensed host build; no release approval. |
 | 2026-09-26 | `dbd98d8fe4d4d08c675cacefbc6a91c4941c770c` | GAP-003 artifact half recorded: served kit `0.1.26` (source `6c96151d`) byte-matched to its served inventory 852/852, reproduced from source, licenses and dependencies checked; GAP-003 stays open. | 852/852 per-file SHA-256 matches against kits.noisedeck.app; 549 engine/license/readme files byte-identical to `git show 6c96151`, 301 shaders byte-identical, compat.json ids exact (207, media/scope/spectrum excluded); Export kit 36213953378 (dispatch-only, no skips). | Installed host legs (load in activated project, TOP output, relocation, upgrade, removal) remain open and blocked by GAP-002; no release approval. |
