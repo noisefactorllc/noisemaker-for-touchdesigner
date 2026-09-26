@@ -241,6 +241,37 @@ compiler parity gates: check_lex (326/326 PASS), check_parse (326/326 PASS), che
 (326/326 PASS), check_graph (325 PASS / 0 DIFF / 0 STAGE / 1 SKIP), and unit test suite
 (`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`, 119/119 PASS).*
 
+*Incrementally synced 2026-09-26 to reference `9f85687d1baf` — **range audit:** the declared
+upstream range `403c2a4bf2cb..9f85687d1baf` is force-pushed/non-contiguous; the observed delivery
+range is `0ac5250052e2..9f85687d1baf`. Machine-checkable ancestry facts: the last synced SHA
+`403c2a4bf2cb` IS an ancestor of the end `9f85687d1baf` (→ exit 0), and the declared start is
+also an ancestor of the observed start `0ac5250052e2` (→ exit 0), so the observed delivery range
+subsumes the declared one and the audit against the endpoint tree diff
+`403c2a4bf2cb..9f85687d1baf` loses no upstream content. That diff touches
+exactly two upstream commits — `0ac5250052e2` (docs: AI development contract checkpoint through
+`403c2a4` — `LEDGER.md` and `llms-full.txt` only) and `9f85687d1baf` (GAP-010: truthful
+uniform-responsiveness aggregation) — and no shipped surface at all: GAP-010 adds
+`shaders/tests/uniform-status.js` (`aggregateUniformResponsiveness()`, reclassifying per-uniform
+entries because the upstream Shade MCP `testUniformResponsiveness()` outer status reports 'ok'
+when any tested uniform moves the output), a `--strict-uniforms` opt-in in
+`shaders/tests/test-harness.js` (default keeps the upstream outer-status semantics), regression
+suite `shaders/tests/test_uniform_status.js` registered in `scripts/run-js-tests.js`, and the
+`LEDGER.md`/`llms-full.txt` docs. No effect definitions, no `.glsl`/`.wgsl` sources, no
+runtime/backend, and no validator/expander changes (`tools/convert-definitions.mjs` re-run
+against the pinned end tree: 210/210 effects byte-identical; `tools/convert-shaders.mjs`
+byte-identical after re-applying the documented navierStokes port-guard flow for
+`ns.frag`/`nsSplat.frag`). **Audit-only round — no code change required.** The uniform-status
+aggregation is a browser-test-harness gate for the reference's own CI; this port has never
+carried `shaders/tests/test-harness.js` or the Shade MCP uniform-responsiveness surface (no
+`--uniforms`/`--strict-uniforms` consumer anywhere in `td/`, `parity/`, or `tools/`), so the new
+aggregation has no TD consumption path — matching the GAP-009 frame-metrics audit-only
+precedent. **Reference fidelity baseline:** the reference's own new suite was run from a
+`git archive` extraction of the pinned end SHA (`node shaders/tests/test_uniform_status.js`, all
+assertions passed). Verified compiler parity gates: check_lex (326/326 PASS), check_parse
+(326/326 PASS), check_validate (326/326 PASS), check_graph (325 PASS / 0 DIFF / 0 STAGE / 1
+SKIP), and unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s parity -p
+"test_*.py"`, 120/120 OK).*
+
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
 the first to actually exercise): (1) pass-level `defines`/`conditions` (the clone pattern itself) had
