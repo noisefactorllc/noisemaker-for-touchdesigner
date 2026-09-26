@@ -1,0 +1,127 @@
+{
+  "phase": "build",
+  "td": {
+    "version": "099",
+    "osName": "macOS",
+    "osVersion": "26.5",
+    "build": "2025.32820"
+  },
+  "steps": [
+    {
+      "step": "host-environment",
+      "td": {
+        "version": "099",
+        "osName": "macOS",
+        "osVersion": "26.5",
+        "build": "2025.32820"
+      },
+      "phase": "build",
+      "repo": "noisemaker-for-touchdesigner"
+    },
+    {
+      "step": "create-isolated-base-comp",
+      "pre_existing_children": [
+        "ui",
+        "sys",
+        "local",
+        "perform",
+        "project1"
+      ],
+      "consumer": "/nm_workflow_consumer"
+    },
+    {
+      "step": "documented-example-set-dsl",
+      "dsl": "search synth\nsolid(color: [0.9, 0.3, 0.5]).write(o0)\nrender(o0)",
+      "width": 1280,
+      "height": 1280,
+      "output_top": "/nm_workflow_consumer/node_1_write_blit_2"
+    },
+    {
+      "step": "connect-top",
+      "form": "in-comp out (cross-network form silently refused): inputConnectors[0].connect(nm.Output)",
+      "consumer_output": "/nm_workflow_consumer/node_1_write_blit_2",
+      "consumer_out": "null",
+      "display_top": "/nm_workflow_consumer/out",
+      "display_top_inputs": [
+        "/nm_workflow_consumer/node_1_write_blit_2"
+      ],
+      "connected": true,
+      "readme_cross_network_form_connected": false
+    },
+    {
+      "step": "cook-1280",
+      "png": "workflow.example-1280.png",
+      "sha256": "93af6b3c70088499e863c01bfd3d22072eba9327ba73c5286ca7ce479067543a",
+      "stats": {
+        "shape": [
+          1280,
+          1280,
+          4
+        ],
+        "mean": 0.674927,
+        "std": 0.286184,
+        "unique_bytes": -1,
+        "all_black": false
+      },
+      "top_errors": null,
+      "shader_errors": null,
+      "meaningful": true
+    },
+    {
+      "step": "resize-320x240",
+      "png": "workflow.resized-320x240.png",
+      "sha256": "88d7c715d241a7a089e7895bf9ed2112e6556678e55c5d18e59256e16cc8792a",
+      "stats": {
+        "shape": [
+          240,
+          320,
+          4
+        ],
+        "mean": 0.674927,
+        "std": 0.286183,
+        "unique_bytes": 7,
+        "all_black": false
+      },
+      "width": 320,
+      "height": 240,
+      "meaningful": true
+    },
+    {
+      "step": "invalid-dsl",
+      "raised": "DslSyntaxError",
+      "message": "Unexpected character '!' at line 1 col 42",
+      "diagnostic": {
+        "code": "L001",
+        "stage": "lexer",
+        "severity": "error",
+        "message": "Unexpected character '!' at line 1 col 42"
+      }
+    },
+    {
+      "step": "recover-valid-dsl",
+      "png": "workflow.recovered.png",
+      "sha256": "88d7c715d241a7a089e7895bf9ed2112e6556678e55c5d18e59256e16cc8792a",
+      "stats": {
+        "shape": [
+          240,
+          320,
+          4
+        ],
+        "mean": 0.674927,
+        "std": 0.286183,
+        "unique_bytes": 7,
+        "all_black": false
+      },
+      "top_errors": null,
+      "recovered": true
+    },
+    {
+      "step": "save-project",
+      "path": "parity/out/workflow/nm_workflow_saved.toe",
+      "size": 6858,
+      "sha256": "908296be7a18dcaba5a31a5c8de330a7c71de3f80b0d8aadc6f6215a0244f0c9"
+    }
+  ],
+  "output_path": "/nm_workflow_consumer/node_1_write_blit_2",
+  "verdict": "complete"
+}

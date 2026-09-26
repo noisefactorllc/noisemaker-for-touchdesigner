@@ -1,0 +1,6 @@
+host-environment: {"td": {"version": "099", "osName": "macOS", "osVersion": "26.5", "build": "2025.32820"}, "phase": "reopen", "project_file": null}
+reopen-project: {"consumer_present": true, "saved_toe_sha256": "908296be7a18dcaba5a31a5c8de330a7c71de3f80b0d8aadc6f6215a0244f0c9", "build_saved_sha256": "908296be7a18dcaba5a31a5c8de330a7c71de3f80b0d8aadc6f6215a0244f0c9"}
+top-connected: {"display_top": "/nm_workflow_consumer/out", "consumer_output": "/nm_workflow_consumer/node_1_write_blit_2", "consumer_output_present": true}
+recook-after-reopen: {"png": "workflow.reopened.png", "sha256": "88d7c715d241a7a089e7895bf9ed2112e6556678e55c5d18e59256e16cc8792a", "stats": {"shape": [240, 320, 4], "mean": 0.674927, "std": 0.286183, "unique_bytes": 7, "all_black": false}, "bytes_match_build_render": true}
+cleanup: {"destroyed": true, "remaining_ops": [], "clean": true}
+report written: report.reopen.json

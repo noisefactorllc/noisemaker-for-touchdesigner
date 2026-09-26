@@ -229,7 +229,14 @@ def teardown_previous(host):
 
 
 def connect_output(container, renderer):
-    """Wire the rendered TOP into a Null/Out TOP beside the host, if there is one.
+    """Wire the rendered TOP into a Null/Out TOP named `out` inside the host, if there is one.
+
+    TouchDesigner wires connect siblings only: a cross-network connect (the
+    host-internal `nm.Output` into an `out` beside the host Base COMP) returns
+    without connecting on 2025.32820 (measured in the GAP-002 workflow,
+    docs/COMPLETION_GAPS.md section 3). The display TOP therefore lives inside
+    the host COMP, next to the built network. A container-level `out` is left
+    alone with a note, since wiring it silently does nothing.
 
     Args:
         container (COMP): COMP the Execute DAT lives in.
@@ -238,9 +245,23 @@ def connect_output(container, renderer):
     Returns:
         bool: True when a connection was made.
     """
-    sink = container.op(OUTPUT_OP_NAME)
-    if sink is None or renderer.Output is None:
+    if renderer.Output is None:
         return False
+    host = container.op(HOST_COMP_NAME)
+    if host is None:
+        return False
+    sink = host.op(OUTPUT_OP_NAME)
+    if sink is None:
+        container_level = container.op(OUTPUT_OP_NAME)
+        if container_level is not None:
+            print(
+                '[noisemaker] note: an `out` TOP beside the noisemaker COMP was found, but '
+                'TouchDesigner wires connect siblings only, so it cannot be linked to the '
+                'network inside the COMP (measured on 2025.32820). Create `out` inside the '
+                'noisemaker COMP instead.'
+            )
+            return False
+        sink = host.create(nullTOP, OUTPUT_OP_NAME)   # noqa: F821
     sink.inputConnectors[0].connect(renderer.Output)
     return True
 

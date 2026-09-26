@@ -27,8 +27,10 @@ module. No Node, no pip.
 6. Enable the DAT's **Start** toggle. Select **File ▸ Save**. Reopen the project.
    `onStart` runs on load and builds the network.
 
-You get a Base COMP named `noisemaker` holding the built network. Its output TOP is `nm.Output`; add
-a **Null TOP** named `out` beside the Base COMP and `integrate.py` wires it up for you.
+You get a Base COMP named `noisemaker` holding the built network. Its output TOP is `nm.Output`;
+`integrate.py` creates a **Null TOP** named `out` **inside** the `noisemaker` COMP and wires it up for
+you. TouchDesigner wires connect siblings only, so an `out` placed *beside* the COMP cannot be linked
+to the network inside it — keep `out` inside the `noisemaker` COMP.
 
 ## Rebuilding after an edit
 
