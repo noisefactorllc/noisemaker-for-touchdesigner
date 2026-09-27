@@ -1,0 +1,55 @@
+{
+  "phase": "reopen",
+  "td": {
+    "build": "2025.33230",
+    "osName": "macOS",
+    "osVersion": "26.5"
+  },
+  "steps": [
+    {
+      "step": "host-environment",
+      "td": {
+        "build": "2025.33230",
+        "osName": "macOS",
+        "osVersion": "26.5"
+      },
+      "phase": "reopen",
+      "project_file": null
+    },
+    {
+      "step": "reopen-project",
+      "consumer_present": true,
+      "saved_toe_sha256": "576dbbe8882360ffb9c7cb3107ed7b9fa0f808694d9960cc73c501338a73a9bd",
+      "build_saved_sha256": "576dbbe8882360ffb9c7cb3107ed7b9fa0f808694d9960cc73c501338a73a9bd"
+    },
+    {
+      "step": "top-connected",
+      "display_top": "/nm_workflow_consumer/out",
+      "consumer_output": "/nm_workflow_consumer/node_1_write_blit_2",
+      "consumer_output_present": true
+    },
+    {
+      "step": "recook-after-reopen",
+      "png": "workflow.reopened.png",
+      "sha256": "88d7c715d241a7a089e7895bf9ed2112e6556678e55c5d18e59256e16cc8792a",
+      "stats": {
+        "shape": [
+          240,
+          320,
+          4
+        ],
+        "mean": 0.674927,
+        "std": 0.286183,
+        "unique_bytes": 7,
+        "all_black": false
+      },
+      "bytes_match_build_render": true
+    },
+    {
+      "step": "cleanup",
+      "destroyed": true,
+      "remaining_ops": [],
+      "clean": true
+    }
+  ]
+}
