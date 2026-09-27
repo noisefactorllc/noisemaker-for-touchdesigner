@@ -314,6 +314,39 @@ materialize a historical tree object consumed by `parity/test_materialize_kit.py
 inventory check — environmental, no test or product change). **Audit-only round — no code change
 required.**
 
+*Incrementally synced 2026-09-27 to reference `e73a44a37f0c` — **range audit:** the declared
+upstream range `7443f6e61803..e73a44a37f0c` carries a force-push warning, but machine-checkable
+ancestry facts show it is contiguous: the declared start `7443f6e61803` (the immediately prior
+synced reference), both observed delivery endpoints `132d1bf9e3a3` and `c2252f0caa66`, and the
+declared end `e73a44a37f0c` are all ancestors of the end tree (each `git merge-base --is-ancestor`
+→ exit 0), and the freshly re-cloned reference `origin/main` HEAD is exactly `e73a44a37f0c` — so
+the endpoint tree diff `7443f6e61803..e73a44a37f0c` loses no upstream content. That diff touches
+exactly two upstream commits — `c2252f0caa66` (GAP-015: auditable image-metric interchangeability
+mirror, adding `shaders/tests/image-metrics.js` and `shaders/tests/test_image_metrics.js`) and
+`e73a44a37f0c` (GAP-014: harness frame warm-up before explicit-time render requests, adding
+`shaders/tests/frame-warmup.js` and `shaders/tests/test_frame_warmup.js`, modifying
+`shaders/tests/test-harness.js`) — plus docs (`LEDGER.md`, `llms-full.txt`) and test registration
+(`scripts/run-js-tests.js`). No effect definitions, no `.glsl`/`.wgsl` sources, no runtime/backend,
+and no validator/expander changes (`tools/convert-definitions.mjs` re-run against the pinned end
+tree: 210/210 effects byte-identical; `tools/convert-shaders.mjs` byte-identical after re-applying
+the documented navierStokes port-guard flow for `ns.frag`/`nsSplat.frag`). This port has never
+carried `shaders/tests/test-harness.js`, the vendored `vendor/shade-mcp` metric helpers, or the
+frame warm-up routing surface (grep over `td/`, `parity/`, `tools/` for
+`image-metrics|frame-warmup|imageMetrics|frameWarmup|warmup` returns no consumers), so GAP-014 and
+GAP-015 have no TD consumption path — matching the GAP-009/GAP-010/GAP-011/GAP-012 audit-only
+precedent. **Reference fidelity baseline:** the reference's own new suites were run from the pinned
+end tree (`node shaders/tests/test_image_metrics.js` — all assertions passed, after a
+`PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --no-save playwright` in the reference clone to
+satisfy `vendor/shade-mcp`'s module import — environmental only, no browser render involved;
+`node shaders/tests/test_frame_warmup.js` — PASS: 5 groups: hang-risk, routing, plan, source
+guards, serialization). Verified compiler parity gates: check_lex (326/326 PASS), check_parse
+(326/326 PASS), check_validate (326/326 PASS), check_graph (325 PASS / 0 DIFF / 0 STAGE / 1 SKIP),
+and unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`,
+120/120 OK; the freshly re-provisioned workspace clone again needed one
+`git fetch origin 66426bc41c2b...` to materialize a historical tree object consumed by
+`parity/test_materialize_kit.py`'s fixed-SHA inventory check — environmental, no test or product
+change). **Audit-only round — no code change required.**
+
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
 the first to actually exercise): (1) pass-level `defines`/`conditions` (the clone pattern itself) had
