@@ -1,0 +1,17 @@
+# range audit 12b4d74fb4f2..93229933b102 (declared) / 8fe3ccaf2cc8..93229933b102 (observed delivery)
+ancestor 12b4d74f->end: OK
+ancestor 8fe3ccaf->end: OK
+ancestor 12b4d74f->8fe3ccaf: OK
+--- commits 12b4d74f..93229933:
+93229933 feat(harness): complete, lossless definition-schema introspection with an upstream-loss audit (GAP-017)
+8fe3ccaf docs: record post-publication deployed-contract evidence and correct the open-gap enumeration
+ec457c2e docs: advance AI development contract checkpoint through 12b4d74 (GAP-014/015/016 verified pair audit)
+--- upstream HEAD at audit:
+93229933b102ba82e713402be19db57207698850
+--- tree diff 12b4d74f..93229933 (files):
+M	LEDGER.md
+M	llms-full.txt
+M	scripts/run-js-tests.js
+A	shaders/tests/definition-schema.js
+M	shaders/tests/test-harness.js
+A	shaders/tests/test_definition_schema.js

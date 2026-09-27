@@ -1,0 +1,5 @@
+lex exit=0
+parse exit=0
+validate exit=0
+graph exit=0
+unittest exit=1
