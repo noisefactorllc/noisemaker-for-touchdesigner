@@ -21,6 +21,18 @@ both the observed start and the end). Measured endpoint diff `git diff --name-st
 `shaders/effects`, `shaders/scripts`, and `shaders/src` diffs are empty. The only other
 upstream changes are docs (`LEDGER.md`, `llms-full.txt`) and test registration
 (`scripts/run-js-tests.js`). Full rendered parity remains unverified as stated above.
+Later sync (2026-09-27, this commit's STATUS.md sync entry): the reference advanced to
+`7443f6e6180300a45c5b97608459e5094504659d` (audit-only round, STATUS.md). The declared range
+`403c2a4bf2cb..7443f6e61803` is flagged force-pushed/non-contiguous; the observed delivery ranges
+`407eb7a73c94..7dc0f5640534` and `7dc0f5640534..7443f6e61803` have both endpoints as ancestors of
+the end, and the last synced reference `9f85687d1baf` is also an ancestor of the end. Measured
+endpoint diff `git diff --name-only 9f85687d1baf..7443f6e61803 -- shaders/`: exactly 5 files, all
+reference test harness (`shaders/tests/test-harness.js` and `shaders/tests/frame-readback.js`
+modified; `shaders/tests/test_frame_readback.js`, `shaders/tests/uniform-deltas.js`, and
+`shaders/tests/test_uniform_deltas.js` added — upstream GAP-011 uniform-deltas and GAP-012
+WebGPU-readback); `shaders/effects`, `shaders/scripts`, and `shaders/src` diffs are empty. The
+only other upstream changes are docs (`LEDGER.md`, `llms-full.txt`) and test registration
+(`scripts/run-js-tests.js`). Full rendered parity remains unverified as stated above.
 Current served kit: `0.1.27`, source `3064d0dc9c58840bf7a1510ffd37f7707b6cc9ba`, retrieved and spot-verified 2026-09-26 (section 3, daily-review verification). Artifact identity does not establish host qualification.
 Served kit `0.1.26` at source `6c96151d72648f87e16e572428a98d1922b61136` was byte-verified earlier against its own served inventory and the source tree (2026-09-26, section 3). The rolling deployment replaced it with `0.1.27` from the corrected `3064d0dc` tree. Artifact identity still does not establish host qualification.
 

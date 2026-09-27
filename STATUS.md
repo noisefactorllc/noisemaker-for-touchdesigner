@@ -279,6 +279,41 @@ SKIP), and unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s 
 69 lines of cases to `parity/test_td_backend.py` before this round, unrelated to
 GAP-010/uniform-status (no strict-uniforms or test-harness consumer exists in the port tree).*
 
+*Incrementally synced 2026-09-27 to reference `7443f6e61803` — **range audit:** the declared
+upstream range `403c2a4bf2cb..7443f6e61803` is force-pushed/non-contiguous; the observed delivery
+ranges are `407eb7a73c94..7dc0f5640534` and `7dc0f5640534..7443f6e61803`. Machine-checkable
+ancestry facts: the last synced reference `9f85687d1baf` IS an ancestor of the end `7443f6e6`
+(→ exit 0), the declared start `403c2a4bf2cb` is also an ancestor of the end (→ exit 0), and both
+observed-range endpoints `407eb7a73c94` and `7dc0f5640534` are ancestors of the end (→ exit 0) —
+so the audit against the endpoint tree diff `9f85687d1baf..7443f6e61803` loses no upstream
+content. That diff touches exactly four upstream commits — `7730ea4aba56` (docs:
+`llms-full.txt` GAP-010 uniforms-guidance prose), `407eb7a73c94` (docs: `LEDGER.md` and
+`llms-full.txt` contract checkpoint), `7dc0f5640534` (GAP-011: auditable measured uniform deltas),
+and `7443f6e61803` (GAP-012: harness WebGPU render-surface readback) — and no shipped surface at
+all: per-subtree diff counts (`git diff --name-only 9f85687d1baf..7443f6e61803 -- shaders/<subdir>
+| wc -l`): `effects` 0, `scripts` 0, `src` 0, `tests` 5 — the only shaders/ changes are the
+reference test-harness files `shaders/tests/test-harness.js` and `shaders/tests/frame-readback.js`
+(modified) plus `shaders/tests/test_frame_readback.js`, `shaders/tests/uniform-deltas.js`, and
+`shaders/tests/test_uniform_deltas.js` (added); the only other upstream changes are docs
+(`LEDGER.md`, `llms-full.txt`) and test registration (`scripts/run-js-tests.js`). No effect
+definitions, no `.glsl`/`.wgsl` sources, no runtime/backend, and no validator/expander changes
+(`tools/convert-definitions.mjs` re-run against the pinned end tree: 210/210 effects
+byte-identical; `tools/convert-shaders.mjs` byte-identical after re-applying the documented
+navierStokes port-guard flow for `ns.frag`/`nsSplat.frag`). This port has never carried
+`shaders/tests/test-harness.js`, the `--uniforms`/`--strict-uniforms` harness surface, or the
+`renderEffectFrame`/`auditUniformResponsiveness` readback wrapper (no consumer anywhere in `td/`,
+`parity/`, or `tools/`), so GAP-011/GAP-012 have no TD consumption path — matching the GAP-009/
+GAP-010 audit-only precedent. **Reference fidelity baseline:** the reference's own new suites were
+run from the pinned end tree (`node shaders/tests/test_uniform_deltas.js` — all assertions passed;
+`node shaders/tests/test_frame_readback.js` — GAP-012 frame-readback regressions: PASS). Verified
+compiler parity gates: check_lex (326/326 PASS), check_parse (326/326 PASS), check_validate
+(326/326 PASS), check_graph (325 PASS / 0 DIFF / 0 STAGE / 1 SKIP), and unit test suite
+(`./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"`, 120/120 OK; the
+freshly re-provisioned workspace clone needed one `git fetch origin 66426bc41c2b...` to
+materialize a historical tree object consumed by `parity/test_materialize_kit.py`'s fixed-SHA
+inventory check — environmental, no test or product change). **Audit-only round — no code change
+required.**
+
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
 the first to actually exercise): (1) pass-level `defines`/`conditions` (the clone pattern itself) had
