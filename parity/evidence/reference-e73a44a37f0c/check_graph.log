@@ -1,0 +1,3 @@
+command: NM_REFERENCE_ROOT=/state/cache/noisemaker ./parity/.venv/bin/python3 parity/compiler/check_graph.py
+=== graph parity: 325 PASS / 0 DIFF / 0 STAGE / 1 SKIP / 0 ERR  (of 326) ===
+exit: 0

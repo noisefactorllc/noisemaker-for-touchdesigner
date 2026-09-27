@@ -1,0 +1,38 @@
+upstream reference clone: /state/cache/noisemaker, github.com/noisefactorllc/noisemaker, freshly cloned 2026-09-27
+range start (declared + prior synced reference): 7443f6e6180300a45c5b97608459e5094504659d
+range end (declared): e73a44a37f0c99bd3779c5fb26c7bba65a46a379
+
+== reference origin/main HEAD ==
+e73a44a37f0c99bd3779c5fb26c7bba65a46a379 test(harness): warm up frames before pausing for explicit-time render requests (GAP-014)
+
+== ancestry checks (git merge-base --is-ancestor X end; 0 = true) ==
+is-ancestor 7443f6e6180300a45c5b97608459e5094504659d: exit 0
+is-ancestor 132d1bf9e3a390336ddd55fc2beb4ba207dcb31c: exit 0
+is-ancestor c2252f0caa66b7c5e133a2aad3328e832564b567: exit 0
+
+== commits in range 7443f6e61803..e73a44a37f0c ==
+e73a44a3 test(harness): warm up frames before pausing for explicit-time render requests (GAP-014)
+c2252f0c test(metrics): auditable GAP-015 metric interchangeability mirror
+132d1bf9 docs: advance AI development contract checkpoint through 7443f6e (GAP-011/012 verified pair audit)
+
+== full tree diff --name-only 7443f6e6180300a45c5b97608459e5094504659d..e73a44a37f0c99bd3779c5fb26c7bba65a46a379 ==
+LEDGER.md
+llms-full.txt
+scripts/run-js-tests.js
+shaders/tests/frame-warmup.js
+shaders/tests/image-metrics.js
+shaders/tests/test-harness.js
+shaders/tests/test_frame_warmup.js
+shaders/tests/test_image_metrics.js
+
+== per-subtree diff name-counts ==
+shaders/effects: 0
+shaders/scripts: 0
+shaders/src: 0
+shaders/tests: 5
+
+== shaders/ diff EXCLUDING shaders/tests (name-only) ==
+(empty above = no non-test shaders/ change)
+
+== reference effect-catalog diff (shaders/effects) stat ==
+(empty above = catalog unchanged)

@@ -345,7 +345,11 @@ and unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s parity 
 120/120 OK; the freshly re-provisioned workspace clone again needed one
 `git fetch origin 66426bc41c2b...` to materialize a historical tree object consumed by
 `parity/test_materialize_kit.py`'s fixed-SHA inventory check — environmental, no test or product
-change). **Audit-only round — no code change required.**
+change). **Audit-only round — no code change required.** Committed machine-generated evidence for
+this round's audit (upstream tree diff composition, ancestry checks, regeneration byte-identity,
+and gate/unit-test runs) lives in `parity/evidence/reference-e73a44a37f0c/`: `range-audit.log`,
+`convert-definitions.log`, `convert-shaders.log`, `check_lex.log`, `check_parse.log`,
+`check_validate.log`, `check_graph.log`, `unittest.log`.
 
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was

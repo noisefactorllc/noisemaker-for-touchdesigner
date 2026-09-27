@@ -1,0 +1,333 @@
+[shaders] classicNoisedeck/bitEffects/bitEffects -> bitEffects.frag
+[shaders] classicNoisedeck/caustic/caustic -> caustic.frag
+[shaders] classicNoisedeck/cellNoise/cellNoise -> cellNoise.frag [in:tex]
+[shaders] classicNoisedeck/cellRefract/cellRefract -> cellRefract.frag [in:inputTex]
+[shaders] classicNoisedeck/coalesce/coalesce -> coalesce.frag [in:inputTex,tex]
+[shaders] classicNoisedeck/colorLab/colorLab -> colorLab.frag [in:inputTex]
+[shaders] classicNoisedeck/composite/composite -> composite.frag [in:inputTex,tex]
+[shaders] classicNoisedeck/effects/effects -> effects.frag [in:inputTex]
+[shaders] classicNoisedeck/fractal/fractal -> fractal.frag
+[shaders] classicNoisedeck/glitch/glitch -> glitch.frag [in:inputTex]
+[shaders] classicNoisedeck/kaleido/kaleido -> kaleido.frag [in:inputTex]
+[shaders] classicNoisedeck/lensDistortion/lensDistortion -> lensDistortion.frag [in:inputTex]
+[shaders] classicNoisedeck/moodscape/moodscape -> moodscape.frag
+[shaders] classicNoisedeck/noise/noise -> noise.frag
+[shaders] classicNoisedeck/noise3d/noise3d -> noise3d.frag
+[shaders] classicNoisedeck/refract/refract -> refract.frag [in:inputTex]
+[shaders] classicNoisedeck/shapeMixer/shapeMixer -> shapeMixer.frag [in:inputTex,tex]
+[shaders] classicNoisedeck/shapes/shapes -> shapes.frag
+[shaders] classicNoisedeck/shapes3d/shapes3d -> shapes3d.frag [in:inputTex]
+[shaders] classicNoisedeck/splat/splat -> splat.frag [in:inputTex]
+[shaders] filter/_shared/overlayBlend -> overlayBlend.frag [in:inputTex,overlayTex]
+[shaders] filter/adjust/adjust -> adjust.frag [in:inputTex]
+[shaders] filter/bloom/brightPass -> brightPass.frag [in:inputTex]
+[shaders] filter/bloom/composite -> composite.frag [in:inputTex,bloomTex]
+[shaders] filter/bloom/ntapGather -> ntapGather.frag [in:inputTex]
+[shaders] filter/blur/blurH -> blurH.frag [in:inputTex]
+[shaders] filter/blur/blurV -> blurV.frag [in:inputTex]
+[shaders] filter/bulge/bulge -> bulge.frag [in:inputTex]
+[shaders] filter/celShading/celShadingBlend -> celShadingBlend.frag [in:inputTex,colorTex,edgeTex]
+[shaders] filter/celShading/celShadingColor -> celShadingColor.frag [in:inputTex]
+[shaders] filter/celShading/celShadingEdges -> celShadingEdges.frag [in:colorTex]
+[shaders] filter/channel/channel -> channel.frag [in:inputTex]
+[shaders] filter/chroma/chroma -> chroma.frag [in:inputTex]
+[shaders] filter/chromaticAberration/chromaticAberration -> chromaticAberration.frag [in:inputTex]
+[shaders] filter/chrome/chBlurH -> chBlurH.frag [in:inputTex]
+[shaders] filter/chrome/chBlurV -> chBlurV.frag [in:inputTex]
+[shaders] filter/chrome/chMap -> chMap.frag [in:inputTex,blurTex]
+[shaders] filter/clouds/clouds -> clouds.frag [in:inputTex]
+[shaders] filter/colorReplace/colorReplace -> colorReplace.frag [in:inputTex]
+[shaders] filter/convolutionFeedback/cfBlend -> cfBlend.frag [in:inputTex,feedbackTex]
+[shaders] filter/convolutionFeedback/cfBlur -> cfBlur.frag [in:inputTex]
+[shaders] filter/convolutionFeedback/cfSharpen -> cfSharpen.frag [in:inputTex]
+[shaders] filter/corrupt/corrupt -> corrupt.frag [in:inputTex]
+[shaders] filter/craquelure/craquelure -> craquelure.frag [in:inputTex]
+[shaders] filter/crt/crt -> crt.frag [in:inputTex]
+[shaders] filter/degauss/degauss -> degauss.frag [in:inputTex]
+[shaders] filter/deriv/deriv -> deriv.frag [in:inputTex]
+[shaders] filter/directionalBlur/directionalBlur -> directionalBlur.frag [in:inputTex]
+[shaders] filter/dither/dither -> dither.frag [in:inputTex]
+[shaders] filter/edge/edge -> edge.frag [in:inputTex]
+[shaders] filter/emboss/emboss -> emboss.frag [in:inputTex]
+[shaders] filter/extrude/extrude -> extrude.frag [in:inputTex]
+[shaders] filter/feedback/copy -> copy.frag [in:inputTex]
+[shaders] filter/feedback/feedback -> feedback.frag [in:inputTex,selfTex]
+[shaders] filter/fibers/fibersBlend -> fibersBlend.frag [in:inputTex,overlayTex]
+[shaders] filter/flipMirror/flipMirror -> flipMirror.frag [in:inputTex]
+[shaders] filter/fxaa/fxaa -> fxaa.frag [in:inputTex]
+[shaders] filter/glowingEdge/glowingEdge -> glowingEdge.frag [in:inputTex]
+[shaders] filter/glyphMap/glyphMap -> glyphMap.frag [in:inputTex]
+[shaders] filter/grade/creative -> creative.frag [in:inputTex]
+[shaders] filter/grade/hslSecondary -> hslSecondary.frag [in:inputTex]
+[shaders] filter/grade/lut -> lut.frag [in:inputTex]
+[shaders] filter/grade/primary -> primary.frag [in:inputTex]
+[shaders] filter/grade/vignette -> vignette.frag [in:inputTex]
+[shaders] filter/grade/wheels -> wheels.frag [in:inputTex]
+[shaders] filter/grain/grain -> grain.frag [in:inputTex]
+[shaders] filter/grime/grime -> grime.frag [in:inputTex]
+[shaders] filter/halftone/halftone -> halftone.frag [in:inputTex]
+[shaders] filter/hatch/hatch -> hatch.frag [in:inputTex]
+[shaders] filter/highPass/hpBlurH -> hpBlurH.frag [in:inputTex]
+[shaders] filter/highPass/hpBlurV -> hpBlurV.frag [in:inputTex]
+[shaders] filter/highPass/hpCombine -> hpCombine.frag [in:inputTex,blurTex]
+[shaders] filter/historicPalette/historicPalette -> historicPalette.frag [in:inputTex]
+[shaders] filter/invert/inv -> inv.frag [in:inputTex]
+[shaders] filter/lens/lens -> lens.frag [in:inputTex]
+[shaders] filter/lensFlare/lensFlare -> lensFlare.frag [in:inputTex]
+[shaders] filter/lensWarp/lensWarp -> lensWarp.frag [in:inputTex]
+[shaders] filter/lightLeak/lightLeak -> lightLeak.frag [in:inputTex]
+[shaders] filter/lighting/lighting -> lighting.frag [in:inputTex,heightMap]
+[shaders] filter/lowPoly/lowPoly -> lowPoly.frag [in:inputTex]
+[shaders] filter/median/median -> median.frag [in:inputTex]
+[shaders] filter/morphology/morphA -> morphA.frag [in:inputTex]
+[shaders] filter/morphology/morphB -> morphB.frag [in:inputTex]
+[shaders] filter/mosaicTiles/mosaicTiles -> mosaicTiles.frag [in:inputTex]
+[shaders] filter/motionBlur/copy -> copy.frag [in:inputTex]
+[shaders] filter/motionBlur/motionBlur -> motionBlur.frag [in:inputTex,selfTex]
+[shaders] filter/normalMap/normalMap -> normalMap.frag [in:inputTex]
+[shaders] filter/normalize/apply -> apply.frag [in:inputTex,statsTex]
+[shaders] filter/normalize/reduce -> reduce.frag [in:inputTex]
+[shaders] filter/normalize/reduceMinmax -> reduceMinmax.frag [in:inputTex]
+[shaders] filter/normalize/statsFinal -> statsFinal.frag [in:inputTex]
+[shaders] filter/octaveWarp/octaveWarp -> octaveWarp.frag [in:inputTex]
+[shaders] filter/oilPaint/oilFlatten -> oilFlatten.frag [in:inputTex]
+[shaders] filter/oilPaint/oilPost -> oilPost.frag [in:inputTex,flatTex]
+[shaders] filter/osd/osd -> osd.frag [in:inputTex]
+[shaders] filter/outline/outlineBlend -> outlineBlend.frag [in:inputTex,edgesTexture]
+[shaders] filter/outline/outlineSobel -> outlineSobel.frag [in:valueTexture]
+[shaders] filter/outline/outlineValueMap -> outlineValueMap.frag [in:inputTex]
+[shaders] filter/palette/palette -> palette.frag [in:inputTex]
+[shaders] filter/parallax/parallax -> parallax.frag [in:inputTex,heightMap]
+[shaders] filter/patchwork/patchwork -> patchwork.frag [in:inputTex]
+[shaders] filter/photocopy/pcBlurH -> pcBlurH.frag [in:inputTex]
+[shaders] filter/photocopy/pcBlurV -> pcBlurV.frag [in:inputTex]
+[shaders] filter/photocopy/pcCombine -> pcCombine.frag [in:inputTex,blurTex]
+[shaders] filter/pinch/pinch -> pinch.frag [in:inputTex]
+[shaders] filter/pixelSort/computeRank -> computeRank.frag [in:lumTex]
+[shaders] filter/pixelSort/finalize -> finalize.frag [in:inputTex,originalTex]
+[shaders] filter/pixelSort/findBrightest -> findBrightest.frag [in:lumTex]
+[shaders] filter/pixelSort/gatherSorted -> gatherSorted.frag [in:preparedTex,rankTex,brightestTex]
+[shaders] filter/pixelSort/luminance -> luminance.frag [in:inputTex]
+[shaders] filter/pixelSort/prepare -> prepare.frag [in:inputTex]
+[shaders] filter/pixels/pixels -> pixels.frag [in:inputTex]
+[shaders] filter/plasticWrap/pwBlurH -> pwBlurH.frag [in:inputTex]
+[shaders] filter/plasticWrap/pwBlurV -> pwBlurV.frag [in:inputTex]
+[shaders] filter/plasticWrap/pwSpec -> pwSpec.frag [in:inputTex,blurTex]
+[shaders] filter/polar/polar -> polar.frag [in:inputTex]
+[shaders] filter/pondRipples/pondRipples -> pondRipples.frag [in:inputTex]
+[shaders] filter/posterize/posterize -> posterize.frag [in:inputTex]
+[shaders] filter/prismaticAberration/prismaticAberration -> prismaticAberration.frag [in:inputTex]
+[shaders] filter/reindex/nmReindexApply -> nmReindexApply.frag [in:inputTex,statsTex]
+[shaders] filter/reindex/nmReindexReduce -> nmReindexReduce.frag [in:statsTex]
+[shaders] filter/reindex/nmReindexStats -> nmReindexStats.frag [in:inputTex]
+[shaders] filter/relief/rlBlurH -> rlBlurH.frag [in:inputTex]
+[shaders] filter/relief/rlBlurV -> rlBlurV.frag [in:inputTex]
+[shaders] filter/relief/rlShade -> rlShade.frag [in:inputTex,blurTex]
+[shaders] filter/repeat/repeat -> repeat.frag [in:inputTex]
+[shaders] filter/reverb/reverb -> reverb.frag [in:inputTex]
+[shaders] filter/ridge/ridge -> ridge.frag [in:inputTex]
+[shaders] filter/rotate/rot -> rot.frag [in:inputTex]
+[shaders] filter/scale/scale -> scale.frag [in:inputTex]
+[shaders] filter/scanlineError/scanlineError -> scanlineError.frag [in:inputTex]
+[shaders] filter/scatter/scatterJitter -> scatterJitter.frag [in:inputTex]
+[shaders] filter/scatter/scatterSmooth -> scatterSmooth.frag [in:inputTex]
+[shaders] filter/scratches/scratchesBlend -> scratchesBlend.frag [in:inputTex,overlayTex]
+[shaders] filter/scroll/scroll -> scroll.frag [in:inputTex]
+[shaders] filter/seamless/seamless -> seamless.frag [in:inputTex]
+[shaders] filter/sharpen/sharpen -> sharpen.frag [in:inputTex]
+[shaders] filter/simpleAberration/chromaticAberration -> chromaticAberration.frag [in:inputTex]
+[shaders] filter/sine/sine -> sine.frag [in:inputTex]
+[shaders] filter/skew/skew -> skew.frag [in:inputTex]
+[shaders] filter/smooth/smoothBlend -> smoothBlend.frag [in:inputTex,edgeTex]
+[shaders] filter/smooth/smoothEdge -> smoothEdge.frag [in:inputTex]
+[shaders] filter/smoothstep/smoothstep -> smoothstep.frag [in:inputTex]
+[shaders] filter/snow/snow -> snow.frag [in:inputTex]
+[shaders] filter/sobel/sobel -> sobel.frag [in:inputTex]
+[shaders] filter/spatter/spatter -> spatter.frag [in:inputTex]
+[shaders] filter/spinBlur/spinBlur -> spinBlur.frag [in:inputTex]
+[shaders] filter/spiral/spiral -> spiral.frag [in:inputTex]
+[shaders] filter/spookyTicker/spookyTicker -> spookyTicker.frag [in:inputTex]
+[shaders] filter/stamp/stBlurH -> stBlurH.frag [in:inputTex]
+[shaders] filter/stamp/stBlurV -> stBlurV.frag [in:inputTex]
+[shaders] filter/stamp/stThreshold -> stThreshold.frag [in:inputTex,blurTex]
+[shaders] filter/step/step -> step.frag [in:inputTex]
+[shaders] filter/stipple/stipple -> stipple.frag [in:inputTex]
+[shaders] filter/strayHair/strayHairBlend -> strayHairBlend.frag [in:inputTex,overlayTex]
+[shaders] filter/strokes/stkPost -> stkPost.frag [in:inputTex,smearTex]
+[shaders] filter/strokes/stkSmear -> stkSmear.frag [in:inputTex]
+[shaders] filter/temporalAberration/delayShift -> delayShift.frag [in:srcTex]
+[shaders] filter/temporalAberration/temporalAberration -> temporalAberration.frag [in:inputTex,h1,h2,h3,h4,h5,h6,h7,h8]
+[shaders] filter/tetraColorArray/tetraColorArray -> tetraColorArray.frag [in:inputTex]
+[shaders] filter/tetraCosine/tetraCosine -> tetraCosine.frag [in:inputTex]
+[shaders] filter/text/text -> text.frag [in:inputTex,textTex]
+[shaders] filter/texture/texture -> texture.frag [in:inputTex]
+[shaders] filter/threshold/thresh -> thresh.frag [in:inputTex]
+[shaders] filter/tile/tile -> tile.frag [in:inputTex]
+[shaders] filter/tint/colorize -> colorize.frag [in:inputTex]
+[shaders] filter/translate/translate -> translate.frag [in:inputTex]
+[shaders] filter/tunnel/tunnel -> tunnel.frag [in:inputTex]
+[shaders] filter/unsharpMask/usmBlurH -> usmBlurH.frag [in:inputTex]
+[shaders] filter/unsharpMask/usmBlurV -> usmBlurV.frag [in:inputTex]
+[shaders] filter/unsharpMask/usmCombine -> usmCombine.frag [in:inputTex,blurTex]
+[shaders] filter/vaseline/upsample -> upsample.frag [in:inputTex]
+[shaders] filter/vignette/vignette -> vignette.frag [in:inputTex]
+[shaders] filter/warp/warp -> warp.frag [in:inputTex]
+[shaders] filter/watercolor/wcComposite -> wcComposite.frag [in:inputTex,simplifiedTex]
+[shaders] filter/watercolor/wcSeed -> wcSeed.frag [in:inputTex]
+[shaders] filter/watercolor/wcSimplify -> wcSimplify.frag [in:inputTex]
+[shaders] filter/waves/waves -> waves.frag [in:inputTex]
+[shaders] filter/wind/wind -> wind.frag [in:inputTex]
+[shaders] filter/wobble/wobble -> wobble.frag [in:inputTex]
+[shaders] filter/wormhole/blend -> blend.frag [in:inputTex,accumTex]
+[shaders] filter/wormhole/clear -> clear.frag
+[shaders] filter/zoomBlur/zoomBlur -> zoomBlur.frag [in:inputTex]
+[shaders] filter3d/flow3d/agent -> agent.frag [in:stateTex1,stateTex2,stateTex3,mixerTex] [MRT]
+[shaders] filter3d/flow3d/blend -> blend.frag [in:mixerTex,trailTex]
+[shaders] filter3d/flow3d/copy -> copy.frag [in:sourceTex]
+[shaders] filter3d/flow3d/diffuse -> diffuse.frag [in:sourceTex]
+[shaders] filter3d/palette3d/palette3d -> palette3d.frag [in:inputTex3d]
+[shaders] mixer/alphaMask/alphaMask -> alphaMask.frag [in:inputTex,tex,baseTex]
+[shaders] mixer/applyMode/applyMode -> applyMode.frag [in:inputTex,tex]
+[shaders] mixer/blendMode/blendMode -> blendMode.frag [in:inputTex,tex]
+[shaders] mixer/cellSplit/cellSplit -> cellSplit.frag [in:inputTex,tex]
+[shaders] mixer/centerMask/centerMask -> centerMask.frag [in:inputTex,tex]
+[shaders] mixer/channelCombine/channelCombine -> channelCombine.frag [in:rTex,gTex,bTex]
+[shaders] mixer/distortion/distortion -> distortion.frag [in:inputTex,tex]
+[shaders] mixer/focusBlur/focusBlur -> focusBlur.frag [in:inputTex,tex]
+[shaders] mixer/mashup/mashup -> mashup.frag [in:source,layer0_tex,layer1_tex,layer2_tex,layer3_tex,layer4_tex,layer5_tex,layer6_tex,layer7_tex]
+[shaders] mixer/patternMix/patternMix -> patternMix.frag [in:inputTex,tex]
+[shaders] mixer/shadow/shadow -> shadow.frag [in:inputTex,tex]
+[shaders] mixer/shapeMask/shapeMask -> shapeMask.frag [in:inputTex,tex]
+[shaders] mixer/split/split -> split.frag [in:inputTex,tex]
+[shaders] mixer/thresholdMix/thresholdMix -> thresholdMix.frag [in:inputTex,tex]
+[shaders] mixer/uvRemap/uvRemap -> uvRemap.frag [in:inputTex,tex]
+[shaders] points/attractor/agent -> agent.frag [in:xyzTex,velTex,rgbaTex] [MRT]
+[shaders] points/attractor/passthrough -> passthrough.frag [in:inputTex]
+[shaders] points/buddhabrot/agent -> agent.frag [in:xyzTex,velTex,rgbaTex] [MRT]
+[shaders] points/buddhabrot/passthrough -> passthrough.frag [in:inputTex]
+[shaders] points/buddhabrot/zWrite -> zWrite.frag [in:xyzTex,velTex]
+[shaders] points/dla/agent -> agent.frag [in:xyzTex,velTex,rgbaTex,gridTex,inputTex] [MRT]
+[shaders] points/dla/copyGrid -> copyGrid.frag [in:gridTex]
+[shaders] points/dla/initGrid -> initGrid.frag [in:gridTex]
+[shaders] points/dla/passthrough -> passthrough.frag [in:inputTex,gridTex]
+[shaders] points/flock/agent -> agent.frag [in:xyzTex,velTex,rgbaTex] [MRT]
+[shaders] points/flock/passthrough -> passthrough.frag [in:inputTex]
+[shaders] points/flow/agent -> agent.frag [in:inputTex,xyzTex,velTex,rgbaTex] [MRT]
+[shaders] points/flow/passthrough -> passthrough.frag [in:inputTex]
+[shaders] points/heightGrid/agent -> agent.frag [in:xyzTex,velTex,heightTex,diffuseTex] [MRT]
+[shaders] points/heightGrid/passthrough -> passthrough.frag [in:inputTex]
+[shaders] points/hydraulic/agent -> agent.frag [in:inputTex,xyzTex,velTex,rgbaTex] [MRT]
+[shaders] points/hydraulic/passthrough -> passthrough.frag [in:inputTex]
+[shaders] points/lenia/agentField -> agentField.frag [in:xyzTex,velTex,rgbaTex,fieldTex] [MRT]
+[shaders] points/lenia/clear -> clear.frag
+[shaders] points/lenia/convolve -> convolve.frag [in:densityTex]
+[shaders] points/lenia/passthrough -> passthrough.frag [in:inputTex]
+[shaders] points/life/agent -> agent.frag [in:xyzTex,velTex,rgbaTex,dataTex,forceMatrix,inputTex] [MRT]
+[shaders] points/life/matrix -> matrix.frag
+[shaders] points/life/passthrough -> passthrough.frag [in:inputTex]
+[shaders] points/physarum/agent -> agent.frag [in:xyzTex,velTex,rgbaTex,trailTex,inputTex] [MRT]
+[shaders] points/physarum/diffuse -> diffuse.frag [in:trailTex]
+[shaders] points/physarum/passthrough -> passthrough.frag [in:inputTex]
+[shaders] points/physical/agent -> agent.frag [in:inputTex,xyzTex,velTex,rgbaTex] [MRT]
+[shaders] points/physical/passthrough -> passthrough.frag [in:inputTex]
+[shaders] render/loopBegin/loopBegin -> loopBegin.frag [in:inputTex,accumTex]
+[shaders] render/loopEnd/copy -> copy.frag [in:inputTex]
+[shaders] render/meshLoader/preview -> preview.frag [in:positionsTex,normalsTex]
+[shaders] render/meshRender/clear -> clear.frag
+[shaders] render/pointsBillboardRender/blend -> blend.frag [in:inputTex,trailTex]
+[shaders] render/pointsBillboardRender/clearDefocus -> clearDefocus.frag
+[shaders] render/pointsBillboardRender/copy -> copy.frag [in:sourceTex]
+[shaders] render/pointsBillboardRender/depthKeys -> depthKeys.frag [in:xyzTex]
+[shaders] render/pointsBillboardRender/depthMerge -> depthMerge.frag [in:orderTex]
+[shaders] render/pointsBillboardRender/diffuse -> diffuse.frag [in:trailTex,defocusTex]
+[shaders] render/pointsBillboardRender/spriteMean -> spriteMean.frag [in:tilesTex]
+[shaders] render/pointsBillboardRender/spriteMeanTiles -> spriteMeanTiles.frag [in:spriteTex]
+[shaders] render/pointsEmit/init -> init.frag [in:xyzTex,velTex,rgbaTex,inputTex] [MRT]
+[shaders] render/pointsEmit/passthrough -> passthrough.frag [in:inputTex]
+[shaders] render/pointsRender/blend -> blend.frag [in:inputTex,trailTex]
+[shaders] render/pointsRender/copy -> copy.frag [in:sourceTex]
+[shaders] render/pointsRender/diffuse -> diffuse.frag [in:trailTex]
+[shaders] render/render3d/render3d -> render3d.frag [in:volumeCache] [MRT]
+[shaders] render/renderCubemap3d/renderCubemap3d -> renderCubemap3d.frag [in:volumeCache] [MRT]
+[shaders] render/renderCubemapSurface/renderCubemapSurface -> renderCubemapSurface.frag [in:volumeCache] [MRT]
+[shaders] render/renderLandscape3d/landscape -> landscape.frag [in:volumeCache,analyticalGeo] [MRT]
+[shaders] render/renderLit3d/renderLit3d -> renderLit3d.frag [in:volumeCache] [MRT]
+[shaders] synth/bitwise/bitwise -> bitwise.frag
+[shaders] synth/cell/cell -> cell.frag
+[shaders] synth/cellularAutomata/ca -> ca.frag [in:fbTex,prevFrameTex]
+[shaders] synth/cellularAutomata/caFb -> caFb.frag [in:bufTex,tex]
+[shaders] synth/curl/curl -> curl.frag
+[shaders] synth/gabor/gabor -> gabor.frag
+[shaders] synth/gradient/gradient -> gradient.frag
+[shaders] synth/julia/julia -> julia.frag
+[shaders] synth/mandala/mandala -> mandala.frag
+[shaders] synth/mandelbrot/mandelbrot -> mandelbrot.frag
+[shaders] synth/media/mediaInput -> mediaInput.frag [in:imageTex]
+[shaders] synth/mnca/mnca -> mnca.frag [in:fbTex,prevFrameTex]
+[shaders] synth/mnca/mncaFb -> mncaFb.frag [in:bufTex,seedTex]
+[shaders] synth/modPattern/modPattern -> modPattern.frag
+[shaders] synth/navierStokes/ns -> ns.frag [in:fbTex,inputTex]
+[shaders] synth/navierStokes/nsAdvect -> nsAdvect.frag [in:bufTex]
+[shaders] synth/navierStokes/nsDivergence -> nsDivergence.frag [in:velTex]
+[shaders] synth/navierStokes/nsGradient -> nsGradient.frag [in:velTex,pressureTex]
+[shaders] synth/navierStokes/nsPressure -> nsPressure.frag [in:bufTex]
+[shaders] synth/navierStokes/nsSmooth -> nsSmooth.frag [in:canvasTex]
+[shaders] synth/navierStokes/nsSplat -> nsSplat.frag [in:bufTex,inputTex]
+[shaders] synth/newton/newton -> newton.frag
+[shaders] synth/noise/noise -> noise.frag
+[shaders] synth/osc2d/osc2d -> osc2d.frag
+[shaders] synth/pattern/pattern -> pattern.frag
+[shaders] synth/perlin/perlin -> perlin.frag
+[shaders] synth/polygon/shape -> shape.frag
+[shaders] synth/reactionDiffusion/rd -> rd.frag [in:fbTex,inputTex]
+[shaders] synth/reactionDiffusion/rdFb -> rdFb.frag [in:bufTex,inputTex]
+[shaders] synth/remap/remap -> remap.frag [in:zone0_tex,zone1_tex,zone2_tex,zone3_tex,zone4_tex,zone5_tex,zone6_tex,zone7_tex]
+[shaders] synth/roll/copy -> copy.frag [in:inputTex]
+[shaders] synth/roll/roll -> roll.frag [in:feedbackTex,noteGridTex]
+[shaders] synth/sacredGeometry/sacredGeometry -> sacredGeometry.frag
+[shaders] synth/scope/scope -> scope.frag
+[shaders] synth/shape/shape -> shape.frag
+[shaders] synth/solid/solid -> solid.frag
+[shaders] synth/spectrum/spectrum -> spectrum.frag
+[shaders] synth/subdivide/subdivide -> subdivide.frag [in:inputTex]
+[shaders] synth/testPattern/testPattern -> testPattern.frag
+[shaders] synth3d/cell3d/precompute -> precompute.frag [MRT]
+[shaders] synth3d/cellularAutomata3d/simulate -> simulate.frag [in:stateTex,seedTex]
+[shaders] synth3d/flythrough3d/precompute -> precompute.frag [MRT]
+[shaders] synth3d/fractal3d/precompute -> precompute.frag [MRT]
+[shaders] synth3d/heightmap3d/precompute -> precompute.frag [in:heightTex,tex] [MRT]
+[shaders] synth3d/noise3d/precompute -> precompute.frag [MRT]
+[shaders] synth3d/reactionDiffusion3d/simulate -> simulate.frag [in:stateTex,seedTex]
+[shaders] synth3d/shape3d/precompute -> precompute.frag [MRT]
+
+[shaders] wrote 301/301 program(s); 25 flagged for review.
+  ! filter3d/flow3d/agent: MRT (3 outputs: outState1,outState2,outState3) — emitted verbatim, manual swizzle/wiring
+  ! points/attractor/agent: MRT (3 outputs: outXYZ,outVel,outRGBA) — emitted verbatim, manual swizzle/wiring
+  ! points/buddhabrot/agent: MRT (3 outputs: outXYZ,outVel,outRGBA) — emitted verbatim, manual swizzle/wiring
+  ! points/dla/agent: MRT (3 outputs: outXYZ,outVel,outRGBA) — emitted verbatim, manual swizzle/wiring
+  ! points/flock/agent: MRT (3 outputs: outXYZ,outVel,outRGBA) — emitted verbatim, manual swizzle/wiring
+  ! points/flow/agent: MRT (3 outputs: outXYZ,outVel,outRGBA) — emitted verbatim, manual swizzle/wiring
+  ! points/heightGrid/agent: MRT (3 outputs: outXYZ,outVel,outRGBA) — emitted verbatim, manual swizzle/wiring
+  ! points/hydraulic/agent: MRT (3 outputs: outXYZ,outVel,outRGBA) — emitted verbatim, manual swizzle/wiring
+  ! points/lenia/agentField: MRT (3 outputs: outXYZ,outVel,outRGBA) — emitted verbatim, manual swizzle/wiring
+  ! points/life/agent: MRT (4 outputs: outXYZ,outVel,outRGBA,outData) — emitted verbatim, manual swizzle/wiring
+  ! points/physarum/agent: MRT (3 outputs: outXYZ,outVel,outRGBA) — emitted verbatim, manual swizzle/wiring
+  ! points/physical/agent: MRT (3 outputs: outXYZ,outVel,outRGBA) — emitted verbatim, manual swizzle/wiring
+  ! render/pointsEmit/init: MRT (3 outputs: outXYZ,outVel,outRGBA) — emitted verbatim, manual swizzle/wiring
+  ! render/render3d/render3d: MRT (2 outputs: fragColor,geoOut) — emitted verbatim, manual swizzle/wiring
+  ! render/renderCubemap3d/renderCubemap3d: MRT (2 outputs: fragColor,geoOut) — emitted verbatim, manual swizzle/wiring
+  ! render/renderCubemapSurface/renderCubemapSurface: MRT (2 outputs: fragColor,geoOut) — emitted verbatim, manual swizzle/wiring
+  ! render/renderLandscape3d/landscape: MRT (2 outputs: fragColor,geoOut) — emitted verbatim, manual swizzle/wiring
+  ! render/renderLit3d/renderLit3d: MRT (2 outputs: fragColor,geoOut) — emitted verbatim, manual swizzle/wiring
+  ! synth/remap/remap: UNIFORM_ARRAY (std140 block RemapUniforms -> vec4 data[275])
+  ! synth3d/cell3d/precompute: MRT (2 outputs: fragColor,geoOut) — emitted verbatim, manual swizzle/wiring
+  ! synth3d/flythrough3d/precompute: MRT (2 outputs: fragColor,geoOut) — emitted verbatim, manual swizzle/wiring
+  ! synth3d/fractal3d/precompute: MRT (2 outputs: fragColor,geoOut) — emitted verbatim, manual swizzle/wiring
+  ! synth3d/heightmap3d/precompute: MRT (2 outputs: fragColor,geoOut) — emitted verbatim, manual swizzle/wiring
+  ! synth3d/noise3d/precompute: MRT (2 outputs: fragColor,geoOut) — emitted verbatim, manual swizzle/wiring
+  ! synth3d/shape3d/precompute: MRT (2 outputs: fragColor,geoOut) — emitted verbatim, manual swizzle/wiring
+--- git status --porcelain td/noisemaker/shaders after run (pre-guard-restore):
+ M td/noisemaker/shaders/effects/synth/navierStokes/ns.frag
+ M td/noisemaker/shaders/effects/synth/navierStokes/nsSplat.frag
+--- after documented navierStokes port-guard restore:
+(empty = byte-identical modulo documented guards)

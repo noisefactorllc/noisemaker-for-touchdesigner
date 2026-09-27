@@ -1,0 +1,8 @@
+command: ./parity/.venv/bin/python3 -m unittest discover -s parity -p "test_*.py"
+...................[effect-validator corpus] files=210 pass=210 failure=0 skip=0 unexecuted=0
+.....................................................................................................
+----------------------------------------------------------------------
+Ran 120 tests in 4.958s
+
+OK
+exit: 0
