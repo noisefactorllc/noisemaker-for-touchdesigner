@@ -18,6 +18,9 @@ Phases (NM_KIT_PHASE, passed through the host broker env):
                project.folder).
   reinstall -- the kit files were re-materialized over the installed directory
                before this run; rebuild and verify the render again.
+  recover   -- documented rebuild() entry point under a broken program.dsl:
+               the rebuild fails with the compiler's diagnostic, the DSL is
+               restored, and rebuild() again renders the build PNG exactly.
   remove    -- uninstall: destroy the noisemaker Base COMP and the out TOP,
                verify no remaining ops, and quit.
 """
@@ -290,6 +293,80 @@ def reinstall_phase():
     return steps
 
 
+BAD_DSL = 'search synth\nsolid(color: [0.9, 0.3, 0.5]!!\nrender(o0)\n'
+
+
+def recover_phase():
+    """Documented rebuild() entry point: cook failure, then recovery."""
+    steps = []
+    try:
+        try:
+            project.realTime = False  # noqa: F821
+        except Exception as e:
+            log('realTime set failed: %s' % e)
+        root = op('/')  # noqa: F821
+        container = root.op('project1')
+        folder = project.folder  # noqa: F821
+        program = os.path.join(folder, 'program.dsl')
+        with open(program) as f:
+            original = f.read()
+        steps.append({'step': 'project-opened', 'project.folder': folder,
+                      'phase': PHASE, 'td': _versions(),
+                      'program_sha256': _sha256(program)})
+        integ = container.op('integrate1')
+        if integ is None:
+            raise RuntimeError('kit integrate Execute DAT not found')
+        # 1. cook failure: break the DSL, then call the documented rebuild().
+        with open(program, 'w') as f:
+            f.write(BAD_DSL)
+        failure = {}
+        try:
+            integ.module.rebuild()
+            failure['raised'] = False
+        except Exception as e:  # noqa: BLE001
+            failure = {'raised': True, 'type': type(e).__name__,
+                       'message': str(e)[:400]}
+        host = container.op(HOST_COMP)
+        nm_after_failure = host.fetch('nm', None, search=False) if host else None
+        steps.append({'step': 'rebuild-failure', 'failure': failure,
+                      'host_present': host is not None,
+                      'renderer_after_failure': nm_after_failure is not None})
+        # 2. recovery: restore the program and rebuild again.
+        with open(program, 'w') as f:
+            f.write(original)
+        steps.append({'step': 'program-restored', 'sha256': _sha256(program)})
+        rebuilt = integ.module.rebuild()
+        host2 = container.op(HOST_COMP)
+        nm2 = host2.fetch('nm', None, search=False) if host2 else None
+        if nm2 is None or nm2.Output is None:
+            raise RuntimeError('no renderer or output after recovery rebuild')
+        target = nm2.Output
+        target.cook(force=True)
+        s = _stats(target)
+        p = os.path.join(OUT, 'kit.%s.png' % PHASE)
+        os.makedirs(OUT, exist_ok=True)
+        target.save(p)
+        errs = (target.errors() or '') if hasattr(target, 'errors') else ''
+        steps.append({'step': 'recovery-render', 'png': os.path.basename(p),
+                      'sha256': _sha256(p), 'rendered_top': target.path,
+                      'stats': s, 'top_errors': errs or None,
+                      'meaningful': bool(not s['all_black'] and s['unique_bytes'] != 1),
+                      'rebuild_returned': rebuilt is not None})
+        try:
+            build_png = os.path.join(OUT, 'kit.build.png')
+            same = os.path.exists(build_png) and _sha256(p) == _sha256(build_png)
+            steps.append({'step': 'recovery-byte-compare',
+                          'build_png_sha256': _sha256(build_png),
+                          'recovered_png_sha256': _sha256(p), 'byte_identical': same})
+        except Exception:
+            steps.append({'step': 'recovery-byte-compare',
+                          'error': traceback.format_exc()[-800:]})
+    except Exception:
+        steps.append({'step': 'FATAL-recover', 'error': traceback.format_exc()[-4000:]})
+    _write_report('report.recover.json', {'phase': 'recover', 'td': _versions(), 'steps': steps})
+    return steps
+
+
 def remove_phase():
     steps = []
     try:
@@ -320,6 +397,8 @@ def main():
         relocate_phase()
     elif PHASE == 'reinstall':
         reinstall_phase()
+    elif PHASE == 'recover':
+        recover_phase()
     elif PHASE == 'remove':
         remove_phase()
     else:
