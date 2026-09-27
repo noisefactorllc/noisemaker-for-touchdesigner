@@ -1,0 +1,431 @@
+[PASS] adjust: max-abs-diff=1.000 mean-abs-diff=0.1466 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] alphaMask: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] applyMode: max-abs-diff=1.000 mean-abs-diff=0.0958 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] bitwise: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] blendMode: max-abs-diff=1.000 mean-abs-diff=0.1226 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] bloom: max-abs-diff=2.000 mean-abs-diff=0.1940 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] blur: max-abs-diff=1.000 mean-abs-diff=0.1280 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] bulge: max-abs-diff=1.000 mean-abs-diff=0.1462 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] celShading: max-abs-diff=1.000 mean-abs-diff=0.0662 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] cell: max-abs-diff=1.000 mean-abs-diff=0.0831 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] cellNoise: max-abs-diff=1.000 mean-abs-diff=0.1232 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] cellRefract: max-abs-diff=1.000 mean-abs-diff=0.1470 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] cellSplit: max-abs-diff=1.000 mean-abs-diff=0.0909 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] centerMask: max-abs-diff=1.000 mean-abs-diff=0.1452 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] channel: max-abs-diff=1.000 mean-abs-diff=0.1446 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] channelCombine: max-abs-diff=1.000 mean-abs-diff=0.1274 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] chroma: max-abs-diff=1.000 mean-abs-diff=0.0895 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] chromaticAberration: max-abs-diff=1.000 mean-abs-diff=0.1466 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] chrome: max-abs-diff=32.000 mean-abs-diff=0.1323 ssim=0.99999 (tol=34.0, ssim_min=0.98)
+[PASS] clouds: max-abs-diff=1.000 mean-abs-diff=0.1522 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] cnd_bitEffects: max-abs-diff=1.000 mean-abs-diff=0.0478 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] cnd_caustic: max-abs-diff=1.000 mean-abs-diff=0.2546 ssim=0.99990 (tol=2.001, ssim_min=0.98)
+[PASS] cnd_fractal: max-abs-diff=1.000 mean-abs-diff=0.2986 ssim=0.99993 (tol=2.001, ssim_min=0.98)
+[PASS] cnd_moodscape: max-abs-diff=1.000 mean-abs-diff=0.2103 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] cnd_noise: max-abs-diff=1.000 mean-abs-diff=0.1747 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] cnd_noise3d: max-abs-diff=1.000 mean-abs-diff=0.2183 ssim=0.99992 (tol=2.001, ssim_min=0.98)
+[PASS] cnd_shapes: max-abs-diff=1.000 mean-abs-diff=0.0893 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] coalesce: max-abs-diff=1.000 mean-abs-diff=0.1970 ssim=0.99991 (tol=2.001, ssim_min=0.98)
+[PASS] colorLab: max-abs-diff=1.000 mean-abs-diff=0.1466 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] colorReplace: max-abs-diff=1.000 mean-abs-diff=0.1257 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] composite: max-abs-diff=1.000 mean-abs-diff=0.1941 ssim=0.99991 (tol=2.001, ssim_min=0.98)
+[PASS] corrupt: max-abs-diff=1.000 mean-abs-diff=0.1456 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] craquelure: max-abs-diff=1.000 mean-abs-diff=0.1472 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] crt: max-abs-diff=2.000 mean-abs-diff=0.1455 ssim=0.99998 (tol=3.0, ssim_min=0.98)
+[PASS] curl: max-abs-diff=1.000 mean-abs-diff=0.1440 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] degauss: max-abs-diff=4.000 mean-abs-diff=0.1483 ssim=0.99998 (tol=4.0, ssim_min=0.98)
+[PASS] deriv: max-abs-diff=1.000 mean-abs-diff=0.2740 ssim=0.99989 (tol=2.001, ssim_min=0.98)
+[PASS] directionalBlur: max-abs-diff=1.000 mean-abs-diff=0.0707 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] directionalBlur_angled: max-abs-diff=1.000 mean-abs-diff=0.0593 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] distortion: max-abs-diff=11.000 mean-abs-diff=0.0675 ssim=0.99999 (tol=12.0, ssim_min=0.98)
+[PASS] dither: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] dither_type_bayer2x2: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] dither_type_bayer4x4: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] dither_type_bayer8x8: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] dither_type_crosshatch: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] dither_type_dot: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] dither_type_errorDiffusion: max-abs-diff=85.000 mean-abs-diff=0.0123 ssim=0.99993 (tol=255.0, ssim_min=0.99)
+[PASS] dither_type_line: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] dither_type_noise: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] edge: max-abs-diff=6.000 mean-abs-diff=0.0426 ssim=1.00000 (tol=8.0, ssim_min=0.98)
+[PASS] edge_kernel_bold: max-abs-diff=6.000 mean-abs-diff=0.0426 ssim=1.00000 (tol=8.0, ssim_min=0.98)
+[PASS] edge_kernel_contour: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=8.0, ssim_min=0.98)
+[PASS] edge_kernel_fine: max-abs-diff=3.000 mean-abs-diff=0.0913 ssim=0.99996 (tol=8.0, ssim_min=0.98)
+[PASS] effects: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] emboss: max-abs-diff=1.000 mean-abs-diff=0.1049 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] emboss_style_color: max-abs-diff=1.000 mean-abs-diff=0.1049 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] emboss_style_gray: max-abs-diff=1.000 mean-abs-diff=0.0227 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] extrude: max-abs-diff=1.000 mean-abs-diff=0.1280 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] extrude_depthSource_luminance: max-abs-diff=1.000 mean-abs-diff=0.1280 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] extrude_depthSource_random: max-abs-diff=1.000 mean-abs-diff=0.1291 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] extrude_type_blocks: max-abs-diff=1.000 mean-abs-diff=0.1280 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] extrude_type_pyramids: max-abs-diff=1.000 mean-abs-diff=0.1155 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] extrude_type_pyramids_depthSource_random: max-abs-diff=1.000 mean-abs-diff=0.1144 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] feedback: max-abs-diff=1.000 mean-abs-diff=0.1468 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] fibers: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] flipMirror: max-abs-diff=1.000 mean-abs-diff=0.1448 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] focusBlur: max-abs-diff=1.000 mean-abs-diff=0.0776 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] fxaa: max-abs-diff=1.000 mean-abs-diff=0.1458 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] gabor: max-abs-diff=1.000 mean-abs-diff=0.1572 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] glitch: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] glowingEdge: max-abs-diff=1.000 mean-abs-diff=0.1291 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] glyphMap: max-abs-diff=1.000 mean-abs-diff=0.0321 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] grade: max-abs-diff=1.000 mean-abs-diff=0.1451 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] gradient: max-abs-diff=1.000 mean-abs-diff=0.0894 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] grain: max-abs-diff=1.000 mean-abs-diff=0.1107 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] grime: max-abs-diff=1.000 mean-abs-diff=0.1426 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] halftone: max-abs-diff=1.000 mean-abs-diff=0.1046 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] halftone_mode_color: max-abs-diff=1.000 mean-abs-diff=0.1046 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] halftone_mode_mono: max-abs-diff=1.000 mean-abs-diff=0.3160 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] halftone_pattern_circle: max-abs-diff=1.000 mean-abs-diff=0.6234 ssim=0.99957 (tol=2.001, ssim_min=0.98)
+[PASS] halftone_pattern_dot: max-abs-diff=1.000 mean-abs-diff=0.3160 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] halftone_pattern_line: max-abs-diff=1.000 mean-abs-diff=0.6194 ssim=0.99962 (tol=2.001, ssim_min=0.98)
+[PASS] hatch: max-abs-diff=1.000 mean-abs-diff=0.1048 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] hatch_coloredPencil_leftDiag: max-abs-diff=216.000 mean-abs-diff=0.2028 ssim=0.99991 (tol=255.0, ssim_min=0.99)
+[PASS] hatch_direction_horizontal: max-abs-diff=1.000 mean-abs-diff=0.1015 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] hatch_direction_leftDiag: max-abs-diff=1.000 mean-abs-diff=0.1051 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] hatch_direction_rightDiag: max-abs-diff=1.000 mean-abs-diff=0.1048 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] hatch_direction_vertical: max-abs-diff=1.000 mean-abs-diff=0.1028 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] hatch_mode_chalkCharcoal: max-abs-diff=1.000 mean-abs-diff=0.0606 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] hatch_mode_charcoal: max-abs-diff=1.000 mean-abs-diff=0.2500 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] hatch_mode_coloredPencil: max-abs-diff=207.000 mean-abs-diff=0.2047 ssim=0.99986 (tol=255.0, ssim_min=0.99)
+[PASS] hatch_mode_conte: max-abs-diff=1.000 mean-abs-diff=0.1114 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] hatch_mode_crosshatch: max-abs-diff=1.000 mean-abs-diff=0.1908 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] hatch_mode_pen: max-abs-diff=1.000 mean-abs-diff=0.1048 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] highPass: max-abs-diff=1.000 mean-abs-diff=0.0332 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] historicPalette: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] invert: max-abs-diff=1.000 mean-abs-diff=0.1275 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] invert_mode_full: max-abs-diff=1.000 mean-abs-diff=0.1275 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] invert_mode_solarize: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99994 (tol=2.001, ssim_min=0.98)
+[PASS] julia: max-abs-diff=1.000 mean-abs-diff=0.0944 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] kaleido: max-abs-diff=1.000 mean-abs-diff=0.1481 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] lens: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] lensDistortion: max-abs-diff=1.000 mean-abs-diff=0.1413 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] lensFlare: max-abs-diff=1.000 mean-abs-diff=0.1295 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] lensFlare_lensType_moviePrime: max-abs-diff=1.000 mean-abs-diff=0.1292 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] lensFlare_lensType_prime105: max-abs-diff=1.000 mean-abs-diff=0.1297 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] lensFlare_lensType_prime35: max-abs-diff=1.000 mean-abs-diff=0.1329 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] lensFlare_lensType_zoom50_300: max-abs-diff=1.000 mean-abs-diff=0.1301 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] lensWarp: max-abs-diff=1.000 mean-abs-diff=0.1461 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] lightLeak: max-abs-diff=1.000 mean-abs-diff=0.1172 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] lighting: max-abs-diff=1.000 mean-abs-diff=0.1343 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] lowPoly: max-abs-diff=1.000 mean-abs-diff=0.1431 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] lowPoly_borderWidth_50: max-abs-diff=1.000 mean-abs-diff=0.1616 ssim=0.99995 (tol=2.001, ssim_min=0.98)
+[PASS] lowPoly_lightIntensity_50: max-abs-diff=1.000 mean-abs-diff=0.1495 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] lowPoly_mode_distance2: max-abs-diff=1.000 mean-abs-diff=0.1572 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] lowPoly_mode_distance3: max-abs-diff=1.000 mean-abs-diff=0.1451 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] lowPoly_mode_edges: max-abs-diff=1.000 mean-abs-diff=0.1431 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] lowPoly_mode_flat: max-abs-diff=1.000 mean-abs-diff=0.1516 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] mandala: max-abs-diff=1.000 mean-abs-diff=0.0043 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] mandelbrot: max-abs-diff=1.000 mean-abs-diff=0.2680 ssim=0.99256 (tol=2.001, ssim_min=0.98)
+[PASS] median: max-abs-diff=224.000 mean-abs-diff=7.2968 ssim=0.99523 (tol=255.0, ssim_min=0.99)
+[PASS] median_radius_1: max-abs-diff=106.000 mean-abs-diff=0.3493 ssim=0.99992 (tol=255.0, ssim_min=0.99)
+[PASS] median_radius_2: max-abs-diff=178.000 mean-abs-diff=3.1771 ssim=0.99871 (tol=255.0, ssim_min=0.99)
+[PASS] modPattern: max-abs-diff=1.000 mean-abs-diff=0.1599 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] morphology: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] morphology_mode_dilate: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] morphology_mode_erode: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] morphology_mode_erode_shape_round: max-abs-diff=1.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] morphology_shape_round: max-abs-diff=1.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] morphology_shape_square: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] mosaicTiles: max-abs-diff=1.000 mean-abs-diff=0.1824 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] mosaicTiles_mode_mosaic: max-abs-diff=1.000 mean-abs-diff=0.1824 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] mosaicTiles_mode_shifted: max-abs-diff=1.000 mean-abs-diff=0.1336 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] newton: max-abs-diff=252.000 mean-abs-diff=0.2211 ssim=0.99896 (tol=255.0, ssim_min=0.98)
+[PASS] noise: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] noise3d: max-abs-diff=1.000 mean-abs-diff=0.2183 ssim=0.99992 (tol=2.001, ssim_min=0.98)
+[PASS] normalMap: max-abs-diff=1.000 mean-abs-diff=0.0908 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] normalize: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] octaveWarp: max-abs-diff=1.000 mean-abs-diff=0.1441 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] oilPaint: max-abs-diff=108.000 mean-abs-diff=0.1406 ssim=0.99999 (tol=110.0, ssim_min=0.98)
+[PASS] oilPaint_mode_daubs: max-abs-diff=108.000 mean-abs-diff=0.1406 ssim=0.99999 (tol=110.0, ssim_min=0.98)
+[PASS] oilPaint_mode_dryBrush: max-abs-diff=37.000 mean-abs-diff=0.0902 ssim=0.99999 (tol=110.0, ssim_min=0.98)
+[PASS] oilPaint_mode_facet: max-abs-diff=19.000 mean-abs-diff=0.1319 ssim=0.99998 (tol=110.0, ssim_min=0.98)
+[PASS] oilPaint_mode_fresco: max-abs-diff=48.000 mean-abs-diff=0.1969 ssim=0.99998 (tol=110.0, ssim_min=0.98)
+[PASS] oilPaint_mode_knife: max-abs-diff=27.000 mean-abs-diff=0.1530 ssim=0.99998 (tol=110.0, ssim_min=0.98)
+[PASS] oilPaint_mode_sponge: max-abs-diff=43.000 mean-abs-diff=0.1513 ssim=0.99998 (tol=110.0, ssim_min=0.98)
+[PASS] osc2d: max-abs-diff=1.000 mean-abs-diff=0.1751 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] osd: max-abs-diff=1.000 mean-abs-diff=0.1457 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] outline: max-abs-diff=1.000 mean-abs-diff=0.1454 ssim=0.99996 (tol=2.001, ssim_min=0.98)
+[PASS] palette: max-abs-diff=1.000 mean-abs-diff=0.2080 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] parallax: max-abs-diff=22.000 mean-abs-diff=0.1460 ssim=0.99998 (tol=24.0, ssim_min=0.98)
+[PASS] patchwork: max-abs-diff=1.000 mean-abs-diff=0.1300 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] pattern: max-abs-diff=1.000 mean-abs-diff=0.0469 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] patternMix: max-abs-diff=1.000 mean-abs-diff=0.1082 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] perlin: max-abs-diff=1.000 mean-abs-diff=0.0691 ssim=0.99993 (tol=2.001, ssim_min=0.98)
+[PASS] photocopy: max-abs-diff=1.000 mean-abs-diff=0.0728 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] pinch: max-abs-diff=1.000 mean-abs-diff=0.1422 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] pixelSort: max-abs-diff=1.000 mean-abs-diff=0.1174 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] pixels: max-abs-diff=1.000 mean-abs-diff=0.1562 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] plasticWrap: max-abs-diff=20.000 mean-abs-diff=0.1343 ssim=0.99998 (tol=32.0, ssim_min=0.98)
+[PASS] plasticWrap_directed: max-abs-diff=30.000 mean-abs-diff=0.1364 ssim=0.99998 (tol=32.0, ssim_min=0.98)
+[PASS] polar: max-abs-diff=1.000 mean-abs-diff=0.1441 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] polygon: max-abs-diff=1.000 mean-abs-diff=0.0003 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] pondRipples: max-abs-diff=1.000 mean-abs-diff=0.1456 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] pondRipples_amount_100: max-abs-diff=1.000 mean-abs-diff=0.1425 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] pondRipples_speed_3: max-abs-diff=1.000 mean-abs-diff=0.1460 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] pondRipples_speed_neg5: max-abs-diff=1.000 mean-abs-diff=0.1459 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] pondRipples_style_aroundCenter: max-abs-diff=1.000 mean-abs-diff=0.1471 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] pondRipples_style_outFromCenter: max-abs-diff=1.000 mean-abs-diff=0.1436 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] pondRipples_style_pondRipples: max-abs-diff=1.000 mean-abs-diff=0.1444 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] pondRipples_wrap_clamp: max-abs-diff=1.000 mean-abs-diff=0.1443 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] pondRipples_wrap_mirror: max-abs-diff=1.000 mean-abs-diff=0.1456 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] pondRipples_wrap_repeat: max-abs-diff=1.000 mean-abs-diff=0.1438 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] posterize: max-abs-diff=1.000 mean-abs-diff=0.0600 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] prismaticAberration: max-abs-diff=1.000 mean-abs-diff=0.1367 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] refract: max-abs-diff=6.000 mean-abs-diff=0.0952 ssim=0.99998 (tol=8.0, ssim_min=0.98)
+[PASS] reindex: max-abs-diff=1.000 mean-abs-diff=0.1600 ssim=0.99996 (tol=2.001, ssim_min=0.98)
+[PASS] relief: max-abs-diff=1.000 mean-abs-diff=0.0368 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] relief_mode_basRelief: max-abs-diff=2.000 mean-abs-diff=0.0386 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] relief_mode_notePaper: max-abs-diff=1.000 mean-abs-diff=0.2373 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] relief_mode_plaster: max-abs-diff=7.000 mean-abs-diff=0.0621 ssim=0.99999 (tol=8.0, ssim_min=0.98)
+[PASS] remap: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] remap_zone: max-abs-diff=1.000 mean-abs-diff=0.6346 ssim=0.99966 (tol=2.001, ssim_min=0.98)
+[PASS] repeat: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] reverb: max-abs-diff=1.000 mean-abs-diff=0.0808 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] ridge: max-abs-diff=1.000 mean-abs-diff=0.1224 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] rotate: max-abs-diff=1.000 mean-abs-diff=0.1472 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] sacredGeometry: max-abs-diff=1.000 mean-abs-diff=0.0246 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] scale: max-abs-diff=1.000 mean-abs-diff=0.1453 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] scanlineError: max-abs-diff=1.000 mean-abs-diff=0.1446 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] scatter: max-abs-diff=1.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] scatter_mode_anisotropic: max-abs-diff=1.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] scatter_mode_clumped: max-abs-diff=1.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] scatter_mode_darkenOnly: max-abs-diff=1.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] scatter_mode_lightenOnly: max-abs-diff=1.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] scatter_mode_normal: max-abs-diff=1.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] scratches: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] scroll: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] seamless: max-abs-diff=1.000 mean-abs-diff=0.1236 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] shadow: max-abs-diff=249.000 mean-abs-diff=0.1259 ssim=0.99922 (tol=255.0, ssim_min=0.99)
+[PASS] shape: max-abs-diff=1.000 mean-abs-diff=0.1236 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] shapeMask: max-abs-diff=1.000 mean-abs-diff=0.1217 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] shapeMixer: max-abs-diff=1.000 mean-abs-diff=0.1262 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] shapes3d: max-abs-diff=1.000 mean-abs-diff=0.0228 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] sharpen: max-abs-diff=1.000 mean-abs-diff=0.1314 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] simpleAberration: max-abs-diff=1.000 mean-abs-diff=0.1468 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] sine: max-abs-diff=1.000 mean-abs-diff=0.1905 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] skew: max-abs-diff=1.000 mean-abs-diff=0.1471 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] smooth: max-abs-diff=1.000 mean-abs-diff=0.1462 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] smoothstep: max-abs-diff=1.000 mean-abs-diff=0.1821 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] snow: max-abs-diff=1.000 mean-abs-diff=0.1109 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] sobel: max-abs-diff=1.000 mean-abs-diff=0.1846 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] solid: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] spatter: max-abs-diff=1.000 mean-abs-diff=0.1470 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] spinBlur: max-abs-diff=1.000 mean-abs-diff=0.1070 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] spinBlur_offCenter: max-abs-diff=1.000 mean-abs-diff=0.0798 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] spiral: max-abs-diff=3.000 mean-abs-diff=0.1472 ssim=0.99998 (tol=3.0, ssim_min=0.98)
+[PASS] splat: max-abs-diff=1.000 mean-abs-diff=0.1367 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] split: max-abs-diff=1.000 mean-abs-diff=0.0955 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] spookyTicker: max-abs-diff=1.000 mean-abs-diff=0.1392 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] stamp: max-abs-diff=1.000 mean-abs-diff=0.0972 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] step: max-abs-diff=3.000 mean-abs-diff=0.0143 ssim=1.00000 (tol=3.0, ssim_min=0.99)
+[PASS] stipple: max-abs-diff=1.000 mean-abs-diff=0.1513 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] stipple_mode_mezzoDots: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] stipple_mode_mezzoLines: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] stipple_mode_mezzoStrokes: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] stipple_mode_pointillize: max-abs-diff=1.000 mean-abs-diff=0.1513 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] stipple_mode_reticulation: max-abs-diff=1.000 mean-abs-diff=0.7500 ssim=0.99996 (tol=2.001, ssim_min=0.98)
+[PASS] strayHair: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] strokes: max-abs-diff=2.000 mean-abs-diff=0.1222 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] strokes_mode_angled: max-abs-diff=2.000 mean-abs-diff=0.1222 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] strokes_mode_dark: max-abs-diff=2.000 mean-abs-diff=0.2021 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] strokes_mode_smudge: max-abs-diff=65.000 mean-abs-diff=0.1422 ssim=0.99996 (tol=255.0, ssim_min=0.99)
+[PASS] strokes_mode_sprayed: max-abs-diff=2.000 mean-abs-diff=0.1213 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] strokes_mode_sumiE: max-abs-diff=2.000 mean-abs-diff=0.2218 ssim=0.99995 (tol=2.001, ssim_min=0.98)
+[PASS] subdivide: max-abs-diff=1.000 mean-abs-diff=0.0074 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] testPattern: max-abs-diff=0.000 mean-abs-diff=0.0000 ssim=1.00000 (tol=2.001, ssim_min=0.98)
+[PASS] tetraColorArray: max-abs-diff=1.000 mean-abs-diff=0.0698 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] tetraCosine: max-abs-diff=1.000 mean-abs-diff=0.1925 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] texture: max-abs-diff=1.000 mean-abs-diff=0.1499 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_canvas: max-abs-diff=1.000 mean-abs-diff=0.1500 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_clumped: max-abs-diff=1.000 mean-abs-diff=0.0605 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_contrasty: max-abs-diff=1.000 mean-abs-diff=0.0768 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_crosshatch: max-abs-diff=1.000 mean-abs-diff=0.1530 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_enlarged: max-abs-diff=1.000 mean-abs-diff=0.0633 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_halftone: max-abs-diff=1.000 mean-abs-diff=0.1445 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_horizontal: max-abs-diff=1.000 mean-abs-diff=0.0605 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_paper: max-abs-diff=1.000 mean-abs-diff=0.1499 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_regular: max-abs-diff=1.000 mean-abs-diff=0.0617 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_soft: max-abs-diff=1.000 mean-abs-diff=0.0611 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_speckle: max-abs-diff=1.000 mean-abs-diff=0.0572 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_sprinkles: max-abs-diff=1.000 mean-abs-diff=0.0662 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_stippled: max-abs-diff=1.000 mean-abs-diff=0.1526 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_stucco: max-abs-diff=1.000 mean-abs-diff=0.1511 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] texture_mode_vertical: max-abs-diff=1.000 mean-abs-diff=0.0613 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] threshold: max-abs-diff=1.000 mean-abs-diff=0.1351 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] thresholdMix: max-abs-diff=1.000 mean-abs-diff=0.0957 ssim=0.99999 (tol=2.001, ssim_min=0.98)
+[PASS] tile: max-abs-diff=1.000 mean-abs-diff=0.1471 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] tint: max-abs-diff=1.000 mean-abs-diff=0.1182 ssim=0.99994 (tol=2.001, ssim_min=0.98)
+[PASS] translate: max-abs-diff=1.000 mean-abs-diff=0.1465 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] tunnel: max-abs-diff=3.000 mean-abs-diff=0.1495 ssim=0.99998 (tol=3.0, ssim_min=0.98)
+[PASS] unsharpMask: max-abs-diff=3.000 mean-abs-diff=0.1253 ssim=0.99999 (tol=3.0, ssim_min=0.98)
+[PASS] uvRemap: max-abs-diff=20.000 mean-abs-diff=0.1569 ssim=0.99998 (tol=22.0, ssim_min=0.98)
+[PASS] vaseline: max-abs-diff=1.000 mean-abs-diff=0.1166 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] vignette: max-abs-diff=1.000 mean-abs-diff=0.1747 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] warp: max-abs-diff=1.000 mean-abs-diff=0.1430 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] watercolor: max-abs-diff=1.000 mean-abs-diff=0.1395 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] waves: max-abs-diff=1.000 mean-abs-diff=0.1485 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] wind: max-abs-diff=1.000 mean-abs-diff=0.1021 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] wind_method_blast: max-abs-diff=1.000 mean-abs-diff=0.1021 ssim=0.99997 (tol=2.001, ssim_min=0.98)
+[PASS] wind_method_blast_direction_fromRight: max-abs-diff=1.000 mean-abs-diff=0.1029 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] wind_method_stagger: max-abs-diff=1.000 mean-abs-diff=0.0994 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] wind_method_stagger_direction_fromRight: max-abs-diff=1.000 mean-abs-diff=0.1008 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] wind_method_wind: max-abs-diff=1.000 mean-abs-diff=0.1011 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] wind_method_wind_direction_fromRight: max-abs-diff=1.000 mean-abs-diff=0.1041 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] wobble: max-abs-diff=1.000 mean-abs-diff=0.1468 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[PASS] zoomBlur: max-abs-diff=1.000 mean-abs-diff=0.1098 ssim=0.99998 (tol=2.001, ssim_min=0.98)
+[ACCUM] cellularAutomata — multi-frame feedback — driven + graded by parity/accumulate.sh (8/8 gated checks pass)
+[ACCUM] convolutionFeedback — multi-frame feedback — driven + graded by parity/accumulate.sh (8/8 gated checks pass)
+[ACCUM] motionBlur — multi-frame feedback — driven + graded by parity/accumulate.sh (8/8 gated checks pass)
+[ACCUM] reactionDiffusion — multi-frame feedback — driven + graded by parity/accumulate.sh (8/8 gated checks pass)
+[ACCUM] synth3d_cellularAutomata3d — 3D-volume stateful (<sim>3d().render3d()) — driven + graded by parity/accumulate.sh (f1/f2 max-diff=1)
+[ACCUM] synth3d_reactionDiffusion3d — 3D-volume stateful (<sim>3d().render3d()) — driven + graded by parity/accumulate.sh (f1/f2 max-diff=1)
+=== SWEEP: 277 / 277 PASS, 6 via accumulate.sh ===
+_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/mosaicTiles.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/mosaicTiles_mode_mosaic.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/mosaicTiles_mode_shifted.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/newton.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/noise.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/noise3d.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/normalMap.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/normalize.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/octaveWarp.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/oilPaint.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/oilPaint_mode_daubs.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/oilPaint_mode_dryBrush.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/oilPaint_mode_facet.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/oilPaint_mode_fresco.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/oilPaint_mode_knife.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/oilPaint_mode_sponge.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/osc2d.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/osd.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/outline.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/palette.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/parallax.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/patchwork.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pattern.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/patternMix.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/perlin.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/photocopy.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pinch.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pixelSort.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pixels.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/plasticWrap.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/plasticWrap_directed.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/polar.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/polygon.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pondRipples.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pondRipples_amount_100.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pondRipples_speed_3.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pondRipples_speed_neg5.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pondRipples_style_aroundCenter.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pondRipples_style_outFromCenter.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pondRipples_style_pondRipples.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pondRipples_wrap_clamp.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pondRipples_wrap_mirror.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/pondRipples_wrap_repeat.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/posterize.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/prismaticAberration.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/refract.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/reindex.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/relief.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/relief_mode_basRelief.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/relief_mode_notePaper.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/relief_mode_plaster.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/remap.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/remap_zone.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/repeat.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/reverb.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/ridge.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/rotate.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/sacredGeometry.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/scale.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/scanlineError.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/scatter.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/scatter_mode_anisotropic.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/scatter_mode_clumped.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/scatter_mode_darkenOnly.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/scatter_mode_lightenOnly.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/scatter_mode_normal.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/scratches.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/scroll.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/seamless.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/shadow.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/shape.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/shapeMask.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/shapeMixer.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/shapes3d.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/sharpen.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/simpleAberration.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/sine.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/skew.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/smooth.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/smoothstep.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/snow.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/sobel.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/solid.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/spatter.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/spinBlur.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/spinBlur_offCenter.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/spiral.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/splat.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/split.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/spookyTicker.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/stamp.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/step.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/stipple.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/stipple_mode_mezzoDots.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/stipple_mode_mezzoLines.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/stipple_mode_mezzoStrokes.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/stipple_mode_pointillize.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/stipple_mode_reticulation.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/strayHair.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/strokes.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/strokes_mode_angled.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/strokes_mode_dark.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/strokes_mode_smudge.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/strokes_mode_sprayed.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/strokes_mode_sumiE.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/subdivide.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/testPattern.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/tetraColorArray.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/tetraCosine.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_canvas.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_clumped.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_contrasty.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_crosshatch.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_enlarged.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_halftone.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_horizontal.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_paper.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_regular.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_soft.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_speckle.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_sprinkles.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_stippled.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_stucco.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/texture_mode_vertical.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/threshold.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/thresholdMix.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/tile.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/tint.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/translate.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/tunnel.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/unsharpMask.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/uvRemap.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/vaseline.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/vignette.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/warp.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/watercolor.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/waves.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/wind.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/wind_method_blast.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/wind_method_blast_direction_fromRight.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/wind_method_stagger.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/wind_method_stagger_direction_fromRight.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/wind_method_wind.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/wind_method_wind_direction_fromRight.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/wobble.json
+wrote report /var/folders/bl/w6srtz35391_vlp_w8y8mrsw0000gp/T/noisemaker-for-touchdesigner-reports.XXXXXX.lxFwH5XCVr/zoomBlur.json

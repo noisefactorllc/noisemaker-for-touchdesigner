@@ -83,7 +83,7 @@ gabor	PASS	1.000003695487976	0.9999809265136719	2.001	0.98	sweep	parity/out/gabo
 glitch	PASS	1.000003695487976	0.9999801516532898	2.001	0.98	sweep	parity/out/glitch.golden.png
 glowingEdge	PASS	1.000003695487976	0.9999876022338867	2.001	0.98	sweep	parity/out/glowingEdge.golden.png
 glyphMap	PASS	1.000003695487976	0.9999974966049194	2.001	0.98	sweep	parity/out/glyphMap.golden.png
-grade	PASS	1.000003695487976	0.9999821186065674	2.001	0.98	sweep	parity/out/grade.golden.png
+grade	PASS	1.000003695487976	0.9999803304672241	2.001	0.98	sweep	parity/out/grade.golden.png
 gradient	PASS	1.000003695487976	0.9999942779541016	2.001	0.98	sweep	parity/out/gradient.golden.png
 grain	PASS	1.000003695487976	0.9999803900718689	2.001	0.98	sweep	parity/out/grain.golden.png
 grime	PASS	1.000003695487976	0.99997878074646	2.001	0.98	sweep	parity/out/grime.golden.png
@@ -105,6 +105,10 @@ hatch_mode_coloredPencil	NEAR	207.0	0.9998584389686584	255.0	0.99	sweep	parity/o
 hatch_mode_conte	PASS	1.000003695487976	0.9999938607215881	2.001	0.98	sweep	parity/out/hatch_mode_conte.golden.png
 hatch_mode_crosshatch	PASS	1.000003695487976	0.9999750256538391	2.001	0.98	sweep	parity/out/hatch_mode_crosshatch.golden.png
 hatch_mode_pen	PASS	0.9999999403953552	1.0	2.001	0.98	sweep	parity/out/hatch_mode_pen.golden.png
+heightGrid_billboard	DEFER	-	-	-	-	3d/mrt/points	points/billboard chain — graded on TD 2025.32820 darwin/arm64 vs authority 6a0af04d golden: max-abs-diff 255, mean 49.0442, ssim 0.79364 (documented GL_POINT platform limitation; outputAreaScale compensation — no strict golden exists)
+heightGrid_billboard_alpha	DEFER	-	-	-	-	3d/mrt/points	points/billboard chain — graded on TD 2025.32820 darwin/arm64 vs authority 6a0af04d golden: max-abs-diff 255, mean 59.4029, ssim 0.50036 (documented GL_POINT platform limitation)
+heightGrid_pointsRender_perspective	DEFER	-	-	-	-	3d/mrt/points	points chain — graded on TD 2025.32820 darwin/arm64 vs authority 6a0af04d golden: max-abs-diff 243, mean 23.5878, ssim 0.69272 (documented TD Feedback frame-0 latch: accumulation effects render frame-0 state in the force-cook driver)
+heightmap3d_landscape	DEFER	-	-	-	-	3d/mrt/points	3D-volume raymarch — graded on TD 2025.32820 darwin/arm64 vs authority 6a0af04d golden: max-abs-diff 243, mean 5.8566, ssim 0.86697 (documented NM_MAX_VOLUME_SIZE=32 non-commercial clamp vs reference 64)
 highPass	PASS	1.000003695487976	0.9999724626541138	2.001	0.98	sweep	parity/out/highPass.golden.png
 historicPalette	PASS	0.0	1.0	2.001	0.98	sweep	parity/out/historicPalette.golden.png
 invert	PASS	1.000003695487976	0.9999827742576599	2.001	0.98	sweep	parity/out/invert.golden.png
@@ -203,6 +207,7 @@ relief_mode_basRelief	PASS	1.9999998807907104	0.9999831914901733	2.001	0.98	swee
 relief_mode_notePaper	PASS	1.000003695487976	0.9999837875366211	2.001	0.98	sweep	parity/out/relief_mode_notePaper.golden.png
 relief_mode_plaster	NEAR	6.999999523162842	0.9999870657920837	8.0	0.98	sweep	parity/out/relief_mode_plaster.golden.png
 remap	PASS	0.0	1.0	2.001	0.98	sweep	parity/out/remap.golden.png
+remap_zone	PASS	1.000003695487976	0.9996610283851624	2.001	0.98	sweep	parity/out/remap_zone.golden.png
 repeat	PASS	1.000003695487976	0.9999801516532898	2.001	0.98	sweep	parity/out/repeat.golden.png
 reverb	PASS	1.000003695487976	0.999972939491272	2.001	0.98	sweep	parity/out/reverb.golden.png
 ridge	PASS	1.000003695487976	0.9999843835830688	2.001	0.98	sweep	parity/out/ridge.golden.png
@@ -282,6 +287,7 @@ synth3d_renderCubemapSurface.face2	PASS	1.0	0.99996	2.0	0.98	cubemap	parity/out/
 synth3d_renderCubemapSurface.face3	PASS	1.0	0.99997	2.0	0.98	cubemap	parity/out/synth3d_renderCubemapSurface.face3.golden.png
 synth3d_renderCubemapSurface.face4	PASS	1.0	0.99994	2.0	0.98	cubemap	parity/out/synth3d_renderCubemapSurface.face4.golden.png
 synth3d_renderCubemapSurface.face5	PASS	1.0	0.99994	2.0	0.98	cubemap	parity/out/synth3d_renderCubemapSurface.face5.golden.png
+synth3d_renderLit3d	PASS	1.0	1.0	2.0	0.98	3d/mrt/points	MRT fixture outside the staged render set; graded PASS on TD host 2026-09-27 via a single-program parity/run.sh leg vs a fresh authority golden (parity/out/_lit_run.log)
 synth3d_shape3d	DEFER	-	-	-	-	3d/mrt/points	(no single-frame golden — validated via 3D/agent harness)
 testPattern	PASS	0.0	1.0	2.001	0.98	sweep	parity/out/testPattern.golden.png
 tetraColorArray	PASS	1.000003695487976	0.9999918341636658	2.001	0.98	sweep	parity/out/tetraColorArray.golden.png

@@ -53,6 +53,17 @@ DEFERRED_EFFECTS = {
     'present_hero', 'synth3d_cell3d', 'synth3d_flythrough3d', 'synth3d_fractal3d',
     'synth3d_noise', 'synth3d_renderCubemap3d', 'synth3d_renderCubemapSurface',
     'synth3d_renderLit3d', 'synth3d_shape3d',
+    # 2026-09-15 agent/3D additions (same MRT/points/3D class as above): the heightGrid
+    # fixtures carry the points-deposit chain (render/pointsEmit, points/heightGrid agent,
+    # render/points{,Billboard}Render deposit — hand-maintained GL_POINT GLSL, multiple render
+    # targets) and heightmap3d_landscape carries the 3D-volume chain (synth3d/heightmap3d
+    # precompute + renderLandscape3d MRT raymarch). The single-frame sweep grades one output
+    # surface against one golden, which is meaningless for these; each is graded on the actual
+    # TouchDesigner host by the separate agent/3D harnesses (parity/points_probe.sh,
+    # parity/present_screenshot.sh) and its measured result recorded
+    # in the register — never silently skipped.
+    'heightGrid_billboard', 'heightGrid_billboard_alpha', 'heightGrid_pointsRender_perspective',
+    'heightmap3d_landscape',
 }
 
 
