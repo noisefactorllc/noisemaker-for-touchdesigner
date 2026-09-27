@@ -1,0 +1,5 @@
+check_lex: 326/326 PASS
+check_parse: 326/326 PASS
+check_validate: 326/326 PASS
+check_graph: 325 PASS / 0 DIFF / 0 STAGE / 1 SKIP
+unittest: 120/120 OK

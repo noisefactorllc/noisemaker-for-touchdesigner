@@ -535,6 +535,40 @@ runs) lives in `parity/evidence/reference-93229933b102/`: `range-audit.log`,
 `check_validate.log`, `check_graph.log`, `gates.status`, `unittest.log`,
 `reference-test-definition-schema.log`.
 
+*Incrementally synced 2026-09-27 to reference `a912749fab5c` — **range audit:** the declared
+upstream range `12b4d74fb4f2..a912749fab5c` (force-push-flagged delivery; observed delivery range
+`7c5f17658d8c..a912749fab5c`) is non-contiguous with the last synced reference only in name —
+`git merge-base --is-ancestor` of the declared start `12b4d74fb4f2`, the observed start
+`7c5f17658d8c`, the docs commit `8fe3ccaf2cc8`, and the last synced reference `93229933b102` in
+the end `a912749fab5c` all return exit 0, so the tree diff was taken
+`93229933b102..a912749fab5c` (the last synced reference → the new end). Upstream HEAD at audit
+time is exactly `a912749fab5c`. That tree diff carries exactly two upstream commits — `7c5f1765`
+(docs-only: LEDGER.md/llms-full.txt checkpoint advance) and `a912749f` (GAP-019: a true
+input-passthrough harness probe, adding `shaders/tests/passthrough-input.js` and
+`shaders/tests/test_passthrough_input.js`, modifying `shaders/tests/test-harness.js` and
+`scripts/run-js-tests.js`) — with zero diff under `shaders/` excluding `shaders/tests/`: no
+effect definitions, no `.glsl`/`.wgsl` sources, no DSL/compiler, no reference runtime changes.
+`tools/convert-definitions.mjs` re-run against the pinned end tree: 210/210 effects
+byte-identical; `tools/convert-shaders.mjs` byte-identical after re-applying the documented
+navierStokes port-guard flow for `ns.frag`/`nsSplat.frag`. `passthrough-input.js` is upstream
+harness-side opt-in-only measurement (`--passthrough-input`; default gates unchanged); grep over
+`td/`, `parity/`, `tools/`, `export-kit/` for `passthrough-input|passthroughInput` finds no TD
+consumers (only incidental "passthrough" wording inside transpiled effect shaders), so GAP-019
+has no TD consumption path — matching the GAP-009/010/011/012/014/015/016/017 audit-only
+precedent. **Reference fidelity baseline:** the reference's own new regression was run from the
+pinned end tree (`node shaders/tests/test_passthrough_input.js` — exit 0: `PASS:
+test_passthrough_input`). Verified compiler parity gates: check_lex (326/326 PASS), check_parse
+(326/326 PASS), check_validate (326/326 PASS), check_graph (325 PASS / 0 DIFF / 0 STAGE / 1
+SKIP), and unit test suite (`./parity/.venv/bin/python3 -m unittest discover -s parity -p
+"test_*.py"`, 120/120 OK; the freshly re-provisioned workspace clone again needed one `git fetch
+origin 66426bc41c2b...` to materialize a historical tree object consumed by
+`parity/test_materialize_kit.py`'s fixed-SHA inventory check — environmental, no test or product
+change). **Audit-only round — no code change required.** Committed machine-generated evidence
+for this round's audit lives in `parity/evidence/reference-a912749fab5c/`: `range-audit.log`,
+`convert-definitions.log`, `convert-shaders.log`, `check_lex.log`, `check_parse.log`,
+`check_validate.log`, `check_graph.log`, `gates.status`, `unittest.log`,
+`reference-test-passthrough-input.log`.
+
 This file holds the detailed coverage and parity numbers. For what the project is and how to use it,
 see the [README](README.md).
 
