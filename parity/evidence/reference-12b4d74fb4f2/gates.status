@@ -1,0 +1,5 @@
+lex=0
+parse=0
+validate=0
+graph=0
+unittest=1

@@ -1,0 +1,17 @@
+PASS: programs with only GLSL are webgl2-authorable, not webgpu-authorable
+PASS: programs with only WGSL are webgpu-authorable, not webgl2-authorable
+PASS: a program with both sources is authorable on both backends
+PASS: non-GLSL generic source/fragment counts as WGSL for WebGPU
+PASS: without shader info, source availability is not judged
+PASS: MRT outputs past maxDrawBuffers make both backends not renderable
+PASS: over-budget MRT predicts the trailing rgba32f -> rgba16f demotion
+PASS: within-budget MRT predicts no format changes
+PASS: dimensions past maxTextureSize are reported as clamps
+PASS: preflight never mutates the definition
+PASS: malformed input is reported, not thrown
+[Pipeline] Demoting MRT attachment global_vel from rgba32f to rgba16f: pass emit needs 36 bytes/sample, device allows 32
+PASS: Pipeline.preflight() matches applyMrtFormatBudget() demotion
+PASS: Pipeline.preflight() without shader specs skips source judgments
+
+13 passed, 0 failed
+EXIT=0

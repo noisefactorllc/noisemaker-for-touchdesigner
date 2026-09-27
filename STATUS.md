@@ -351,6 +351,35 @@ and gate/unit-test runs) lives in `parity/evidence/reference-e73a44a37f0c/`: `ra
 `convert-definitions.log`, `convert-shaders.log`, `check_lex.log`, `check_parse.log`,
 `check_validate.log`, `check_graph.log`, `unittest.log`.
 
+*Incrementally synced 2026-09-27 to reference `12b4d74fb4f2` — **range audit:** the declared
+range `e73a44a37f0c..12b4d74fb4f2` is contiguous (`git merge-base --is-ancestor` of start in end
+→ exit 0) and carries exactly one upstream commit — `12b4d74fb4f2` (GAP-016: static effect
+preflight, adding `shaders/src/runtime/preflight.js` and `shaders/tests/test_preflight.js`,
+modifying `shaders/src/runtime/pipeline.js`) plus docs (`llms-full.txt`) and test registration
+(`package.json`). No effect definitions, no `.glsl`/`.wgsl` sources, and no validator/expander
+changes (`tools/convert-definitions.mjs` re-run against the pinned end tree: 210/210 effects
+byte-identical; `tools/convert-shaders.mjs` byte-identical after re-applying the documented
+navierStokes port-guard flow for `ns.frag`/`nsSplat.frag`). `preflightEffect()` is a pure
+static-analysis helper and `Pipeline.preflight()` a JS runtime accessor — both live entirely in
+the reference's JS runtime layer; grep over `td/`, `parity/`, `tools/`, `export-kit/`, `docs/`
+for `preflight|Pipeline.preflight|runtime/pipeline` returns no TD consumers (the port's only
+`Pipeline` is the Python `noisemaker.runtime.pipeline` in `parity/test_output_runtime.py`,
+which predates and is unaffected), so GAP-016 has no TD consumption path — matching the
+GAP-009/010/011/012/014/015 audit-only precedent. **Reference fidelity baseline:** the
+reference's own new suite was run from the pinned end tree
+(`node shaders/tests/test_preflight.js` — 13 passed, 0 failed). Verified compiler parity gates:
+check_lex (326/326 PASS), check_parse (326/326 PASS), check_validate (326/326 PASS), check_graph
+(325 PASS / 0 DIFF / 0 STAGE / 1 SKIP), and unit test suite (`./parity/.venv/bin/python3 -m
+unittest discover -s parity -p "test_*.py"`, 120/120 OK; the freshly re-provisioned workspace
+clone again needed one `git fetch origin 66426bc41c2b...` to materialize a historical tree
+object consumed by `parity/test_materialize_kit.py`'s fixed-SHA inventory check — environmental,
+no test or product change). **Audit-only round — no code change required.** Committed
+machine-generated evidence for this round's audit (upstream tree diff composition, ancestry
+checks, regeneration byte-identity, the reference suite run, and gate/unit-test runs) lives in
+`parity/evidence/reference-12b4d74fb4f2/`: `range-audit.log`, `convert-definitions.log`,
+`convert-shaders.log`, `check_lex.log`, `check_parse.log`, `check_validate.log`,
+`check_graph.log`, `unittest.log`, `reference-test-preflight.log`.
+
 Three real compiler bugs were found and fixed along the way (none specific to this round's new
 effects — all three were pre-existing gaps this round's `.flatMap()`-per-viewMode-clone pattern was
 the first to actually exercise): (1) pass-level `defines`/`conditions` (the clone pattern itself) had
