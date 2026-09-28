@@ -1,0 +1,41 @@
+name: Tests
+
+# Runs the repository's engine-free test entrypoint on every push to main:
+# scripts/test runs the Python unit tests and the lexer/parser/validator parity
+# gates against the pinned upstream Noisemaker reference (no TouchDesigner, no GPU).
+# Rendered parity needs a licensed TouchDesigner host and does not run here.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run per commit; a newer push never cancels the result for an older commit.
+concurrency:
+  group: tests-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  engine-free:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # parity/test_materialize_kit.py reads an earlier commit of this repository.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+
+      - name: Run engine-free suites
+        run: scripts/test

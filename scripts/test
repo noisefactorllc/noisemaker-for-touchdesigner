@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# scripts/test — the engine-free test entrypoint for Noisemaker for TouchDesigner.
+#
+# Runs the suites that need neither TouchDesigner nor a GPU and report 0 skipped:
+#   1. the Python unit tests (parity/test_*.py), which must report 0 skipped;
+#   2. the compiler parity gates check_lex / check_parse / check_validate, which diff the Python
+#      compiler port against the upstream Noisemaker reference compiler run under Node.
+#
+# Not run here:
+#   - rendered parity (parity/run.sh, parity/sweep.sh): needs a licensed TouchDesigner install;
+#   - parity/compiler/check_graph.py: its classification reports an agreed rejection
+#     (parity/corpus/B5oBsA.dsl, "both reject (invalid program)") as SKIP, and this entrypoint only
+#     runs suites that report 0 skipped.
+#
+# The reference is fetched at a pinned commit, so results do not depend on upstream HEAD. When a
+# sync round moves the port to a new reference, update NM_REFERENCE_SHA_PINNED in the same change.
+# NM_REFERENCE_SHA=<full sha> runs the gates against another reference commit.
+#
+# Requirements: bash, git, node, python3 >= 3.11 (PYTHON=<interpreter> to choose another), network.
+# Scratch (venv, reference checkout, logs) lives under ${TMPDIR:-/tmp} and is removed on exit.
+set -euo pipefail
+
+NM_REFERENCE_REPO="https://github.com/noisefactorllc/noisemaker.git"
+NM_REFERENCE_SHA_PINNED="a912749fab5c3819e56a8abde664ff30e40870f4"
+NUMPY_VERSION="2.4.6"
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO"
+
+REF_SHA="${NM_REFERENCE_SHA:-$NM_REFERENCE_SHA_PINNED}"
+PYTHON="${PYTHON:-python3}"
+
+# Keep bytecode out of the checkout and the environment hermetic.
+export PYTHONDONTWRITEBYTECODE=1
+export PIP_DISABLE_PIP_VERSION_CHECK=1
+export PIP_NO_INPUT=1
+unset NM_REFERENCE_ROOT PYTHONPATH VIRTUAL_ENV
+
+fail() { printf 'scripts/test: %s\n' "$*" >&2; exit 1; }
+
+for tool in git node "$PYTHON"; do
+  command -v "$tool" >/dev/null 2>&1 || fail "required tool not found: $tool"
+done
+[[ "$REF_SHA" =~ ^[0-9a-f]{40}$ ]] || fail "NM_REFERENCE_SHA must be a full 40-character commit SHA, got: $REF_SHA"
+"$PYTHON" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' \
+  || fail "$PYTHON is $("$PYTHON" -c 'import platform; print(platform.python_version())'); 3.11 or newer is required"
+# parity/test_materialize_kit.py reads an earlier commit of this repository with git ls-tree.
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+  || fail "$REPO is not a git checkout; the unit tests read this repository's commit history"
+[[ "$(git rev-parse --is-shallow-repository)" == "false" ]] \
+  || fail "$REPO is a shallow clone; the unit tests need full history (actions/checkout: fetch-depth: 0)"
+
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/nm-td-test.XXXXXX")"
+trap 'rm -rf "$WORK"' EXIT
+VENV="$WORK/venv"
+REF="$WORK/noisemaker"
+LOGS="$WORK/logs"
+mkdir -p "$LOGS"
+
+START=$SECONDS
+echo "== environment"
+echo "repo:      $REPO ($(git -C "$REPO" rev-parse HEAD 2>/dev/null || echo 'not a git checkout'))"
+echo "python:    $("$PYTHON" -c 'import sys; print(sys.executable, sys.version.split()[0])')"
+echo "node:      $(node --version)"
+echo "reference: $NM_REFERENCE_REPO @ $REF_SHA"
+
+echo "== python environment (numpy==$NUMPY_VERSION)"
+if "$PYTHON" -m venv "$VENV" >"$LOGS/venv.log" 2>&1; then
+  "$VENV/bin/python" -m pip install --quiet --only-binary=:all: "numpy==$NUMPY_VERSION"
+elif command -v uv >/dev/null 2>&1; then
+  # Debian ships the venv module separately (python3-venv); uv provides the same isolation.
+  cat "$LOGS/venv.log"
+  echo "python -m venv failed; creating the venv with uv"
+  rm -rf "$VENV"
+  uv venv --quiet --python "$PYTHON" "$VENV"
+  uv pip install --quiet --python "$VENV/bin/python" --only-binary=:all: "numpy==$NUMPY_VERSION"
+else
+  cat "$LOGS/venv.log" >&2
+  fail "cannot create a virtual environment: install the python venv module or uv"
+fi
+VPY="$VENV/bin/python"
+export PATH="$VENV/bin:$PATH"
+"$VPY" -c 'import numpy, sys; print("venv:", sys.executable, sys.version.split()[0], "numpy", numpy.__version__)'
+
+echo "== reference checkout"
+git -c init.defaultBranch=main init --quiet "$REF"
+fetched=0
+for attempt in 1 2 3; do
+  if git -C "$REF" fetch --quiet --depth 1 "$NM_REFERENCE_REPO" "$REF_SHA"; then
+    fetched=1
+    break
+  fi
+  echo "fetch attempt $attempt failed"
+  if [[ $attempt -lt 3 ]]; then sleep $((attempt * 5)); fi
+done
+[[ $fetched -eq 1 ]] || fail "cannot fetch $REF_SHA from $NM_REFERENCE_REPO"
+git -C "$REF" -c advice.detachedHead=false checkout --quiet FETCH_HEAD
+GOT_SHA="$(git -C "$REF" rev-parse HEAD)"
+[[ "$GOT_SHA" == "$REF_SHA" ]] || fail "reference checkout is $GOT_SHA, expected $REF_SHA"
+echo "reference checked out at $GOT_SHA"
+
+echo "== unit tests: parity/test_*.py"
+"$VPY" - <<'PY'
+import sys
+import unittest
+
+suite = unittest.defaultTestLoader.discover(start_dir='parity', pattern='test_*.py')
+result = unittest.TextTestRunner(verbosity=1).run(suite)
+skipped = len(result.skipped)
+xfail = len(result.expectedFailures)
+xpass = len(result.unexpectedSuccesses)
+print('unit tests: run=%d failures=%d errors=%d skipped=%d expected_failures=%d unexpected_successes=%d' % (
+    result.testsRun, len(result.failures), len(result.errors), skipped, xfail, xpass))
+ok = result.wasSuccessful() and result.testsRun > 0 and skipped == 0 and xfail == 0 and xpass == 0
+sys.exit(0 if ok else 1)
+PY
+
+# The gates' default program set: parity/corpus/*.dsl + parity/programs/*.dsl.
+EXPECTED="$("$VPY" -c 'import glob; print(len(glob.glob("parity/corpus/*.dsl") + glob.glob("parity/programs/*.dsl")))')"
+[[ "$EXPECTED" -gt 0 ]] || fail "no DSL programs found under parity/corpus or parity/programs"
+
+run_gate() {
+  local gate="$1" label="$2" log="$LOGS/$1.log" summary pass total
+  echo "== compiler gate: parity/compiler/$gate.py"
+  if ! NM_REFERENCE_ROOT="$REF" "$VPY" "parity/compiler/$gate.py" 2>&1 | tee "$log"; then
+    fail "$gate failed"
+  fi
+  summary="$(grep -E "^=== $label parity: [0-9]+/[0-9]+ PASS ===$" "$log" | tail -n 1)" \
+    || fail "$gate printed no summary line"
+  pass="$(sed -E 's/^=== .* ([0-9]+)\/([0-9]+) PASS ===$/\1/' <<<"$summary")"
+  total="$(sed -E 's/^=== .* ([0-9]+)\/([0-9]+) PASS ===$/\2/' <<<"$summary")"
+  [[ "$pass" == "$total" && "$total" == "$EXPECTED" ]] \
+    || fail "$gate passed $pass of $total programs; expected $EXPECTED of $EXPECTED"
+}
+
+run_gate check_lex lexer
+run_gate check_parse parser
+run_gate check_validate validator
+
+echo "== all engine-free suites passed in $((SECONDS - START))s"
