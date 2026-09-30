@@ -229,7 +229,7 @@ native render half (`adjust`, `alphaMask`, `bitwise` under the declared
 Infrastructure observation (records no qualification, closure, or per-case
 native result): the declared native check at source `5ba51bb3` (check
 `753f86fe`, profile `touchdesigner-parity` v1, engine TouchDesigner 2025.32820)
-did not complete — runner `native-spare` exited `command_failed` and returned
+did not complete — the macOS native runner exited `command_failed` and returned
 no command, stderr, artifact, or per-case result for `adjust`, `alphaMask`, or
 `bitwise`. No current-source native verdict exists; the historical ledger rows
 (`adjust` max_abs_diff 1.000003695487976 / ssim 0.9999804496765137,
