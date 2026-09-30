@@ -59,7 +59,7 @@ Exact commit, remote document hashes, and downstream results are retained in the
 
 | Claim ID | Claim source | Claimed scope | Finding | Evidence |
 |---|---|---|---|---|
-| CLAIM-001 | [Source claim](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/STATUS.md) | Self-contained DSL rendering, 2D and 3D effects, simulations, and reusable TOP output. Historical shader and graph gates are separate evidence. | partial | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. [Local evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-tests.json). |
+| CLAIM-001 | [Source claim](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/STATUS.md) | Self-contained DSL rendering, 2D and 3D effects, simulations, and reusable TOP output. Historical shader and graph gates are separate evidence. | partial | 76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. Local evidence (audit evidence `evidence-20260924-remaining-gap-documents/touchdesigner-tests.json`). |
 | CLAIM-002 | [README workflow](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Human usability: installation, first output, errors, and recovery | met | Installed workflow observed on TD 2025.32820 (isolated Base COMP, documented example, TOP connect/resize, invalid-DSL recovery, save/reopen, cleanup — section 3; the documented connect example was corrected to the in-COMP form) and reproduced step-for-step on TD 2025.33230 with byte-identical render PNGs — section 3, 2026-09-27. GAP-002 closed. |
 | CLAIM-003 | [Official ecosystem documentation](https://derivative.ca/UserGuide/System_Requirements) | Ecosystem fit and supported versions | partial | Source entry points were examined. Installed integration is qualified and the README-declared minimum build 2025.32820 and the current official build 2025.33230 are both exercised on darwin arm64 (Windows and macOS Intel not exercised, no hosts available) — section 3, 2026-09-26/27. GAP-002 closed. |
 | CLAIM-004 | [Distribution description](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/blob/66426bc41c2b85940322ae843ba04f41b7905ce4/README.md) | Release readiness | partial | Artifact byte identity (852/852), notices, dependencies, and the installed kit legs (install + first result, relocation, reinstall-over, cook-failure recovery via the documented rebuild() entry point, removal) qualified on TD 2025.32820 and, since 2026-09-27, reproduced end to end on TD 2025.33230 against the current served kit `0.1.28` (source `18db29e2`) — section 3; GAP-003 closed 2026-09-27: its recorded blocker (the GAP-002 2025.33230 dependency) no longer held and its own legs were executed on both installed builds. Not a release approval: the platform matrix beyond the two exercised darwin arm64 builds remains open. |
@@ -67,15 +67,15 @@ Exact commit, remote document hashes, and downstream results are retained in the
 
 ## 3. Methods and evidence
 
-Review CI boundary: Exact-source runs: Export kit. A passing export dispatch does not qualify rendered parity. Current complete-render enforcement remains an open verification requirement. [Exact-source responses and workflows](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/noisemaker-for-touchdesigner-remote-evidence.json).
+Review CI boundary: Exact-source runs: Export kit. A passing export dispatch does not qualify rendered parity. Current complete-render enforcement remains an open verification requirement. Exact-source responses and workflows (audit evidence `review-20260925-053200/noisemaker-for-touchdesigner-remote-evidence.json`).
 
 ### Daily review, 2026-09-25
 
-91 harness tests pass. The actual TouchDesigner process renders the current runtime: solid is byte-exact and noise differs by at most 1 in 38,396 channels against retained historical goldens. Both cases executed. This two-case result does not qualify the current authority, full fixture inventory, Windows, or installed workflows. TouchDesigner retains equal priority with every other port. [Raw evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-native-comparisons.json).
+91 harness tests pass. The actual TouchDesigner process renders the current runtime: solid is byte-exact and noise differs by at most 1 in 38,396 channels against retained historical goldens. Both cases executed. This two-case result does not qualify the current authority, full fixture inventory, Windows, or installed workflows. TouchDesigner retains equal priority with every other port. Raw evidence (audit evidence `review-20260925-053200/current-native-comparisons.json`).
 The review checked source changes, worker evidence, source-bound CI where present, and current served inventories. Full installed-host and platform qualification remains incomplete.
 
 Environment: macOS 26.5, Darwin arm64. Source-file SHA-256 records bind the local checks to the reviewed revision.
-[Source hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/noisemaker-for-touchdesigner-source-hashes.json). [Remote evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/noisemaker-for-touchdesigner-remote.json).
+Source hashes (audit evidence `evidence-20260924-remaining-gap-documents/noisemaker-for-touchdesigner-source-hashes.json`). Remote evidence (audit evidence `evidence-20260924-remaining-gap-documents/noisemaker-for-touchdesigner-remote.json`).
 
 Executed bounded command:
 
@@ -83,7 +83,7 @@ Executed bounded command:
 python3 -m unittest discover -s parity -p "test_*.py"
 ```
 
-76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. Command exit code: 0. [Local evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-tests.json).
+76 Python unit tests passed. Native installation, activation, TOP rendering, saved projects, and accessibility were not exercised. Command exit code: 0. Local evidence (audit evidence `evidence-20260924-remaining-gap-documents/touchdesigner-tests.json`).
 Unit and harness checks do not measure rendered parity. No new image denominator or tolerance is inferred from these results.
 
 Official reference: [TouchDesigner 2025 requirements, accessed 2026-09-24](https://derivative.ca/UserGuide/System_Requirements).
@@ -106,8 +106,8 @@ Source `c5242301da6c6bb096f716623f92edf63a34f36b` differs from the inspected rev
 Both 256×256 probes rendered at time 0.25. `solid` matched its retained golden exactly; `noise` had maximum byte difference 1 across 38,396 channels.
 These measurements do not independently qualify golden provenance or current-authority parity. Existing tolerances and goldens were unchanged.
 The staged inventory contains 301 program fixtures: two executed and 299 unexecuted. Separate corpus and stateful coverage remain unqualified.
-[Command and runtime evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-native.json). [Input hashes](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-native-input-hashes.json).
-[Exact comparisons](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-native-comparisons.json). [Unexecuted fixture IDs](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents/touchdesigner-fixture-inventory.json).
+Command and runtime evidence (audit evidence `evidence-20260924-remaining-gap-documents/touchdesigner-native.json`). Input hashes (audit evidence `evidence-20260924-remaining-gap-documents/touchdesigner-native-input-hashes.json`).
+Exact comparisons (audit evidence `evidence-20260924-remaining-gap-documents/touchdesigner-native-comparisons.json`). Unexecuted fixture IDs (audit evidence `evidence-20260924-remaining-gap-documents/touchdesigner-fixture-inventory.json`).
 
 ### 2026-09-26 compiler-parity qualification (Linux runner)
 
@@ -975,7 +975,7 @@ Implementation changes belong to the separate implementation job. This register 
 
 ## 6. Pass history
 
-2026-09-25 daily review at `de416d7606e231bf6e38027316269640a1d7d096`: source freshness and bounded evidence reviewed. Open qualification limits retained. [Retained review evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/review-20260925-053200/current-native-comparisons.json). No new closure claimed.
+2026-09-25 daily review at `de416d7606e231bf6e38027316269640a1d7d096`: source freshness and bounded evidence reviewed. Open qualification limits retained. Retained review evidence (audit evidence `review-20260925-053200/current-native-comparisons.json`). No new closure claimed.
 
 2026-09-26 daily review at `143a89915429f97b16c4f85efedafd739ca8c0b7`: implementation range `7d533b9e..143a899` and the current documents reviewed. GAP-001 closure, the GAP-002 and GAP-003 blocked records, and the machine receipts were independently checked and retained. GAP-004 was added for the unexecuted fixture sweep. The served deployment was re-fetched as `0.1.27` at `3064d0dc` (file-level check; no host install).
 
@@ -1003,4 +1003,4 @@ Implementation changes belong to the separate implementation job. This register 
 Native follow-up: `solid` was exact; `noise` differed by one byte maximum. Full current-authority qualification remains open.
 
 Run ID: `20260924-remaining-gap-documents`.
-[Operational evidence](/Users/alex/.codex/automations/noisemaker-port-completion-audit/evidence-20260924-remaining-gap-documents). Queue position and successful-audit timestamps remain unchanged by document creation.
+Operational evidence (audit evidence `evidence-20260924-remaining-gap-documents`). Queue position and successful-audit timestamps remain unchanged by document creation.
