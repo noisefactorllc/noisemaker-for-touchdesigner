@@ -26,7 +26,7 @@ set -euo pipefail
 
 NM_REFERENCE_REPO="https://github.com/noisefactorllc/noisemaker.git"
 REPO_URL="https://github.com/noisefactorllc/noisemaker-for-touchdesigner.git"
-NM_REFERENCE_SHA_PINNED="a912749fab5c3819e56a8abde664ff30e40870f4"
+NM_REFERENCE_SHA_PINNED="058d15dc742f91dbab067229dae196d1477adad1"
 NUMPY_VERSION="2.4.6"
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

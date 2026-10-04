@@ -8,6 +8,40 @@
   ],
   "description": "CRT degauss effect",
   "paramAliases": {},
+  "uniformLayout": {
+    "resolution": {
+      "slot": 0,
+      "components": "xy"
+    },
+    "displacement": {
+      "slot": 0,
+      "components": "z"
+    },
+    "time": {
+      "slot": 0,
+      "components": "w"
+    },
+    "speed": {
+      "slot": 1,
+      "components": "x"
+    },
+    "seed": {
+      "slot": 1,
+      "components": "y"
+    },
+    "direction": {
+      "slot": 1,
+      "components": "z"
+    },
+    "tileOffset": {
+      "slot": 2,
+      "components": "xy"
+    },
+    "fullResolution": {
+      "slot": 2,
+      "components": "zw"
+    }
+  },
   "globals": {
     "displacement": {
       "type": "float",
