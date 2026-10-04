@@ -16,6 +16,8 @@ on:
       - "LICENSE"
       - "td/noisemaker/**"
 
+permissions: {}
+
 concurrency:
   group: export-kit-${{ github.ref }}
   cancel-in-progress: false
