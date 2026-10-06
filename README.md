@@ -168,6 +168,9 @@ Y-flip, no math edits.
 
 ## Contributing
 
+Contributions follow the Noise Factor [contributing policy](https://github.com/noisefactorllc/.github/blob/main/CONTRIBUTING.md) and
+[Code of Conduct](https://github.com/noisefactorllc/.github/blob/main/CODE_OF_CONDUCT.md). The notes below cover this repository's own tooling.
+
 Rendering needs nothing external. The **parity tooling**, however, compares TouchDesigner's output
 against the reference engine, so it needs a checkout of it via `NM_REFERENCE_ROOT`:
 
