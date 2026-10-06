@@ -7,6 +7,20 @@ name: Tests
 
 on:
   push:
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'doc/**'
+      - '.superpowers/**'
+      - '.claude/**'
+      - '.codex/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE*'
+      - '.github/copilot-instructions.md'
+      - '.github/CODEOWNERS'
+      - '.github/FUNDING.yml'
+      - '.github/dependabot.yml'
+      - '.editorconfig'
     branches: [main]
   workflow_dispatch:
 
