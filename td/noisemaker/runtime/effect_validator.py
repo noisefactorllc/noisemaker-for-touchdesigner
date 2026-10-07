@@ -42,7 +42,7 @@ GLOBAL_TYPES = [
 UI_CONTROLS = ['slider', 'checkbox', 'dropdown', 'color', 'button', 'vector3', 'vec3']
 
 UI_KEYS = ['label', 'control', 'category', 'hidden', 'hint', 'format',
-           'buttonLabel', 'enabledBy', 'multiline']
+           'buttonLabel', 'enabledBy', 'multiline', 'resetOnChange']
 
 ENABLED_BY_OPS = ['eq', 'neq', 'lt', 'gt', 'gte', 'lte', 'in', 'notIn']
 
@@ -56,8 +56,12 @@ PASS_KEYS = [
     'name', 'program', 'type', 'entryPoint', 'drawMode', 'drawBuffers',
     'count', 'countUniform', 'repeat', 'blend', 'workgroups',
     'storageBuffers', 'storageTextures', 'viewport', 'conditions',
-    'defines', 'uniforms', 'inputs', 'outputs',
+    'defines', 'uniforms', 'inputs', 'outputs', 'clear', 'samplerTypes',
 ]
+
+# Sampler names the WebGPU backend creates; pass.samplerTypes picks one per
+# sampled input. WebGL2 ignores the field.
+SAMPLER_TYPES = ['default', 'nearest', 'repeat', 'mipmap']
 
 TEXTURE_SPEC_KEYS = ['width', 'height', 'depth', 'format', 'is3D', 'filter', 'mipmaps', 'persistent']
 
@@ -69,7 +73,11 @@ CONDITION_CONTAINER_KEYS = ['runIf', 'skipIf']
 
 DIM_KEYWORDS = ['screen', 'auto', 'input', 'resolution']
 
-FORMATS = ['rgba16f', 'rgba16float', 'rgba8', 'rgba8unorm', 'rgba32f', 'rgba32float']
+# Formats both backends resolve, in their two spellings.
+FORMATS = [
+    'rgba16f', 'rgba16float', 'rgba8', 'rgba8unorm', 'rgba32f', 'rgba32float',
+    'r8', 'r8unorm', 'r16f', 'r16float', 'r32f', 'r32float',
+]
 
 DRAW_MODES = ['points', 'triangles', 'billboards']
 
@@ -348,6 +356,12 @@ def _validate_enabled_by(cond, errors, label, context):
     if not _is_obj(cond):
         errors.append(f"{label}: \"enabledBy\" must be a global name or condition object")
         return
+    if 'not' in cond:
+        for key in cond:
+            if key != 'not':
+                errors.append(f"{label}: unknown enabledBy field '{key}'")
+        _validate_enabled_by(cond['not'], errors, label, context)
+        return
     if 'and' in cond or 'or' in cond:
         for key in cond:
             if key not in ('and', 'or'):
@@ -393,6 +407,8 @@ def _validate_ui(ui, errors, label, context):
         errors.append(f"{label}: \"hidden\" must be a boolean")
     if 'multiline' in ui and not isinstance(ui['multiline'], bool):
         errors.append(f"{label}: \"multiline\" must be a boolean")
+    if 'resetOnChange' in ui and not isinstance(ui['resetOnChange'], bool):
+        errors.append(f"{label}: \"resetOnChange\" must be a boolean")
     for key in ('hint', 'format', 'buttonLabel'):
         if key in ui and (not isinstance(ui[key], str) or not ui[key]):
             errors.append(f"{label}: \"{key}\" must be a non-empty string")
@@ -674,6 +690,16 @@ def _validate_pass(source, pass_, index, errors, context):
                 (not isinstance(blend, list) or len(blend) != 2 or
                  not all(isinstance(v, str) and v for v in blend)):
             errors.append(f"{label}: \"blend\" must be a boolean or [src, dst] factor strings")
+    if 'clear' in pass_ and not isinstance(pass_['clear'], bool):
+        errors.append(f"{label}: \"clear\" must be a boolean")
+    if 'samplerTypes' in pass_:
+        sampler_types = pass_['samplerTypes']
+        if not _is_obj(sampler_types):
+            errors.append(f"{label}: \"samplerTypes\" must be an object mapping sampler names to sampler types")
+        else:
+            for name, sampler_type in sampler_types.items():
+                if sampler_type not in SAMPLER_TYPES:
+                    errors.append(f"{label}: samplerTypes '{name}' must be one of {', '.join(SAMPLER_TYPES)}")
     if 'workgroups' in pass_:
         workgroups = pass_['workgroups']
         if not isinstance(workgroups, list) or len(workgroups) < 1 or len(workgroups) > 3 or \

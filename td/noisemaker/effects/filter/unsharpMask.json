@@ -77,5 +77,6 @@
       "height": "input",
       "format": "rgba8unorm"
     }
-  }
+  },
+  "defaultProgram": "search filter, synth\n\nnoise(scaleX: 20, scaleY: 20, octaves: 4)\n  .unsharpMask()\n  .write(o0)"
 }

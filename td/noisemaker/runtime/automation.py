@@ -155,6 +155,21 @@ def _osc_noise(value, seed):
             + _noise2d(loop_x + seed * 2, loop_y + seed * 2, seed)) * 0.5
 
 
+def _osc_noise2d(time, speed, seed):
+    """Two-stage periodic noise (kind 6), mirroring the osc2d effect: the
+    time-noise stage scales the phase by `speed` once, after its periodic
+    wrap, and the value-noise stage reads the result. osc() has no spatial
+    position, so both stages sample a fixed position derived from the seed."""
+    def periodic(x, v):
+        return (math.sin((x - v) * _TAU) + 1) * 0.5
+
+    px = (abs(math.fmod(seed, 16)) + 0.5) / 16
+    py = (abs(math.fmod(math.floor(seed / 16), 16)) + 0.5) / 16
+    time_noise = _noise2d(px, py, seed + 12345)
+    value_noise = _noise2d(px, py, seed)
+    return periodic(periodic(time, time_noise) * speed, value_noise)
+
+
 def _osc_primitive(osc_type, value):
     whole = math.floor(value)
     fraction = value - whole
@@ -244,8 +259,15 @@ def _evaluate_oscillator(config, normalized_time, external_state, depth,
         3: _osc_saw_inv, 4: _osc_square,
     }
     osc_type = config.get('oscType')
-    raw = (_osc_noise(phase + offset, seed) if osc_type == 5
-           else raw_by_type.get(osc_type, lambda _value: 0)(phase + offset))
+    if osc_type == 6:
+        rate = _resolve_field(config.get('speed'), normalized_time,
+                              _AUTOMATION_FIELD_RANGES['oscillatorSpeed'], external_state,
+                              depth, stack, 1, wall_time_ms)
+        raw = _osc_noise2d(normalized_time + offset, rate if _finite_number(rate) else 1, seed)
+    elif osc_type == 5:
+        raw = _osc_noise(phase + offset, seed)
+    else:
+        raw = raw_by_type.get(osc_type, lambda _value: 0)(phase + offset)
     return minimum + raw * (maximum - minimum)
 
 

@@ -312,6 +312,48 @@ class TestEffectValidator(unittest.TestCase):
                 mutate(d['globals']['flag']['ui'])
                 self.assertTrue(validate_effect_definition(d))
 
+    def test_ui_reset_on_change_is_accepted_as_a_boolean_and_diagnosed_otherwise(self):
+        d = valid_definition()
+        d['globals']['mode']['ui']['resetOnChange'] = True
+        self.assertEqual(validate_effect_definition(d), [])
+        d['globals']['mode']['ui']['resetOnChange'] = 'yes'
+        self.assertEqual(
+            len([e for e in validate_effect_definition(d) if 'resetOnChange' in e]), 1)
+
+    def test_pass_clear_and_sampler_types_consumed_by_the_runtime_are_validated(self):
+        d = valid_definition()
+        d['passes'][0]['clear'] = True
+        d['passes'][0]['samplerTypes'] = {'srcTex': 'nearest', 'scratchTex': 'mipmap'}
+        self.assertEqual(validate_effect_definition(d), [])
+        d['passes'][0]['clear'] = 'yes'
+        d['passes'][0]['samplerTypes'] = {'srcTex': 'bilinear'}
+        errors = validate_effect_definition(d)
+        self.assertEqual(len([e for e in errors if '"clear" must be a boolean' in e]), 1)
+        self.assertEqual(len([e for e in errors if "samplerTypes 'srcTex'" in e]), 1)
+
+    def test_enabled_by_accepts_a_not_condition_and_validates_what_it_wraps(self):
+        d = valid_definition()
+        d['globals']['mode']['ui']['enabledBy'] = {'not': {'param': 'amount', 'gt': 0.5}}
+        self.assertEqual(validate_effect_definition(d), [])
+        d['globals']['mode']['ui']['enabledBy'] = {'not': {'param': 'nope', 'gt': 0.5}}
+        self.assertEqual(
+            len([e for e in validate_effect_definition(d) if "unknown global 'nope'" in e]), 1)
+        d['globals']['mode']['ui']['enabledBy'] = {'not': 'amount', 'param': 'amount'}
+        self.assertEqual(
+            len([e for e in validate_effect_definition(d)
+                 if "unknown enabledBy field 'param'" in e]), 1)
+
+    def test_single_channel_formats_both_backends_resolve_are_accepted(self):
+        for fmt in ('r8', 'r8unorm', 'r16f', 'r16float', 'r32f', 'r32float'):
+            with self.subTest(format=fmt):
+                d = valid_definition()
+                d['textures']['scratch']['format'] = fmt
+                self.assertEqual(validate_effect_definition(d), [])
+        d = valid_definition()
+        d['textures']['scratch']['format'] = 'rg8'
+        self.assertEqual(
+            len([e for e in validate_effect_definition(d) if "unknown format 'rg8'" in e]), 1)
+
     def test_numeric_pass_uniform_literals_and_dimension_expressions_are_preserved(self):
         d = valid_definition()
         self.assertEqual(validate_effect_definition(d), [])

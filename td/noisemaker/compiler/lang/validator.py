@@ -1077,7 +1077,7 @@ class _Validator:
             value = {
                 'type': 'Oscillator',
                 'oscType': self._resolve_automation_enum(
-                    node.get('oscType'), 'oscKind', 0, set(range(6)), 'osc', 'type'),
+                    node.get('oscType'), 'oscKind', 0, set(range(7)), 'osc', 'type'),
                 'min': self._resolve_automation_number(
                     node.get('min'), 'osc', 'min', 0, allow_boolean=True,
                     allow_automation=True, clamp01=True, depth=depth),

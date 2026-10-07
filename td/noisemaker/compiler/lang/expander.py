@@ -198,10 +198,14 @@ class _Expander:
         self._current_input_rgba = None
         self._current_input_3d = None
         self._current_input_geo = None
+        self._written_volumes = {}    # exported volume -> source sizing uniform
+        self._read_volumes = {}       # reader sizing scope -> volume and preceding writer
+        self._exported_textures = {}  # exported atlas -> source texture
 
     def _run(self):
         for plan_index, plan in enumerate(self._plans):
             self._expand_plan(plan, plan_index)
+        self._resolve_volume_handoffs()
         if self._render is not None:
             self._render_surface = self._render
         elif self._last_written_surface is not None:
@@ -216,6 +220,66 @@ class _Expander:
             'textureSpecs': self._texture_specs,
             'renderSurface': self._render_surface,
         }
+
+    def _resolve_volume_handoffs(self):
+        """Follow volume handoffs after expansion so ordering and re-export do not
+        change atlas dimensions. Cycles without a producer retain their defaults."""
+        def resolve_volume(param, visited):
+            if param in visited:
+                return None
+            visited.add(param)
+            read = self._read_volumes.get(param)
+            writer = None
+            if read is not None:
+                writer = read.get('writer')
+                if writer is None:
+                    writer = self._written_volumes.get(read.get('surface'))
+            if writer is None or writer['param'] == param:
+                return None
+            resolved = resolve_volume(writer['param'], visited)
+            return writer if resolved is None else resolved
+
+        resolved_volumes = {}
+        for param in self._read_volumes:
+            source = resolve_volume(param, set())
+            if source is not None:
+                resolved_volumes[param] = source
+
+        def resolve_export(tex_id, visited):
+            if tex_id in visited:
+                return self._texture_specs.get(tex_id)
+            visited.add(tex_id)
+            source = self._exported_textures.get(tex_id)
+            if not source or source == tex_id:
+                return self._texture_specs.get(tex_id)
+            spec = resolve_export(source, visited)
+            if spec is not None:
+                self._texture_specs[tex_id] = dict(spec)
+            return self._texture_specs.get(tex_id)
+
+        for tex_id in list(self._exported_textures):
+            resolve_export(tex_id, set())
+        for spec in self._texture_specs.values():
+            for axis in ('width', 'height', 'depth'):
+                dim = spec.get(axis)
+                source = resolved_volumes.get(dim.get('param')) if isinstance(dim, dict) else None
+                if source is not None:
+                    new_dim = dict(dim)
+                    new_dim['param'] = source['param']
+                    spec[axis] = new_dim
+        for p in self._passes:
+            uniforms = p.get('uniforms')
+            if not isinstance(uniforms, dict):
+                continue
+            for param, source in resolved_volumes.items():
+                if param not in uniforms:
+                    continue
+                del uniforms[param]
+                uniforms[source['param']] = source['value']
+                uniforms['volumeSize'] = source['value']
+                scoped = p.get('scopedParams')
+                if isinstance(scoped, dict) and scoped.get('volumeSize') == param:
+                    scoped['volumeSize'] = source['param']
 
     def _expand_plan(self, plan, plan_index):
         current_input = None
@@ -249,6 +313,17 @@ class _Expander:
                     self._current_input_3d = ("global_" + tex3d['name']) if tex3d['kind'] == 'vol' else tex3d['name']
                 if _is_surface(geo):
                     self._current_input_geo = ("global_" + geo['name']) if geo['kind'] == 'geo' else geo['name']
+                # Resolve the producer scope after all plans have been expanded:
+                # readers may precede writers to consume the previous frame.
+                volume = self._written_volumes.get(self._current_input_3d)
+                if self._current_input_3d is not None:
+                    # Preserve the writer visible at this read. A later filter
+                    # may rewrite the same surface without becoming its size owner.
+                    volume_size_param = "volumeSize_" + chain_scope_id
+                    self._read_volumes[volume_size_param] = {'surface': self._current_input_3d, 'writer': volume}
+                    value = volume.get('value') if volume is not None else None
+                    pipe['volumeSize'] = 64 if value is None else value
+                    pipe[volume_size_param] = pipe['volumeSize']
                 node_id3 = "node_" + str(temp)
                 if self._current_input_3d is not None:
                     self._texture_map[node_id3 + "_out3d"] = self._current_input_3d
@@ -262,12 +337,21 @@ class _Expander:
                 node_id_w3 = "node_" + str(temp)
                 if _is_surface(tex3d) and tex3d['name'] != "none" and self._current_input_3d is not None:
                     target_vol = "global_" + tex3d['name']
+                    self._exported_textures[target_vol] = self._current_input_3d
+                    if self._texture_specs.get(self._current_input_3d) is not None:
+                        self._texture_specs[target_vol] = dict(self._texture_specs[self._current_input_3d])
+                    if 'volumeSize' in pipe:
+                        self._written_volumes[target_vol] = {'param': "volumeSize_" + chain_scope_id,
+                                                             'value': pipe['volumeSize']}
                     if self._current_input_3d != target_vol:
                         self._passes.append(self._new_blit(node_id_w3 + "_write3d_vol_blit",
                                                            self._current_input_3d, target_vol, node_id_w3, temp))
                         self._ensure_blit_program()
                 if _is_surface(geo) and geo['name'] != "none" and self._current_input_geo is not None:
                     target_geo = "global_" + geo['name']
+                    self._exported_textures[target_geo] = self._current_input_geo
+                    if self._texture_specs.get(self._current_input_geo) is not None:
+                        self._texture_specs[target_geo] = dict(self._texture_specs[self._current_input_geo])
                     if self._current_input_geo != target_geo:
                         self._passes.append(self._new_blit(node_id_w3 + "_write3d_geo_blit",
                                                            self._current_input_geo, target_geo, node_id_w3, temp))
@@ -501,6 +585,10 @@ class _Expander:
                 # chain (e.g. pointsEmit's own re-declared stateSize) must not leak backward into
                 # an earlier producer's texture. Reference 0ed489ec expander.js scopeDimSpec.
                 def _dim_scope(d):
+                    # Every volumeSize dimension scopes to its chain's volumeSize_<chain> uniform,
+                    # the scope write3d/read3d volume handoffs resolve through.
+                    if isinstance(d, dict) and d.get('param') == 'volumeSize':
+                        return chain_scope_id
                     if (isinstance(d, dict) and d.get('param') == 'stateSize'
                             and self._current_particle_pipeline_id is not None
                             and not tex_name.startswith("global_")):

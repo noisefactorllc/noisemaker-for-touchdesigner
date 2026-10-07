@@ -43,5 +43,6 @@
       }
     }
   ],
-  "textures": {}
+  "textures": {},
+  "defaultProgram": "search filter, synth\n\npattern(type: stripes, scale: 10, rotation: 30, smoothness: 0.001, bgColor: #666666)\n  .fxaa()\n  .write(o0)"
 }

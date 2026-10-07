@@ -13,9 +13,8 @@
 #     runs suites that report 0 skipped.
 #
 # The gates fetch the upstream reference at NM_REFERENCE_SHA_PINNED, so results do not depend on
-# upstream HEAD. The repository keeps no machine-readable record of the reference it is synced to
-# (sync rounds record it only in STATUS.md prose and parity/evidence/ logs), so this variable is the
-# pin: a change that syncs the port to a newer reference must update it in the same commit.
+# upstream HEAD. This variable is the repository's record of the reference it is synced to: a change
+# that syncs the port to a newer reference must update it in the same commit.
 # NM_REFERENCE_SHA=<full sha> runs the gates against another reference commit.
 #
 # Works in shallow clones: a commit that a unit test reads and the clone lacks is fetched by SHA.
@@ -26,7 +25,7 @@ set -euo pipefail
 
 NM_REFERENCE_REPO="https://github.com/noisefactorllc/noisemaker.git"
 REPO_URL="https://github.com/noisefactorllc/noisemaker-for-touchdesigner.git"
-NM_REFERENCE_SHA_PINNED="058d15dc742f91dbab067229dae196d1477adad1"
+NM_REFERENCE_SHA_PINNED="8fa067f6afec1f091272a8fae7b0b40d78f7b04d"
 NUMPY_VERSION="2.4.6"
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -54,8 +53,8 @@ pin_hint() {
   cat >&2 <<HINT
 scripts/test: the gates compare the port with the upstream Noisemaker reference at
   NM_REFERENCE_SHA_PINNED=$REF_SHA (set near the top of scripts/test).
-This repository has no machine-readable record of the reference it is synced to, so that
-variable is the pin. If this change syncs the port to a newer upstream commit, set
+That variable is the repository's record of the reference it is synced to. If this change
+syncs the port to a newer upstream commit, set
 NM_REFERENCE_SHA_PINNED in scripts/test to that commit's full 40-character SHA in the same
 commit. If the pin is already the synced reference, the port has diverged from it.
 HINT
