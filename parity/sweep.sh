@@ -15,7 +15,7 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"; REPO="$(cd "$HERE/.." && pwd)"
 PY="$REPO/parity/.venv/bin/python"; [ -x "$PY" ] || PY=python3
 OUT="$REPO/parity/out"; CHUNK="${CHUNK:-15}"
-LEDGER_PATH="${LEDGER_PATH:-parity/ledger.tsv}"
+LEDGER_PATH="${LEDGER_PATH:-parity/out/ledger.tsv}"
 case "$LEDGER_PATH" in /*) ;; *) LEDGER_PATH="$REPO/$LEDGER_PATH" ;; esac
 RESULTS="$(mktemp -t noisemaker-for-touchdesigner-ledger.XXXXXX)"
 REPORTS="$(mktemp -d -t noisemaker-for-touchdesigner-reports.XXXXXX)"

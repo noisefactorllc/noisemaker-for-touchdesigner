@@ -116,7 +116,7 @@ class HarnessContractTests(unittest.TestCase):
             for name in ("adjust", "chrome"):
                 (out / f"{name}.golden.png").touch()
                 (out / f"{name}.candidate.png").touch()
-            (parity / "ledger.tsv").write_text(
+            (out / "ledger.tsv").write_text(
                 "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
                 "legacy3d\tDEFER\t-\t-\t-\t-\t3d/mrt/points\tseparate evidence\n"
                 "adjust\tPASS\t99\t0\t100\t0\tstale\tstale.png\n"
@@ -139,7 +139,7 @@ class HarnessContractTests(unittest.TestCase):
             )
 
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            lines = (parity / "ledger.tsv").read_text().splitlines()
+            lines = (out / "ledger.tsv").read_text().splitlines()
             rows = {
                 row.split("\t", 1)[0]: row.split("\t")
                 for row in lines[1:]
@@ -187,7 +187,7 @@ class HarnessContractTests(unittest.TestCase):
             )
 
             self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
-            rows = (parity / "ledger.tsv").read_text().splitlines()
+            rows = (out / "ledger.tsv").read_text().splitlines()
             self.assertEqual(rows[1].split("\t")[1], "FAIL")
 
     def test_compare_only_sweep_rejects_a_truncated_nonempty_render_set(self):
