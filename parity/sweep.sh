@@ -42,10 +42,12 @@ tol_for() { case "$1" in
                                    # (1 px / 0.0015%, ssim 0.99998) -- df64-ULP-across-GPU class, like newton
   # --- selection / argmax-tie class: a discrete pick amplifies the 1-LSB cross-device noise INPUT
   #     (base noise is max-diff<=1); the pick is always a real neighbour so means + SSIM are preserved.
-  oilPaint|oilPaint_mode_*) echo "110 0.98" ;;  # flatten pass's local-mode color VOTE ties at a pixel;
-                                   # Metal/ANGLE pick a different (both locally-plausible) bucket. All 6
-                                   # modes <=108 px (daubs 108, fresco 48, sponge 43, dryBrush 37, knife 27,
-                                   # facet 19), ssim >=0.99998 -- argmax-tie class, like newton.
+  oilPaint|oilPaint_mode_*) echo "110 0.98" ;;  # flatten pass's local-mode color VOTE ties at a pixel.
+                                   # Measured 2026-10-07 (pin 8e583593, same-GPU goldens): with a
+                                   # testPattern() input both engines render identically, oilPaint and all
+                                   # its modes are byte-exact at every pass; the fixture's noise input
+                                   # differs by one half-float step at 4 pixels (TD's SPIR-V/MoltenVK codegen
+                                   # vs ANGLE's), and the vote flips there. Fixture max 108 (default/daubs).
   median|median_radius_*) echo "255 0.99" ;;  # quickselect median RANK reorders under the 1-LSB input;
                                    # scatter scales with window (r1 mean 0.35 / r2 3.18 / r3 7.30), ssim
                                    # r1 0.99992 / r2 0.99871 / r3 0.99523; means identical -- rank-selection.
@@ -59,19 +61,21 @@ tol_for() { case "$1" in
                                    # in near-flat regions the direction is ill-defined and a 1-LSB input
                                    # flips it, moving a sparse pixel set (mean 0.14, ssim 0.99996).
   # --- grazing-angle specular / reflection tie ---
-  chrome)     echo "34 0.98" ;;   # reflection-map lookup grazing-angle NEAREST tie; the release-pass
-                                   # ("distortion responsive") strengthened the warp, widening the tie set
-                                   # from the old 2 px to 32 px (mean 0.13, ssim 0.99999).
-  plasticWrap|plasticWrap_directed) echo "32 0.98" ;;  # specular-highlight grazing-angle tie; release-pass
-                                   # vec3 light dir + stronger relief (default 20 px; directed 30 px;
-                                   # mean <=0.14 and ssim 0.99998 for both).
+  chrome)     echo "34 0.98" ;;   # reflection-map lookup grazing-angle NEAREST tie. Measured 2026-10-07:
+                                   # byte-exact at every pass on a testPattern() input; the fixture's 4-pixel
+                                   # one-step noise difference moves the lookup across the tie (max 32).
+  plasticWrap|plasticWrap_directed) echo "32 0.98" ;;  # specular-highlight grazing-angle tie. Measured
+                                   # 2026-10-07: byte-exact at every pass on a testPattern() input; the
+                                   # fixture's 4-pixel one-step noise difference crosses the high-exponent
+                                   # specular (default max 20, directed max 30).
   # --- warp / threshold / convolution +/-1-2 LSB boundary (unchanged shaders; cross-device residual) ---
   spiral|tunnel) echo "3 0.98" ;; # polar/radial warp with NEAREST resample -> texel-boundary tie (3 px)
   degauss)    echo "4 0.98" ;;    # CRT scanline displacement warp; NEAREST tie + transcendental (4 px)
   step)       echo "3 0.99" ;;    # hard step() threshold; boundary pixels flip under the 1-LSB input (ssim 1.0)
   unsharpMask) echo "3 0.98" ;;   # 3-pass blur + high-frequency amplification accumulates +/-1 LSB (3 px)
-  relief_mode_plaster) echo "8 0.98" ;;  # relief bevel gradient boundary (explicit lightAngle 37:
-                                   # max 7, mean 0.06, ssim 0.99999)
+  relief_mode_plaster) echo "8 0.98" ;;  # plaster paper threshold. Measured 2026-10-07: byte-exact at
+                                   # every pass on a testPattern() input; the fixture's 4-pixel one-step
+                                   # noise difference crosses the threshold (max 7).
   *)          echo "2.001 0.98" ;;
 esac; }
 
