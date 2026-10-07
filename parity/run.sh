@@ -15,6 +15,13 @@
 # GUI) before this can render. A fresh install blocks at the activation modal and the render
 # will TIME OUT — this script detects that and says so. See README "Prerequisites".
 set -u
+# Stop only the TouchDesigner instance this script launched (never every TouchDesigner on the
+# host): ask it to quit, then force it after 10 s.
+stop_td() {
+  kill "$1" 2>/dev/null
+  for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$1" 2>/dev/null || return 0; sleep 1; done
+  kill -9 "$1" 2>/dev/null
+}
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/.." && pwd)"
@@ -95,7 +102,7 @@ for i in $(seq 1 150); do
   kill -0 "$TDPID" 2>/dev/null || break
   sleep 1
 done
-sleep 1; kill "$TDPID" 2>/dev/null; pkill -f 'MacOS/TouchDesigner' 2>/dev/null
+sleep 1; stop_td "$TDPID"
 
 if ! grep -q '=== DONE' "$OUT/_render_log.txt" 2>/dev/null; then
   echo "FAIL: TouchDesigner did not finish rendering."

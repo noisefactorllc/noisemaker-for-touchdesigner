@@ -12,6 +12,13 @@
 #   3. assemble both into the canonical horizontal cross (cube_cross.py) and compare
 # Each face is a deterministic single render (like the single-face test), so the bar is max-diff<=1.
 set -u
+# Stop only the TouchDesigner instance this script launched (never every TouchDesigner on the
+# host): ask it to quit, then force it after 10 s.
+stop_td() {
+  kill "$1" 2>/dev/null
+  for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$1" 2>/dev/null || return 0; sleep 1; done
+  kill -9 "$1" 2>/dev/null
+}
 HERE="$(cd "$(dirname "$0")" && pwd)"; REPO="$(cd "$HERE/.." && pwd)"
 REF="${NM_REFERENCE_ROOT:-}"
 [ -n "$REF" ] && [ -d "$REF/shaders" ] || { echo "set NM_REFERENCE_ROOT to the upstream Noisemaker engine (tree with shaders/)"; exit 2; }
@@ -39,7 +46,7 @@ for i in $(seq 1 "${NM_WAIT:-200}"); do
   kill -0 "$PID" 2>/dev/null || break
   sleep 1
 done
-sleep 1; kill "$PID" 2>/dev/null; pkill -f 'MacOS/TouchDesigner' 2>/dev/null
+sleep 1; stop_td "$PID"
 if ! grep -q 'BAKE DONE' "$OUT/_cubemap_log.txt" 2>/dev/null; then
   echo "FAIL: TD bake did not finish"; sed 's/^/  /' "$OUT/_cubemap_log.txt" 2>/dev/null; exit 1
 fi

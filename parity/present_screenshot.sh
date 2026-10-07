@@ -12,6 +12,13 @@
 # open and tells you to grant it (System Settings -> Privacy & Security -> Screen Recording) or snap
 # it yourself (Cmd+Shift+4, Space, click the TD window).
 set -u
+# Stop only the TouchDesigner instance this script launched (never every TouchDesigner on the
+# host): ask it to quit, then force it after 10 s.
+stop_td() {
+  kill "$1" 2>/dev/null
+  for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$1" 2>/dev/null || return 0; sleep 1; done
+  kill -9 "$1" 2>/dev/null
+}
 HERE="$(cd "$(dirname "$0")" && pwd)"; REPO="$(cd "$HERE/.." && pwd)"
 TD="${TD_BIN:-/Applications/TouchDesigner.app/Contents/MacOS/TouchDesigner}"
 PY="$REPO/parity/.venv/bin/python"; [ -x "$PY" ] || PY=python3
@@ -23,7 +30,6 @@ WAIT="${NM_WAIT:-480}"
 
 python3 "$REPO/td/build_present_gui_toe.py" >/dev/null || { echo "FAIL: build_present_gui_toe.py"; exit 1; }
 
-pkill -f 'MacOS/TouchDesigner' 2>/dev/null; sleep 1
 rm -f "$READY" "$OUT/_present_log.txt" "$SHOT"
 
 NM_PROGRAM="$PROG" NM_SIZE="${NM_SIZE:-1024}" NM_FRAMES="${NM_FRAMES:-1800}" \
@@ -54,7 +60,7 @@ sys.exit(0 if a.std() > 3 else 1)
 PY
 then
   echo "CAPTURED: $SHOT"
-  kill "$TDPID" 2>/dev/null; pkill -f 'MacOS/TouchDesigner' 2>/dev/null
+  stop_td "$TDPID"
   exit 0
 else
   echo "screencapture failed or BLACK (Screen Recording permission for Terminal.app not active)."

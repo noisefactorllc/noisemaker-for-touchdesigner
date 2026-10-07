@@ -10,6 +10,13 @@
 # <prog>.f<NNNN>.candidate.png samples, then quits. Grades vs parity/out/<prog>.f<NNNN>.golden.png
 # when goldens exist.
 set -u
+# Stop only the TouchDesigner instance this script launched (never every TouchDesigner on the
+# host): ask it to quit, then force it after 10 s.
+stop_td() {
+  kill "$1" 2>/dev/null
+  for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$1" 2>/dev/null || return 0; sleep 1; done
+  kill -9 "$1" 2>/dev/null
+}
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/.." && pwd)"
 TD="${TD_BIN:-/Applications/TouchDesigner.app/Contents/MacOS/TouchDesigner}"
@@ -33,7 +40,7 @@ for i in $(seq 1 "${NM_WAIT:-1800}"); do
   kill -0 "$PID" 2>/dev/null || break
   sleep 1
 done
-sleep 1; kill "$PID" 2>/dev/null; pkill -f 'MacOS/TouchDesigner' 2>/dev/null
+sleep 1; stop_td "$PID"
 
 echo "--- evolve log ---"; sed 's/^/  /' "$OUT/_evolve_log.txt" 2>/dev/null
 if ! grep -q '=== DONE' "$OUT/_evolve_log.txt" 2>/dev/null; then
