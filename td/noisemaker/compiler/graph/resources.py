@@ -61,8 +61,10 @@ def allocate_resources(passes):
                 allocations[tex_id] = 'phys_%d' % physical_count
                 physical_count += 1
 
-        # 2. release inputs (last uses)
-        for tex_id in (pass_.get('inputs') or {}).values():
+        # 2. release inputs (last uses). A pass may read one texture under several names
+        # (lighting's inputTex and heightMap); release it once, or its slot is handed to two
+        # textures that are live together.
+        for tex_id in dict.fromkeys((pass_.get('inputs') or {}).values()):
             if tex_id is None:
                 continue
             if tex_id.startswith('global_'):
