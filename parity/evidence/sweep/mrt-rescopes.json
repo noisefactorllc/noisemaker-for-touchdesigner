@@ -1,5 +1,0 @@
-{
- "rc": 1,
- "secs": 19,
- "out": "[FAIL] heightGrid_billboard: max-abs-diff=255.000 mean-abs-diff=49.0442 ssim=0.79364 (tol=2.0, ssim_min=0.98)\n[FAIL] heightGrid_billboard_alpha: max-abs-diff=255.000 mean-abs-diff=59.4029 ssim=0.50036 (tol=2.0, ssim_min=0.98)\n[FAIL] heightGrid_pointsRender_perspective: max-abs-diff=243.000 mean-abs-diff=23.5878 ssim=0.69272 (tol=2.0, ssim_min=0.98)\n[FAIL] heightmap3d_landscape: max-abs-diff=243.000 mean-abs-diff=5.8566 ssim=0.86697 (tol=2.0, ssim_min=0.98)\n"
-}

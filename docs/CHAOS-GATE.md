@@ -1,7 +1,7 @@
 # The Chaos Gate — why two effect classes aren't bit-parity on the TouchDesigner port
 
-**TL;DR.** Almost everything in this port is bit-for-bit identical to the reference WebGL2 golden
-(`max-diff 0`). Two narrow classes are not, and *cannot* be on TD/Metal:
+**TL;DR.** The parity sweep grades deterministic effects against the reference WebGL2 golden with
+the tolerances in `parity/sweep.sh`. Two narrow classes cannot match it pixel for pixel on TD/Metal:
 
 1. **Chaotic agent flows** — the north-star `target.dsl` (1 M-agent `points/flow` → deposit → blur →
    `o0`, then `o0` drives a chaotic `navierStokes`). Full-chain SSIM **0.5–0.71** over the 30 s / 5 s

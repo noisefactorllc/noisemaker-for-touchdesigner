@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
                                 'tools'))
 import materialize_kit  # noqa: E402
 
-# The source the served kit 0.1.20 recorded (docs/COMPLETION_GAPS.md).
+# The source revision recorded by the served kit 0.1.20.
 OLD_SOURCE = '66426bc41c2b85940322ae843ba04f41b7905ce4'
 
 

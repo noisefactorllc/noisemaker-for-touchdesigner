@@ -1,8 +1,0 @@
-command: python3 parity/.red_base_stage.py  (parity/stage_coverage.py exactly as published at ab2d63f4748a389601980abfe2b9f3128d453b28, run in the TD-host run checkout with NM_REFERENCE_ROOT=upstream-noisemaker pinned at 6a0af04d)
-exit_code: 2
-secs: 29
-stdout:
-
-stderr:
-unclassified gateable cases: heightGrid_billboard heightGrid_billboard_alpha heightGrid_pointsRender_perspective heightmap3d_landscape
-

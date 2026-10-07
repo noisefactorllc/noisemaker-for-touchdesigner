@@ -3,7 +3,7 @@
 Executed by the `td/nm_workflow.toe` bootstrap (built by td/build_workflow_toe.py, same
 toeexpand/toecollapse transplant as build_parity_toe.py). It exercises the documented
 installed workflow from README "Use it in your own TouchDesigner project" on an isolated
-consumer, records a machine-readable report and PNG artifacts under parity/evidence/workflow/ (a tracked, gitignored-exempt evidence path),
+consumer, records a machine-readable report and PNG artifacts under parity/out/workflow/ (generated output, not tracked),
 and quits (project.quit(force=True) from the exec DAT's finally block, so the host run
 always terminates itself).
 
@@ -39,7 +39,7 @@ def _find_repo():
 
 REPO = _find_repo()
 TD_DIR = os.path.join(REPO, 'td')
-OUT = os.path.join(REPO, 'parity', 'evidence', 'workflow')
+OUT = os.path.join(REPO, 'parity', 'out', 'workflow')
 PHASE = os.environ.get('NM_WORKFLOW_PHASE') or 'build'
 # The documented example (README "Use it in your own TouchDesigner project"), verbatim.
 DOC_DSL = 'search synth\nsolid(color: [0.9, 0.3, 0.5]).write(o0)\nrender(o0)'
@@ -253,7 +253,7 @@ def build_phase():
     saved = os.path.join(OUT, 'nm_workflow_saved.toe')
     try:
         project.save(saved)   # noqa: F821
-        step('save-project', path='parity/evidence/workflow/nm_workflow_saved.toe',
+        step('save-project', path='parity/out/workflow/nm_workflow_saved.toe',
              size=os.path.getsize(saved), sha256=_sha256(saved))
     except Exception:
         step('save-project', error=traceback.format_exc()[-800:])

@@ -5,9 +5,8 @@
 
 # Noisemaker for TouchDesigner
 
-Current measured support: [compatibility report](docs/COMPATIBILITY.md).
-
-Current qualification limits: [completion gaps](docs/COMPLETION_GAPS.md).
+Measured support is recorded on the [compatibility report](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/issues/5);
+open gaps are the [issues labelled `gap`](https://github.com/noisefactorllc/noisemaker-for-touchdesigner/issues?q=is%3Aissue+label%3Agap).
 
 > Run **Noisemaker**'s procedural visuals inside **Derivative TouchDesigner**.
 
@@ -29,8 +28,9 @@ render(o0)
 That little language is Noisemaker's **DSL** (a domain-specific language for visuals). The original
 engine runs in the browser at [noisedeck.app](https://noisedeck.app).
 
-**Noisemaker for TouchDesigner** runs that same engine *inside TouchDesigner* — the same programs and the same ~180
-effects, built as a live network of TouchDesigner's own GLSL operators. Use it to generate textures,
+**Noisemaker for TouchDesigner** runs that same engine *inside TouchDesigner*: the same programs and
+the same 210 effect definitions, built as a live network of TouchDesigner's own GLSL operators. The
+export kit lists every effect except `media`, `scope` and `spectrum`, which read external inputs. Use it to generate textures,
 backgrounds, and animated source material from code, with no image files.
 
 It is **self-contained**: the runtime compiles the DSL and renders it entirely inside TouchDesigner —
@@ -48,7 +48,8 @@ no internet, no Node.js, no separate engine to install.
 
 ## Requirements
 
-- **TouchDesigner 2025.32820** (arm64-native, macOS). The free **Non-Commercial** tier is enough.
+- **TouchDesigner 2025.32820** or later (arm64-native, macOS). The free **Non-Commercial** tier is
+  enough.
 - A **logged-in, GPU-capable desktop session**. TouchDesigner is **not headless** — there is no
   dedicated-server / CI rendering.
 - Verified on **Apple Silicon / Metal**.
@@ -59,10 +60,10 @@ no internet, no Node.js, no separate engine to install.
 2. One time only: create a **Derivative account**. **Activate the license through the GUI**.
    A fresh install stops at the activation modal until activation is complete.
 
-That is everything needed to render. The effect data (210 JSON definitions) and shaders (297
+That is everything needed to render. The effect data (210 JSON definitions) and shaders (301
 translated `.frag` files) are **committed**, and the runtime imports only Python's standard library
-and TouchDesigner's built-in `td` module. (Node and a reference-engine checkout are needed *only* to
-regenerate assets or run the parity tests — see [STATUS.md](STATUS.md).)
+and TouchDesigner's built-in `td` module. Node and a reference-engine checkout are needed *only* to
+regenerate assets or run the parity tests (see Contributing).
 
 ## Your first render
 
@@ -137,19 +138,22 @@ Integration constraints:
 
 ## What works today
 
-- The **whole 2D effect catalog** renders — noise, filters, mixers, classic generators. Most effects
-  match the web reference **exactly** (within 8-bit rounding).
-- The **full 3D namespace** renders too — volume raymarching, lit volumes, and six-face cubemaps.
-- **Particle/agent sims and fluid (navier–stokes)** render and behave like the reference.
-- **Chaotic** particle-and-fluid programs render correctly, but as a *different instance* of the same
-  chaos — they match in look and behavior, not pixel-for-pixel (tiny GPU rounding differences get
-  amplified by feedback).
-- The **live "blaster" corpus** — real multi-effect compositions from noisedeck.app — renders
-  end-to-end through the in-engine compiler.
+- **Compiler.** The in-TouchDesigner Python compiler produces the same render graph as the reference
+  compiler for the programs in `parity/corpus/` and `parity/programs/` (`parity/compiler/check_*.py`
+  at the revision pinned in `scripts/test`). The one program it skips, `parity/corpus/B5oBsA.dsl`, is
+  invalid and both compilers reject it.
+- **Rendering.** `parity/sweep.sh` renders every program in `parity/programs/` in TouchDesigner and
+  grades it against the reference engine's own render at the pinned revision (same GPU class, Metal
+  on macOS) with the per-effect tolerance listed in the script. Feedback effects are graded over
+  8 frames by `parity/accumulate.sh`. The latest results are on the compatibility report; this
+  README carries no copy of them.
+- **3D.** Volume raymarching, lit volumes and six-face cubemaps render, with volumes clamped to
+  `NM_MAX_VOLUME_SIZE` (see Integration constraints).
+- **Chaotic programs.** Chaotic particle-and-fluid programs and continuous solvers render
+  deterministically and stay bounded, but they are a different instance of the same chaos, not a
+  pixel match ([docs/CHAOS-GATE.md](docs/CHAOS-GATE.md)).
 
-Coverage table, parity numbers, and the full "chaos" explanation: **[STATUS.md](STATUS.md)** and
-**[docs/CHAOS-GATE.md](docs/CHAOS-GATE.md)**. Why TouchDesigner, and the platform gotchas:
-**[docs/TD-PLATFORM-NOTES.md](docs/TD-PLATFORM-NOTES.md)**.
+Platform notes: **[docs/TD-PLATFORM-NOTES.md](docs/TD-PLATFORM-NOTES.md)**.
 
 ## How it works
 
@@ -172,16 +176,19 @@ Contributions follow the Noise Factor [contributing policy](https://github.com/n
 [Code of Conduct](https://github.com/noisefactorllc/.github/blob/main/CODE_OF_CONDUCT.md). The notes below cover this repository's own tooling.
 
 Rendering needs nothing external. The **parity tooling**, however, compares TouchDesigner's output
-against the reference engine, so it needs a checkout of it via `NM_REFERENCE_ROOT`:
+against the reference engine, so it needs `NM_REFERENCE_ROOT` set to a `noisemaker` checkout at the
+revision pinned in `scripts/test` (`NM_REFERENCE_SHA_PINNED`):
 
 ```bash
+scripts/test                                                   # unit tests + compiler gates (no TD, no GPU)
+NM_REFERENCE_ROOT=/path/to/noisemaker parity/sweep.sh          # per-effect catalog in TD
+NM_REFERENCE_ROOT=/path/to/noisemaker scripts/parity-summary   # the sweep, summarized as PARITY-SUMMARY
 NM_REFERENCE_ROOT=/path/to/noisemaker parity/corpus_sweep.sh   # live DSL → graph → render the corpus in TD
-NM_REFERENCE_ROOT=/path/to/noisemaker parity/sweep.sh          # per-effect single-frame catalog
 ```
 
-→ **[STATUS.md](STATUS.md)** (coverage + gate results) ·
-**[docs/TD-PLATFORM-NOTES.md](docs/TD-PLATFORM-NOTES.md)** (how parity runs without a headless TD) ·
-`reference/01–10` (engine specs shared across all Noisemaker ports).
+→ **[ARCHITECTURE.md](ARCHITECTURE.md)** (how parity runs without a headless TD) ·
+**[PORTING-GUIDE.md](PORTING-GUIDE.md)** (translating a shader) · `reference/01–10` (engine specs
+shared across all Noisemaker ports).
 
 ## Repo layout
 
@@ -190,8 +197,8 @@ td/noisemaker/   the package — runtime (network builder) + live compiler + com
 parity/          golden-image test harness + DSL programs (per-effect catalog + blaster corpus)
 tools/           Node dev tooling (reference graph export, definition + shader codegen)
 reference/       engine specs shared across all Noisemaker ports
-docs/  ARCHITECTURE.md  PORTING-GUIDE.md   design, porting rules, platform notes
-STATUS.md        coverage table, parity results, known limits
+scripts/test     the engine-free test entry point
+docs/  ARCHITECTURE.md  PORTING-GUIDE.md   design, porting rules, platform notes, chaos gate
 ```
 
 ## License

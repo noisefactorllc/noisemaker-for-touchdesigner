@@ -233,8 +233,8 @@ def connect_output(container, renderer):
 
     TouchDesigner wires connect siblings only: a cross-network connect (the
     host-internal `nm.Output` into an `out` beside the host Base COMP) returns
-    without connecting on 2025.32820 (measured in the GAP-002 workflow,
-    docs/COMPLETION_GAPS.md section 3). The display TOP therefore lives inside
+    without connecting on 2025.32820 (measured with td/workflow_probe.py).
+    The display TOP therefore lives inside
     the host COMP, next to the built network. A container-level `out` is left
     alone with a note, since wiring it silently does nothing.
 

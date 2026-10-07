@@ -33,7 +33,7 @@ def declared_uniform_names(frag_text):
 def declared_array_uniforms(frag_text):
     """{name: length} for each `uniform vecN name[L];` — bound via the GLSL TOP **Arrays** page
     (a Uniform Array sourced from a CHOP), TD's std140-UBO equivalent. Only synth/remap uses one
-    (`vec4 data[267]`, the packed projection-map config). Element kind is captured for the bind."""
+    (`vec4 data[275]`, the packed projection-map config). Element kind is captured for the bind."""
     import re
     out = {}
     for kind, name, length in re.findall(

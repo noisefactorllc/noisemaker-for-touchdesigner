@@ -1,135 +1,97 @@
 # Noisemaker for TouchDesigner — Architecture
 
-A structural port of the Noisemaker shader engine (its `shaders/`, reached via
-`NM_REFERENCE_ROOT`) to **Derivative TouchDesigner** (2025.32820+), mirroring the existing
-Unity/HLSL port (`noisemaker-for-unity`) and the Godot port (`noisemaker-for-godot`): live procedural
-texture from the Polymorphic DSL, rendered through a network of **GLSL TOP**
-operators built programmatically in TouchDesigner Python, **tolerance-parity** to the
-JS/WebGL2 reference.
+A port of the Noisemaker shader engine to **Derivative TouchDesigner**: the DSL compiler, the
+effect catalog, and a runtime that builds a program as a live network of **GLSL TOP** operators.
+Sibling ports: `noisemaker-for-unity`, `noisemaker-for-godot`, `noisemaker-for-blender`,
+`noisemaker-for-threejs`, `noisemaker-for-babylonjs`.
 
-## The seam: Render Graph JSON
+## The seam: render graph JSON
 
-Identical to the other ports. The contract between "what to render" and "how this
-engine renders it" is the normalized **Render Graph JSON**
-(`compileGraph(dsl) → {passes, programs, textures, renderSurface}`, see
-`docs/GRAPH-JSON-SCHEMA.md`, reference specs `03`/`04`). Two producers emit it:
+Every port consumes the normalized **render graph JSON** (`docs/GRAPH-JSON-SCHEMA.md`). Two
+producers emit it:
 
-- **Golden / offline** — the *unchanged* reference JS `compileGraph`, via the reused
-  Node tool `tools/export-graph.mjs`. Zero parity risk: it is literally the reference.
-- **Live / in-engine** — the TouchDesigner-Python DSL frontend (`td/noisemaker/compiler/`), a
-  complete `lex → parse → validate → expand → resources` port of the Polymorphic DSL compiler that
-  emits byte-identical normalized JSON (graph-parity-clean **211/212** vs the `export-graph.mjs`
-  oracle) and is wired into `NMRenderer.set_dsl`.
+- **In TouchDesigner:** the Python port of the DSL compiler (`td/noisemaker/compiler/`: lex, parse,
+  validate, expand, resources), which `NMRenderer.set_dsl` runs.
+- **Offline:** the unchanged reference JavaScript compiler, run under Node by
+  `tools/export-graph.mjs`. The compiler gates use it as the oracle.
 
-Both feed **one consumer**: the TouchDesigner network builder.
+`parity/compiler/check_{lex,parse,validate,graph}.py` compare the two over `parity/corpus/` and
+`parity/programs/`. The reference revision is pinned by `NM_REFERENCE_SHA_PINNED` in
+`scripts/test`.
 
-## The consumer: a network builder, not an imperative executor
+## The consumer: a network builder
 
-This is the one structural way the TD port differs from HLSL/Godot, and it is a
-*simplification*. Unity (C# `CommandBuffer`) and Godot (GDScript `RenderingDevice`)
-issue GPU passes **imperatively, every frame**. TouchDesigner instead has a
-**pull-based cook graph**: you build a network of operators **once**, and the engine
-re-cooks it each frame automatically. So the Noisemaker "render graph" maps almost
-1:1 onto a TD operator network, and our runtime is a **builder** that translates
-graph JSON → TOPs, plus a thin per-frame uniform/time feed.
+TouchDesigner cooks a pull-based operator network every frame, so the runtime builds the network
+once from the graph and then feeds time and uniforms.
 
-| Render Graph concept            | TouchDesigner realization                                            |
+| Render graph concept            | TouchDesigner realization                                            |
 |---------------------------------|----------------------------------------------------------------------|
 | effect pass (`passType:effect`) | a **GLSL TOP** (`pixeldat` → the effect `.frag`; inputs wired; uniforms set) |
-| blit pass (`passType:blit`)     | a **Null TOP** (or pass-through GLSL TOP)                             |
-| pooled texture (`phys_N`)       | the upstream TOP's output (TD manages texture memory; pool is advisory) |
+| blit pass (`passType:blit`)     | a **Null TOP**                                                        |
+| pooled texture (`phys_N`)       | the upstream TOP's output (TouchDesigner manages texture memory)      |
 | global surface `o0..o7`, state  | a **Feedback TOP** pair (double-buffered, cross-frame persistence)   |
 | `inputs{name:texId}`            | TOP input connections, in stable order → `sTD2DInputs[i]`            |
-| `outputs{color,color1,...}` MRT | GLSL TOP **# of Color Buffers** > 1                                  |
-| `uniforms{name:value}`          | GLSL TOP **Vectors** page (`vecNname`/`vecNvalue*`) or an **Arrays** CHOP |
-| `defines{KEY:val}`              | `#define KEY val` baked into the `.frag` at transpile time           |
-| `drawMode:"points"` (scatter)   | Geometry COMP + GLSL MAT + Render TOP (implemented)                  |
-| `repeat:"iterations"`           | unrolled into a **chain of N GLSL TOPs** (TD's Passes param has unreliable previous-pass feedback semantics — deliberately not used) |
-| `renderSurface`                 | the presented **Out/Null TOP**                                       |
+| `outputs{color,color1,...}` MRT | GLSL TOP **# of Color Buffers** > 1, one common format                |
+| `uniforms{name:value}`          | GLSL TOP **Vectors** page, or an **Arrays** CHOP for uniform arrays   |
+| `defines{KEY:val}`              | `#define KEY val` lines prepended per pass                            |
+| `drawMode:"points"` (scatter)   | Geometry COMP + GLSL MAT + Render TOP                                 |
+| `repeat:"iterations"`           | a chain of N GLSL TOPs (the Passes parameter is not used)             |
+| `renderSurface`                 | the presented output TOP (`NMRenderer.Output`)                        |
 
-## Shader strategy: translate from the reference **GLSL**, not WGSL
+Texture formats follow the graph: `rgba8`/`rgba8unorm` → `rgba8fixed`, `rgba16f`/`rgba16float` →
+`rgba16float`, `rgba32f`/`rgba32float` → `rgba32float` (`runtime/td_backend.py`, `FORMAT_MAP`).
 
-The HLSL and Godot ports translate from the canonical **WGSL** because their targets
-(D3D HLSL; Vulkan GLSL) are not GLSL-ES-compatible and have top-left/Y-down raster
-origins. **TouchDesigner's GLSL TOP is OpenGL GLSL** — the *same family and the same
-raster convention as the reference's WebGL2 backend.** Consequences:
+## Shader strategy: the reference GLSL, translated mechanically
 
-1. **Source of truth for the TD port is the upstream engine's `shaders/effects/<ns>/<name>/glsl/*.glsl`**
-   (the reference's shipping WebGL2 shaders, under `NM_REFERENCE_ROOT`), cross-checked against WGSL only when a
-   GLSL file is absent. These are already parity-tested against WGSL by the reference.
-2. The per-effect transform is **mechanical**, so most of the 210 effects are
-   **auto-transpiled** by `tools/convert-shaders.mjs` rather than hand-ported. The
-   transform (see `PORTING-GUIDE.md`):
-   - strip the `#version 300 es` / `precision` header (TD prepends its own `#version`);
-   - drop named input-sampler declarations (`uniform sampler2D inputTex;`) and emit
-     `#define inputTex sTD2DInputs[i]` in stable input order;
-   - normalize coordinate access (`gl_FragCoord`→`nm_FragCoord`, `v_texCoord`→`nm_uv`)
-     through a single helper carrying the **Y-flip switch** (see below);
-   - rename the effect `main()`→`nm_main()`, own the `out vec4 fragColor;` declaration,
-     and wrap the result once: `void main(){ nm_main(); fragColor = TDOutputSwizzle(fragColor); }`;
-   - bake compile-time `#define`s from the effect definition.
-3. Emitted `.frag` files are **self-contained** (the reference inlines its own
-   PCG/prng/helpers per effect), so there is no shared `NMCore` to keep in sync — the
-   biggest source of parity drift in the other ports is absent here.
+TouchDesigner's GLSL TOP is OpenGL GLSL with the same bottom-left raster origin as the reference's
+WebGL2 backend, so `tools/convert-shaders.mjs` translates each reference
+`shaders/effects/<ns>/<name>/glsl/*.glsl` structurally, with no math edits and no Y-flip:
 
-### Y-origin — the one hazard, reduced to a single switch
+- strip the `#version 300 es` / `precision` header;
+- replace named input-sampler declarations with `#define inputTex sTD2DInputs[i]` in stable input
+  order;
+- rename the effect `main()` to `nm_main()` and wrap it:
+  `void main(){ nm_main(); fragColor = TDOutputSwizzle(fragColor); }`.
 
-The reference computes `globalCoord = gl_FragCoord.xy + tileOffset` and
-`st = globalCoord / fullResolution.y` in WebGL2's **bottom-left** raster space. TD's
-GLSL TOP is OpenGL and is expected to share that convention — meaning **no per-effect
-Y-flip** (unlike the HLSL port, which needed a flip at `NMBlit`). Because TD 2025 runs
-on a Vulkan/MoltenVK backend, this is **verified empirically at bring-up** (Task 2.3:
-render a `vUV.t` gradient and a real `gradient` effect, compare to the golden). The
-transpiler routes all coordinate reads through `nm_FragCoord`/`nm_uv`, so if a flip is
-needed it is a **one-line change in one helper** (`NM_FLIP_Y`), not a 210-shader edit.
+The emitted `.frag` files are self-contained, as the reference programs are. `--flip-y` exists for a
+host that would need a flipped origin; it is off. MRT programs are emitted verbatim and wired by the
+runtime (see `PORTING-GUIDE.md`).
 
-## Parity strategy
+## Parity
 
-Golden truth = the reference's own output. For each staged parity program:
-`export-graph.mjs` (graph JSON) + `export-and-render.mjs` (golden PNG via the reference
-WebGL2 engine) → then the TD candidate render → `compare.py` (max-abs-diff + SSIM).
-Targets, as on the other ports: SSIM ≥ 0.98, max-abs-diff ≤ 1–2/255 (cross-device
-bit-exactness is impossible: MoltenVK/Metal vs ANGLE/WebGL2). **Achieved: the whole 2D catalog
-(~160 single-pass effects — most byte-exact, a handful SSIM-gated at discontinuities), the full
-3D volume/cubemap namespace (`render3d`/`renderLit3d` SSIM ~1.0/max-diff 1, 6-face cubemap bake
-max-diff ≤ 1), stateful/feedback effects through the evolve harness (chaos-gated — see
-`docs/CHAOS-GATE.md`), and the live blaster corpus end-to-end (24/24 renderable).**
+Golden truth is the reference engine's own output at the pinned revision, rendered by the reference
+harness in headless Chromium (ANGLE on Metal on macOS, the same GPU class as the candidate).
 
-The TD candidate is produced **fully scripted, no GUI clicking** (`parity/run.sh`): build a
-bootstrap `.toe` (`td/build_parity_toe.py` — an Execute DAT authored offline via
-`toeexpand`/`toecollapse`, since TD has no headless startup hook), launch TD on it → the
-Execute DAT (`onStart`/`onCreate`) execs `td/parity_render_all.py` → `project.realTime = False`
-→ build each graph via the runtime → `op.save('candidate.png')` → `project.quit(force=True)`.
+- `parity/sweep.sh` stages every program in `parity/programs/`, renders goldens
+  (`parity/batch-golden.mjs`), renders candidates in TouchDesigner (`parity/run.sh`), and grades
+  each with `parity/compare.py` against a per-effect tolerance listed in the script. Feedback
+  effects are graded by `parity/accumulate.sh`. The script writes its results to a ledger
+  (`LEDGER_PATH`, default `parity/out/ledger.tsv`).
+- `scripts/parity-summary` runs the sweep against a reference checkout at the pinned revision and
+  classifies every staged case as exact, strict (max-abs-diff ≤ 2, SSIM ≥ 0.98), near (passes only
+  the wider per-effect tolerance), defer, fail or missing, ending with a `PARITY-SUMMARY` line.
+- `parity/corpus_sweep.sh` renders the live programs in `parity/corpus/` through the in-TouchDesigner
+  compiler.
+- `parity/evolve.sh` evolves stateful programs over many frames; chaotic programs are graded for
+  stability and character (`docs/CHAOS-GATE.md`).
 
-## Platform constraints (from research; see `docs/TD-PLATFORM-NOTES.md`)
+Measured results live on the compatibility report issue, not in the repository.
 
-- **GLSL TOP contract:** no `#version`/precision line; inputs `texture(sTD2DInputs[i], vUV.st)`;
-  output `fragColor = TDOutputSwizzle(...)`; built-ins `uTD2DInfos[i].res = (1/w,1/h,w,h)`,
-  `uTDOutputInfo`, `uTDPass`; **no built-in time** → custom `uTime` uniform.
-- **Custom uniforms:** declared by name in the shader; fed from Python via the Vectors
-  page (`g.par.vec0name='uTime'; g.par.vec0valuex=…`) or an Arrays-page CHOP.
-- **No offline `.toe`/`.tox` authoring:** the binary format is undocumented; we ship a
-  near-empty bootstrap `.toe`, keep GLSL in on-disk `.frag` files (Text DAT `file`+`syncfile`),
-  and **build the network from Python at startup** (Execute DAT `onCreate`/`onStart`).
-- **Not truly headless:** TD needs a logged-in GPU desktop session (it has one on this
-  machine). It is fully scriptable but not a daemon/CI process without a display.
-- **Licensing:** free Non-Commercial tier runs and renders with **no watermark** but a
-  **1280×1280 cap** (parity renders are 256², well under). **First launch requires a
-  one-time Derivative account+key activation via the GUI** — the single human-in-the-loop
-  step before parity gates can execute. All build/transpile/codegen work is autonomous.
+TouchDesigner has no headless startup hook, so `parity/run.sh` builds a bootstrap `.toe`
+(`td/build_parity_toe.py`) whose Execute DAT renders the requested programs through
+`td/parity_render_all.py` and quits. The scripts stop only the TouchDesigner instance they launched.
+
+## Platform constraints
+
+See `docs/TD-PLATFORM-NOTES.md`.
+
+- **Not headless:** TouchDesigner needs a logged-in GPU desktop session.
+- **Licensing:** the free Non-Commercial tier renders without a watermark but caps resolution at
+  1280×1280, so 3D volumes are clamped by `NM_MAX_VOLUME_SIZE` (default 32). A fresh install stops
+  at an activation modal until a Derivative account activates it in the GUI.
+- **No offline `.toe`/`.tox` authoring:** the network is built from Python at startup.
 
 ## Tech stack
 
-TouchDesigner 2025.32820 (arm64-native, `/Applications/TouchDesigner.app`), its bundled
-**Python 3.11**, GLSL **4.60** (GLSL TOP), Node 26 (reused reference tooling, no new
-deps), Python 3 + numpy/pillow (reused `compare.py`). `toeexpand`/`toecollapse` available
-as an escape hatch but not on the build path.
-
-## Reused engine-agnostic assets (copied, NOT re-authored)
-
-`reference/01–10` specs, `tools/export-graph.mjs`, `tools/convert-definitions.mjs`
-(OUT_DIR retargeted), `parity/compare.py`, `parity/programs/*.dsl`,
-`parity/export-and-render.mjs`, `docs/GRAPH-JSON-SCHEMA.md`.
-
-See `docs/IMPLEMENTATION-PLAN.md` for the staged, parity-gated build and
-`PORTING-GUIDE.md` for the reference-GLSL → TD-GLSL rulebook.
+TouchDesigner 2025.32820 and later (arm64, macOS) with its bundled Python 3.11 and GLSL 4.60;
+Node for the offline tooling; Python 3 with numpy and Pillow for grading.

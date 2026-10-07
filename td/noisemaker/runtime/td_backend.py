@@ -531,7 +531,7 @@ class TDBackend:
             'declared': declared, 'engine': True,
         })
 
-        # std140 UNIFORM ARRAY (synth/remap `vec4 data[267]`): the frag declares a uniform array and
+        # std140 UNIFORM ARRAY (synth/remap `vec4 data[275]`): the frag declares a uniform array and
         # the program carries a uniformLayout — pack the FULL flat uniforms (zone config etc., which
         # are NOT declared scalars in the frag) into the array via the layout, bind via the Arrays
         # page. Packs from `merged` (engine ∪ pass uniforms), not the declared-filtered `bound`.
