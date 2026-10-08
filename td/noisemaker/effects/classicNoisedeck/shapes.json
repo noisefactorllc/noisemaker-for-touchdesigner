@@ -75,6 +75,14 @@
     "palettePhase": {
       "slot": 6,
       "components": "xyz"
+    },
+    "tileOffset": {
+      "slot": 7,
+      "components": "xy"
+    },
+    "fullResolution": {
+      "slot": 7,
+      "components": "zw"
     }
   },
   "globals": {

@@ -53,6 +53,18 @@
     "bandHeight": {
       "slot": 2,
       "components": "z"
+    },
+    "renderScale": {
+      "slot": 2,
+      "components": "w"
+    },
+    "tileOffset": {
+      "slot": 3,
+      "components": "xy"
+    },
+    "fullResolution": {
+      "slot": 3,
+      "components": "zw"
     }
   },
   "globals": {

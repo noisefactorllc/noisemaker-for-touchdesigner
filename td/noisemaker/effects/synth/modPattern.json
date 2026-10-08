@@ -69,6 +69,14 @@
     "animMode": {
       "slot": 4,
       "components": "x"
+    },
+    "tileOffset": {
+      "slot": 5,
+      "components": "xy"
+    },
+    "fullResolution": {
+      "slot": 5,
+      "components": "zw"
     }
   },
   "globals": {

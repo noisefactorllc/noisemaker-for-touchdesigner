@@ -53,6 +53,18 @@
     "speed": {
       "slot": 2,
       "components": "w"
+    },
+    "tileOffset": {
+      "slot": 3,
+      "components": "xy"
+    },
+    "fullResolution": {
+      "slot": 3,
+      "components": "zw"
+    },
+    "renderScale": {
+      "slot": 4,
+      "components": "x"
     }
   },
   "globals": {

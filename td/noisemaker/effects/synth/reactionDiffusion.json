@@ -22,6 +22,14 @@
         "slot": 1,
         "components": "x"
       },
+      "tileOffset": {
+        "slot": 2,
+        "components": "xy"
+      },
+      "fullResolution": {
+        "slot": 2,
+        "components": "zw"
+      },
       "smoothing": {
         "slot": 3,
         "components": "w"

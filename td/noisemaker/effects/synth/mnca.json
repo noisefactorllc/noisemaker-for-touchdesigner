@@ -88,6 +88,14 @@
     "n2r2": {
       "slot": 5,
       "components": "x"
+    },
+    "tileOffset": {
+      "slot": 6,
+      "components": "xy"
+    },
+    "fullResolution": {
+      "slot": 6,
+      "components": "zw"
     }
   },
   "globals": {
