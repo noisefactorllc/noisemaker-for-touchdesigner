@@ -399,6 +399,7 @@ PARITY: `floor` for param/percent/scale, `round` for screenDivide. `Math.pow` an
 - `g.tileOffset` default `[0,0]`; `g.fullResolution` default `[width,height]`.
 - If `_tileOffset` set: `tileOffset = _tileOffset`; else `[0,0]`.
 - If `_fullResolution` set: `fullResolution = _fullResolution`; `fullAspect = fr[0]/fr[1]`; `g.aspect = g.aspectRatio = fullAspect`. Else `fullResolution=[w,h]`, `g.aspect=g.aspectRatio=aspectValue`.
+- `g.aspectInv = 1.0/fullAspect` (or `1.0/aspectValue`) and `g.invFullResolution = [1.0/fr[0], 1.0/fr[1]]` — CPU-computed correctly-rounded reciprocals; shader mains multiply by them instead of dividing so relaxed-math (Dawn) and correctly-dividing (ANGLE) backends evaluate the same multiply (rotate2D's final rescale, the `uv = globalCoord * invFullResolution` chain).
 - `g.renderScale = _renderScale || 1.0`.
 - Audio: if `externalState.audio.waveform`/`.spectrum` present → copy to `g.audioWaveform`/`g.audioSpectrum`.
 - MIDI: if `externalState.midi`: `midi.updateNoteGrid()`; `backend.uploadDataTexture('midiNoteGrid', midi.noteGrid, 128, 16)`; `g.midiClockCount = midi.clockCount`. Else if `_needsMidiNoteGrid`: upload `_emptyNoteGrid` (lazily `new Float32Array(128*16*4)`). `g.midiClockCount = g.midiClockCount || 0`.
@@ -437,8 +438,8 @@ For each global output of `pass`: swap `surface.read ↔ surface.write` AND upda
 
 ### 10.7 `swapBuffers()` (end of frame)
 For each `[name, surface]`: set `surface.currentFrame = frameIndex`.
-- If `isStateSurface(name)`: persist final bindings — `surface.read = frameReadTextures.get(name)`, `surface.write = frameWriteTextures.get(name)` (only if both present). NO swap; particles/sims continue from last frame's buffers.
-- Else (display surface): swap `surface.read ↔ surface.write`.
+- If `isStateSurface(name)` OR `graph.textures.get('global_'+name)?.persistent === true` OR the name is a **graph feedback surface** (`_feedbackSurfaces`: a global surface some pass reads before any pass writes it in the same frame, and that is also written — cross-frame feedback, not frame-local scratch): persist final bindings — `surface.read = frameReadTextures.get(name)`, `surface.write = frameWriteTextures.get(name)` (only if both present). NO swap; sims continue from last frame's buffers even when an intervening update pass was skipped.
+- Else (display surface / frame-local scratch written before read, e.g. Lenia's clear/deposit density target): swap `surface.read ↔ surface.write`.
 
 `isStateSurface(name)` true iff: exact `xyz|vel|rgba|trail`; OR suffix `_xyz|_vel|_rgba|_trail`; OR `name.includes('state')||name.includes('State')`; OR regex `^(xyz|vel|rgba|points_trail)_node_\d+$`.
 

@@ -26,6 +26,10 @@ def engine_uniforms(width, height, time, *, frame=0, delta_time=0.0,
         fr = [w, h]
         full_aspect = aspect_value
 
+    # Correctly-rounded reciprocals (reference/04 §10.1): shaders multiply by
+    # these instead of dividing so a relaxed-math backend never lowers the
+    # division to an approximate reciprocal multiply (aspectInv backs
+    # rotate2D's final rescale; invFullResolution backs the uv chain).
     return {
         'time': float(time),
         'deltaTime': float(delta_time),
@@ -35,6 +39,9 @@ def engine_uniforms(width, height, time, *, frame=0, delta_time=0.0,
         'fullResolution': fr,
         'aspect': full_aspect,
         'aspectRatio': full_aspect,
+        'aspectInv': 1.0 / full_aspect if full_aspect else 0.0,
+        'invFullResolution': [1.0 / fr[0] if fr[0] else 0.0,
+                              1.0 / fr[1] if fr[1] else 0.0],
         'renderScale': float(render_scale) if render_scale else 1.0,
     }
 
@@ -43,5 +50,6 @@ def engine_uniforms(width, height, time, *, frame=0, delta_time=0.0,
 # and the builder knows not to expect them in pass.uniforms).
 ENGINE_UNIFORM_NAMES = frozenset({
     'time', 'deltaTime', 'frame', 'resolution', 'tileOffset',
-    'fullResolution', 'aspect', 'aspectRatio', 'renderScale',
+    'fullResolution', 'aspect', 'aspectRatio', 'aspectInv',
+    'invFullResolution', 'renderScale',
 })

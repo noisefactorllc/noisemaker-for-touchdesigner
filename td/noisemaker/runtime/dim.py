@@ -21,6 +21,28 @@ def _nullish(value, fallback):
     return fallback if value is None else value
 
 
+def _js_number(value):
+    """JS `Number(value)` — the numeric coercion `resolveDimension`'s nonnumeric
+    guard and floor apply to every value it computes with. Objects (Func
+    wrappers, AST nodes) and unparseable strings coerce to NaN; `null`/'' to 0.
+    """
+    if value is None:
+        return 0.0
+    if isinstance(value, bool):
+        return 1.0 if value else 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return 0.0
+        try:
+            return float(stripped)
+        except ValueError:
+            return float('nan')
+    return float('nan')
+
+
 def resolve_dimension(spec, screen_size, uniforms=None):
     """Resolve a Dim spec to a concrete int pixel size. `screen_size` is the axis
     size (width for width, height for height). `uniforms` supplies `{param}` lookups."""
@@ -47,16 +69,33 @@ def resolve_dimension(spec, screen_size, uniforms=None):
                             ('multiply' in spec and spec['multiply'] is not None)
             param_default = _nullish(spec.get('paramDefault'), 64)
             value = _nullish(uniforms.get(param), param_default)
+            # JS applies the transforms through Number() coercion, so a Func
+            # wrapper or AST node becomes NaN instead of raising.
             if spec.get('multiply') is not None:
-                value = value * spec['multiply']
+                value = _js_number(value) * spec['multiply']
             if spec.get('power') is not None:
-                value = math.pow(value, spec['power'])
+                value = math.pow(_js_number(value), spec['power'])
             if has_transform and uniforms.get(param) is None and spec.get('default') is not None:
                 value = spec['default']
-            return max(1, int(math.floor(value)))
+            # Func wrappers and other nonnumeric authored values are not
+            # evaluated by the runtime. Use the texture spec's existing
+            # numeric default so backends never allocate a NaN size
+            # (reference/04 §9; upstream 8ad2bf56).
+            if not math.isfinite(_js_number(value)):
+                if spec.get('default') is not None:
+                    value = spec['default']
+                else:
+                    value = param_default
+                    if spec.get('multiply') is not None:
+                        value = _js_number(value) * spec['multiply']
+                    if spec.get('power') is not None:
+                        value = math.pow(_js_number(value), spec['power'])
+            return max(1, int(math.floor(_js_number(value))))
 
         if spec.get('screenDivide') is not None:
             divisor = _nullish(_nullish(uniforms.get(spec['screenDivide']), spec.get('default')), 1)
+            if not math.isfinite(_js_number(divisor)):
+                divisor = _nullish(spec.get('default'), 1)
             return max(1, _js_round(screen_size / divisor))  # NOTE: round, not floor
 
         if spec.get('scale') is not None:
