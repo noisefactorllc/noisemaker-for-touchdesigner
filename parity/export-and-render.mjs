@@ -148,7 +148,11 @@ async function main () {
   process.env.SHADE_GLOBALS_PREFIX = GLOBALS_PREFIX
   process.env.SHADE_HEADLESS = process.env.SHADE_HEADLESS ?? '1'
 
-  const harness = await import(pathToFileURL(HARNESS).href)
+  const harness = await (async () => {
+    const { ensureFreeHarnessPort } = await import(new URL('./harness-port.mjs', import.meta.url).href)
+    await ensureFreeHarnessPort()
+    return import(pathToFileURL(HARNESS).href)
+  })()
   const { BrowserSession } = harness
 
   const session = new BrowserSession({ backend: opts.backend })

@@ -210,6 +210,8 @@ async function main () {
   process.env.SHADE_EFFECTS_DIR = join(REFERENCE_ROOT, 'shaders', 'effects')
   process.env.SHADE_GLOBALS_PREFIX = '__noisemaker'
   process.env.SHADE_HEADLESS = process.env.SHADE_HEADLESS ?? '1'
+  const { ensureFreeHarnessPort } = await import(new URL('./harness-port.mjs', import.meta.url).href)
+  await ensureFreeHarnessPort()
   const { BrowserSession } = await import(pathToFileURL(HARNESS).href)
   const session = new BrowserSession({ backend: o.backend })
   let ok = 0, fail = 0
