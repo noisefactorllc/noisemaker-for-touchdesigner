@@ -7,7 +7,6 @@
     "util"
   ],
   "description": "Test patterns for debugging and calibration",
-  "paramAliases": {},
   "globals": {
     "pattern": {
       "type": "int",

@@ -603,10 +603,6 @@ class _Validator:
 
     def _resolve_args(self, chain, spec, call, op_name, original, args, write_name):
         kw = call.get('kwargs')
-        if kw is not None:
-            warnings = self._reg.resolve_param_aliases(op_name, kw)
-            for w in warnings:
-                self._push_diag("S007", call, w)
         seen = set()
         spec_args = spec.args
         # Sidecar map remembering the source form of each arg (e.g. 'array' when the source was a

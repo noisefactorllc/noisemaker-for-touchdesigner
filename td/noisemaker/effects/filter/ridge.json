@@ -7,7 +7,6 @@
     "edges"
   ],
   "description": "Ridge/crease enhancement",
-  "paramAliases": {},
   "globals": {
     "level": {
       "type": "float",

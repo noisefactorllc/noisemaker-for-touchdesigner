@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "Multi-neighborhood cellular automata",
-  "paramAliases": {},
   "uniformLayout": {
     "resolution": {
       "slot": 0,

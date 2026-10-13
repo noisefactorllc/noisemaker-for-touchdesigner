@@ -8,7 +8,6 @@
     "geometric"
   ],
   "description": "Composite inputs inside and outside a geometric shape",
-  "paramAliases": {},
   "globals": {
     "tex": {
       "type": "surface",

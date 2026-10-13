@@ -8,7 +8,6 @@
     "util"
   ],
   "description": "Smooth Hermite interpolation between edges",
-  "paramAliases": {},
   "globals": {
     "edge0": {
       "type": "float",

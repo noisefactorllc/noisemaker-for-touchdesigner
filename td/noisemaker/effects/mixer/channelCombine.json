@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Combine separate surface inputs into R, G, B channels",
-  "paramAliases": {},
   "globals": {
     "rTex": {
       "type": "surface",

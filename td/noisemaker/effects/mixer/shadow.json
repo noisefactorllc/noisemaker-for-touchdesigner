@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Cast a shadow or glow from one input onto another",
-  "paramAliases": {},
   "globals": {
     "tex": {
       "type": "surface",

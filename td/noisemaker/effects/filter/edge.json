@@ -7,7 +7,6 @@
     "edges"
   ],
   "description": "Edge detection filter",
-  "paramAliases": {},
   "globals": {
     "kernel": {
       "type": "int",

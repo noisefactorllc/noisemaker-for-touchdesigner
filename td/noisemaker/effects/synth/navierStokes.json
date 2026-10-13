@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "Stable-fluids Navier-Stokes solver",
-  "paramAliases": {},
   "uniformLayouts": {
     "nsSplat": {
       "resolution": {

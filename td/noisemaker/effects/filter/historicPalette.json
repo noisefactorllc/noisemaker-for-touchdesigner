@@ -8,9 +8,6 @@
     "palette"
   ],
   "description": "Apply historical art color palettes",
-  "paramAliases": {
-    "paletteIndex": "index"
-  },
   "globals": {
     "index": {
       "type": "int",

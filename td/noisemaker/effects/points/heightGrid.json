@@ -7,7 +7,6 @@
     "agents"
   ],
   "description": "Arrange every particle in a landscape grid with separate height and diffuse surfaces",
-  "paramAliases": {},
   "globals": {
     "heightTex": {
       "type": "surface",

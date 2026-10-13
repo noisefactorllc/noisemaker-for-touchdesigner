@@ -8,7 +8,6 @@
     "pattern"
   ],
   "description": "Bitwise operation patterns (XOR squares, AND, OR, etc.)",
-  "paramAliases": {},
   "uniformLayout": {
     "resolution": {
       "slot": 0,

@@ -8,9 +8,6 @@
     "fractal"
   ],
   "description": "3D fractal flythrough with camera-relative volume",
-  "paramAliases": {
-    "fractalType": "type"
-  },
   "globals": {
     "volumeSize": {
       "type": "int",

@@ -8,7 +8,6 @@
     "pattern"
   ],
   "description": "Mix inputs using geometric patterns",
-  "paramAliases": {},
   "globals": {
     "tex": {
       "type": "surface",

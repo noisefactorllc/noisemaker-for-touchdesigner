@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Colorize input texture with a color overlay",
-  "paramAliases": {},
   "globals": {
     "color": {
       "type": "color",

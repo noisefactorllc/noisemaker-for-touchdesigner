@@ -8,9 +8,6 @@
     "pattern"
   ],
   "description": "Bit field and bit mask effects",
-  "paramAliases": {
-    "loopAmp": "speed"
-  },
   "uniformLayout": {
     "resolution": {
       "slot": 0,

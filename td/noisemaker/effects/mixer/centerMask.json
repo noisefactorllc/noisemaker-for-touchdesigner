@@ -7,9 +7,6 @@
     "blend"
   ],
   "description": "Blend from edges (A) into center (B) using a distance mask",
-  "paramAliases": {
-    "mixAmt": "mix"
-  },
   "globals": {
     "tex": {
       "type": "surface",

@@ -7,7 +7,6 @@
     "distort"
   ],
   "description": "Sine wave distortion",
-  "paramAliases": {},
   "globals": {
     "strength": {
       "type": "float",

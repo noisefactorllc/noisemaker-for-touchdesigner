@@ -9,7 +9,6 @@
     "artist"
   ],
   "description": "Hand-drawn sketch engine covering Graphic Pen, Charcoal, Chalk & Charcoal, Conte Crayon, Crosshatch, and Colored Pencil filters",
-  "paramAliases": {},
   "globals": {
     "mode": {
       "type": "int",

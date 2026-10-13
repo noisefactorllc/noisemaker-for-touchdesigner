@@ -7,7 +7,6 @@
     "blur"
   ],
   "description": "Radial blur emanating from center",
-  "paramAliases": {},
   "globals": {
     "strength": {
       "type": "float",

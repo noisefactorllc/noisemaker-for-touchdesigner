@@ -8,7 +8,6 @@
     "palette"
   ],
   "description": "Apply Tetra color array palettes based on luminance",
-  "paramAliases": {},
   "uniformLayout": {
     "colorMode": {
       "slot": 0,

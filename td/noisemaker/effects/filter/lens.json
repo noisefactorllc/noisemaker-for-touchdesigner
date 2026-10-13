@@ -8,7 +8,6 @@
     "lens"
   ],
   "description": "Barrel or pincushion lens distortion",
-  "paramAliases": {},
   "globals": {
     "displacement": {
       "type": "float",

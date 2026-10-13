@@ -7,7 +7,6 @@
     "edges"
   ],
   "description": "Outline/edge stroke",
-  "paramAliases": {},
   "globals": {
     "shape": {
       "type": "int",

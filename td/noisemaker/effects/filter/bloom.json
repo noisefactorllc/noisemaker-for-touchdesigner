@@ -7,7 +7,6 @@
     "lens"
   ],
   "description": "Multi-pass bloom with bright-pass extraction and configurable glow",
-  "paramAliases": {},
   "globals": {
     "threshold": {
       "type": "float",

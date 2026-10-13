@@ -8,7 +8,6 @@
     "artist"
   ],
   "description": "Soft directional streaks drawn from bright edges, with wind, blast, and stagger methods",
-  "paramAliases": {},
   "globals": {
     "method": {
       "type": "int",

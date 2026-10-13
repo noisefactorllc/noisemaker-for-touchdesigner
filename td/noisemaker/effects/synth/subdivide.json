@@ -8,7 +8,6 @@
     "pattern"
   ],
   "description": "Recursive grid subdivision with shapes",
-  "paramAliases": {},
   "uniformLayout": {
     "resolution": {
       "slot": 0,

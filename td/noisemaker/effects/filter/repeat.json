@@ -8,7 +8,6 @@
     "transform"
   ],
   "description": "Tiling repeat",
-  "paramAliases": {},
   "globals": {
     "x": {
       "type": "float",

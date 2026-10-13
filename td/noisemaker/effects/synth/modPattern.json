@@ -8,7 +8,6 @@
     "pattern"
   ],
   "description": "Interference patterns from modulo operations",
-  "paramAliases": {},
   "uniformLayout": {
     "resolution": {
       "slot": 0,

@@ -6,7 +6,7 @@
 //   td/noisemaker/effects/<ns>/<func>.json
 //
 // The emitted shape matches the hand-written Tier-1 files (Effects/synth/*.json):
-//   { name, namespace, func, tags, description, paramAliases,
+//   { name, namespace, func, tags, description,
 //     globals{ <key>: { type, default, uniform, define, min, max, choices } },
 //     passes[ { name, program, inputs, outputs, uniforms } ],
 //     textures{ <id>: { width, height, [depth], [is3D], format } } }
@@ -157,7 +157,6 @@ function convertEffect (instance, namespace, name) {
   def.starter = !!(mentry && mentry.starter)
   if (instance.tags) def.tags = instance.tags
   if (instance.description) def.description = instance.description
-  def.paramAliases = instance.paramAliases || {}
   // std140 uniform-block layout: {uniformName: {slot, components}} (and per-program uniformLayouts).
   // The reference packs flat uniforms into a `vec4 data[N]` array via this; the Python compiler reads
   // it (effect_registry → expander → graph programs map) and the TD backend binds it as a uniform

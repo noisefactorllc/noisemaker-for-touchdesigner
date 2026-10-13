@@ -7,11 +7,6 @@
     "text"
   ],
   "description": "Overlay text onto the image",
-  "paramAliases": {
-    "bgOpacity": "matteOpacity",
-    "bgAlpha": "matteOpacity",
-    "bgColor": "matteColor"
-  },
   "globals": {
     "text": {
       "type": "string",

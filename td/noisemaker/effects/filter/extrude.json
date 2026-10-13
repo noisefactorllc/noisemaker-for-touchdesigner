@@ -9,7 +9,6 @@
     "artist"
   ],
   "description": "Break the image into 3D blocks or pyramids projecting toward the viewer (Extrude)",
-  "paramAliases": {},
   "globals": {
     "type": {
       "type": "int",

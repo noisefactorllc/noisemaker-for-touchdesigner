@@ -7,7 +7,6 @@
     "transform"
   ],
   "description": "Scale transform",
-  "paramAliases": {},
   "globals": {
     "x": {
       "type": "float",

@@ -7,7 +7,6 @@
     "blend"
   ],
   "description": "Blend using threshold masking",
-  "paramAliases": {},
   "globals": {
     "tex": {
       "type": "surface",

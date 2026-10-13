@@ -8,7 +8,6 @@
     "artist"
   ],
   "description": "Concentric ripple distortion around the image center",
-  "paramAliases": {},
   "globals": {
     "amount": {
       "type": "float",

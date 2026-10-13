@@ -8,7 +8,6 @@
     "util"
   ],
   "description": "Color replacement with alpha output. Matches pixels near targetColor and remaps their RGB and/or alpha.",
-  "paramAliases": {},
   "globals": {
     "targetColor": {
       "type": "color",

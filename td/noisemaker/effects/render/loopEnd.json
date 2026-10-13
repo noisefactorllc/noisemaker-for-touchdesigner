@@ -8,7 +8,6 @@
     "sim"
   ],
   "description": "End accumulator loop, write back to feedback buffer",
-  "paramAliases": {},
   "globals": {},
   "passes": [
     {

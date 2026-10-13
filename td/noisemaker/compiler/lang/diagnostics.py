@@ -35,7 +35,6 @@ _TABLE = {
     'S004': ("Cannot assign null or undefined", SEVERITY_ERROR, STAGE_SEMANTIC),
     'S005': ("Illegal chain structure", SEVERITY_ERROR, STAGE_SEMANTIC),
     'S006': ("Starter chain missing write() call", SEVERITY_ERROR, STAGE_SEMANTIC),
-    'S007': ("Deprecated parameter alias", SEVERITY_WARNING, STAGE_SEMANTIC),
     'S008': ("Deprecated effect", SEVERITY_WARNING, STAGE_SEMANTIC),
     'R001': ("Runtime error", SEVERITY_ERROR, STAGE_RUNTIME),
 }

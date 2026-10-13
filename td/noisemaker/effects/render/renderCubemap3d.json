@@ -7,7 +7,6 @@
     "3d"
   ],
   "description": "Render a 3D volume into cubemap faces (lit isosurface/voxel)",
-  "paramAliases": {},
   "globals": {
     "volumeSize": {
       "type": "int",

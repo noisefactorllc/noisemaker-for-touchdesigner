@@ -7,9 +7,6 @@
     "noise"
   ],
   "description": "Dual-noise caustic pattern with reflect blend",
-  "paramAliases": {
-    "loopAmp": "speed"
-  },
   "uniformLayout": {
     "resolution": {
       "slot": 0,

@@ -7,11 +7,6 @@
     "geometric"
   ],
   "description": "Fractal pattern generator",
-  "paramAliases": {
-    "fractalType": "type",
-    "backgroundColor": "bgColor",
-    "backgroundOpacity": "bgAlpha"
-  },
   "uniformLayout": {
     "resolution": {
       "slot": 0,

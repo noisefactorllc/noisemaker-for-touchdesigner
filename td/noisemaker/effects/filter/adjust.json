@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Colorspace, hue/saturation, brightness/contrast",
-  "paramAliases": {},
   "globals": {
     "mode": {
       "type": "int",

@@ -7,7 +7,6 @@
     "distort"
   ],
   "description": "Bulge distortion from center",
-  "paramAliases": {},
   "globals": {
     "strength": {
       "type": "float",

@@ -9,7 +9,6 @@
     "3d"
   ],
   "description": "Load mesh data from OBJ files into GPU textures.",
-  "paramAliases": {},
   "globals": {},
   "passes": [
     {

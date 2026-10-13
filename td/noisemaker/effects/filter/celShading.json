@@ -8,10 +8,6 @@
     "edges"
   ],
   "description": "Cartoon-style shading with posterization and outlines",
-  "paramAliases": {
-    "shadingStrength": "strength",
-    "mixAmount": "mix"
-  },
   "globals": {
     "mix": {
       "type": "float",

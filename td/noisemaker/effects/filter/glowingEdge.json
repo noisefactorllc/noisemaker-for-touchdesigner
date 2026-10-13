@@ -7,7 +7,6 @@
     "edges"
   ],
   "description": "Glowing edge detection",
-  "paramAliases": {},
   "globals": {
     "shape": {
       "type": "int",

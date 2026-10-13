@@ -8,7 +8,6 @@
     "artist"
   ],
   "description": "Classic unsharp mask sharpening with radius and threshold",
-  "paramAliases": {},
   "globals": {
     "amount": {
       "type": "float",

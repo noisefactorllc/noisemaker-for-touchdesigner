@@ -8,7 +8,6 @@
     "util"
   ],
   "description": "Hard threshold at specified value",
-  "paramAliases": {},
   "globals": {
     "threshold": {
       "type": "float",

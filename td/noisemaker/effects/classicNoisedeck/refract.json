@@ -7,10 +7,6 @@
     "distort"
   ],
   "description": "Refraction distortion",
-  "paramAliases": {
-    "refractDir": "direction",
-    "mixAmt": "mix"
-  },
   "globals": {
     "blendMode": {
       "type": "int",

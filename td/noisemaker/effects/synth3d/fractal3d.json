@@ -7,9 +7,6 @@
     "3d"
   ],
   "description": "3D Mandelbulb/Mandelcube fractals",
-  "paramAliases": {
-    "fractalType": "type"
-  },
   "globals": {
     "volumeSize": {
       "type": "int",

@@ -7,7 +7,6 @@
     "distort"
   ],
   "description": "Pinch distortion toward center",
-  "paramAliases": {},
   "globals": {
     "strength": {
       "type": "float",

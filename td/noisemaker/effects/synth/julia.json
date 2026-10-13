@@ -7,7 +7,6 @@
     "fractal"
   ],
   "description": "Julia set explorer with deep zoom",
-  "paramAliases": {},
   "uniformLayout": {
     "resolution": {
       "slot": 0,

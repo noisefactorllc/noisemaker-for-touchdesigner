@@ -7,7 +7,6 @@
     "noise"
   ],
   "description": "Procedural surface and material texture overlay",
-  "paramAliases": {},
   "globals": {
     "mode": {
       "type": "int",

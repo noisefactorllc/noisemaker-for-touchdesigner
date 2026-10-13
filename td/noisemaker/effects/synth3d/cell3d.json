@@ -8,9 +8,6 @@
     "noise"
   ],
   "description": "3D cellular/Voronoi noise volume",
-  "paramAliases": {
-    "cellVariation": "variation"
-  },
   "globals": {
     "volumeSize": {
       "type": "int",

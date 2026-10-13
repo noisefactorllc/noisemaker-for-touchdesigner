@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Applies 3D lighting effects",
-  "paramAliases": {},
   "globals": {
     "normalStrength": {
       "type": "float",

@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Normal map generation",
-  "paramAliases": {},
   "globals": {},
   "passes": [
     {

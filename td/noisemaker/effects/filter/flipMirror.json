@@ -7,7 +7,6 @@
     "transform"
   ],
   "description": "Flip and mirror image transformations",
-  "paramAliases": {},
   "globals": {
     "mode": {
       "type": "int",

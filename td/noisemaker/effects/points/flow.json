@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "Agent-based luminosity flow field with behaviors",
-  "paramAliases": {},
   "globals": {
     "stateSize": {
       "type": "int",

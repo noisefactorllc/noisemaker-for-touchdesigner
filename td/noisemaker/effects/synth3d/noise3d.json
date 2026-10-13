@@ -8,7 +8,6 @@
     "noise"
   ],
   "description": "3D simplex noise volume",
-  "paramAliases": {},
   "globals": {
     "volumeSize": {
       "type": "int",

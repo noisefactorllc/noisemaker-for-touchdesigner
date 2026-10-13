@@ -8,7 +8,6 @@
     "geometric"
   ],
   "description": "3D polyhedral shape generator",
-  "paramAliases": {},
   "globals": {
     "volumeSize": {
       "type": "int",

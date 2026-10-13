@@ -8,10 +8,6 @@
     "geometric"
   ],
   "description": "Cellular/Voronoi noise with selectable cell shapes",
-  "paramAliases": {
-    "cellVariation": "variation",
-    "loopAmp": "speed"
-  },
   "uniformLayout": {
     "resolution": {
       "slot": 0,

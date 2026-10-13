@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Color manipulation lab",
-  "paramAliases": {},
   "globals": {
     "colorMode": {
       "type": "int",

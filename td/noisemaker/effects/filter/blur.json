@@ -7,7 +7,6 @@
     "blur"
   ],
   "description": "Gaussian blur with separate X and Y radius controls",
-  "paramAliases": {},
   "globals": {
     "radiusX": {
       "type": "float",

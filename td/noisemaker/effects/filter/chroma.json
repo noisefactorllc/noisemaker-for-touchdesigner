@@ -8,7 +8,6 @@
     "util"
   ],
   "description": "Isolate specific hue range with feathering",
-  "paramAliases": {},
   "globals": {
     "targetHue": {
       "type": "float",

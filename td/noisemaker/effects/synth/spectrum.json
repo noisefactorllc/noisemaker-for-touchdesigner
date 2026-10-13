@@ -7,7 +7,6 @@
     "audio"
   ],
   "description": "Audio spectrum analyzer",
-  "paramAliases": {},
   "globals": {
     "color": {
       "type": "color",

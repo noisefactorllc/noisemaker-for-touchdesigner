@@ -9,7 +9,6 @@
     "artist"
   ],
   "description": "Discrete random marks reproducing image tone: pointillize dots, mezzotint dots/lines/strokes, or reticulation (Pointillize, Mezzotint, Reticulation)",
-  "paramAliases": {},
   "globals": {
     "mode": {
       "type": "int",

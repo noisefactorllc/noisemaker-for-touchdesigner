@@ -9,7 +9,6 @@
     "artist"
   ],
   "description": "Wavy grouted ceramic tiles with beveled relief, or pixelized squares sampled from randomly offset sources with gap fill (Mosaic Tiles, Tiles)",
-  "paramAliases": {},
   "globals": {
     "mode": {
       "type": "int",

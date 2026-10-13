@@ -8,7 +8,6 @@
     "blend"
   ],
   "description": "Polygon zones routed to engine surfaces (companion to the Remap zone-editor app)",
-  "paramAliases": {},
   "uniformLayout": {
     "bgColor": {
       "slot": 0,

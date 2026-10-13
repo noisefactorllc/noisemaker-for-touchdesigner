@@ -8,9 +8,6 @@
     "lens"
   ],
   "description": "Prismatic aberration with hue controls",
-  "paramAliases": {
-    "aberrationAmt": "aberration"
-  },
   "globals": {
     "aberration": {
       "type": "float",

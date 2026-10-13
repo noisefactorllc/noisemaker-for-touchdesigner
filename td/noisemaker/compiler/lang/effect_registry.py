@@ -117,7 +117,6 @@ class EffectRegistry:
         self._namespaces = list(_BUILTIN_NAMESPACES)
         self._ns_set = set(_BUILTIN_NAMESPACES)
         self._effect_aliases = {}        # "<ns>.<func>" -> replacement name
-        self._param_aliases = {}         # opName -> ordered dict {oldParam: newParam}
 
     # --- public API -----------------------------------------------------
 
@@ -163,25 +162,7 @@ class EffectRegistry:
         if new_name is None:
             return None
         old_name = op_name[op_name.rfind('.') + 1:] if '.' in op_name else op_name
-        return ("effect '" + old_name + "' is deprecated, use '" + new_name +
-                "' instead. Aliases will be removed on 2026-09-01.")
-
-    def resolve_param_aliases(self, op_name, kwargs):
-        # reference/01 §8.5 — mutates kwargs in place; returns warnings.
-        warnings = []
-        aliases = self._param_aliases.get(op_name)
-        if aliases is None:
-            return warnings
-        for old_name in list(aliases.keys()):
-            if old_name not in kwargs:
-                continue
-            new_name = aliases[old_name]
-            if new_name not in kwargs:
-                kwargs[new_name] = kwargs[old_name]
-            del kwargs[old_name]
-            warnings.append("param '" + old_name + "' is deprecated, use '" + new_name +
-                            "' instead. Aliases will be removed on 2026-09-01.")
-        return warnings
+        return "effect '" + old_name + "' is deprecated, use '" + new_name + "' instead."
 
     # --- loading --------------------------------------------------------
 
@@ -296,15 +277,10 @@ class EffectRegistry:
             if ns is not None:
                 self._starter_ops.add(ns + '.' + func)
 
-        # paramAliases: { oldParam: newParam }
-        pa = definition.get('paramAliases')
-        if isinstance(pa, dict) and ns is not None:
-            amap = {}
-            for k, v in pa.items():
-                if isinstance(v, str):
-                    amap[k] = v
-            if amap:
-                self._param_aliases[ns + '.' + func] = amap
+        # paramAliases is retired (reference canvas.js): any definition carrying the
+        # key fails registration.
+        if 'paramAliases' in definition:
+            raise ValueError('paramAliases is no longer supported')
 
         # deprecatedBy + hidden -> effect alias (reference/01 §8.4).
         deprecated_by = _str(definition, 'deprecatedBy')

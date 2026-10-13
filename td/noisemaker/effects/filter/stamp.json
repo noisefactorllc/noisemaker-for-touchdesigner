@@ -9,7 +9,6 @@
     "artist"
   ],
   "description": "Two-tone ink/paper stamp impression from a blurred-luminance threshold, with a torn-edge roughness knob",
-  "paramAliases": {},
   "globals": {
     "smoothness": {
       "type": "float",

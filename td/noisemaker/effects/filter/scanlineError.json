@@ -8,7 +8,6 @@
     "glitch"
   ],
   "description": "Scanline glitch effect/VHS tape artifacts",
-  "paramAliases": {},
   "globals": {
     "mode": {
       "type": "int",

@@ -7,9 +7,6 @@
     "fractal"
   ],
   "description": "Mandelbrot explorer with deep zoom",
-  "paramAliases": {
-    "poiMode": "poi"
-  },
   "uniformLayout": {
     "resolution": {
       "slot": 0,

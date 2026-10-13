@@ -8,7 +8,6 @@
     "artist"
   ],
   "description": "Additive lens flare with ghost chain, halo, and four lens types (Lens Flare)",
-  "paramAliases": {},
   "globals": {
     "brightness": {
       "type": "float",

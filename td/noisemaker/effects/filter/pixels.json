@@ -7,7 +7,6 @@
     "pixel"
   ],
   "description": "Pixelation effect for retro look",
-  "paramAliases": {},
   "globals": {
     "size": {
       "type": "int",

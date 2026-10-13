@@ -7,7 +7,6 @@
     "antialiasing"
   ],
   "description": "Fast approximate anti-aliasing",
-  "paramAliases": {},
   "globals": {
     "strength": {
       "type": "float",

@@ -7,7 +7,6 @@
     "3d"
   ],
   "description": "Sample a 3D volume into cubemap faces (raw true color, no lighting)",
-  "paramAliases": {},
   "globals": {
     "volumeSize": {
       "type": "int",

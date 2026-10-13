@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Multi-color gradient generator with various styles",
-  "paramAliases": {},
   "uniformLayout": {
     "resolution": {
       "slot": 0,

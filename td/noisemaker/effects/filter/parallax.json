@@ -7,7 +7,6 @@
     "distort"
   ],
   "description": "Pseudo-3D perspective shift from a height map",
-  "paramAliases": {},
   "globals": {
     "heightMap": {
       "type": "surface",

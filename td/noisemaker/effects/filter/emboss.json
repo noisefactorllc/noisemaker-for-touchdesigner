@@ -7,7 +7,6 @@
     "edges"
   ],
   "description": "Emboss relief with color convolution or opt-in gray directional edge tracing",
-  "paramAliases": {},
   "globals": {
     "style": {
       "type": "int",

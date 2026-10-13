@@ -7,7 +7,6 @@
     "distort"
   ],
   "description": "CRT degauss effect",
-  "paramAliases": {},
   "uniformLayout": {
     "resolution": {
       "slot": 0,

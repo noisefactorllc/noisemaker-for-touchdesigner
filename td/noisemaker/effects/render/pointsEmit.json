@@ -7,7 +7,6 @@
     "agents"
   ],
   "description": "Initialize and maintain agent state for particle systems",
-  "paramAliases": {},
   "globals": {
     "stateSize": {
       "type": "int",

@@ -7,9 +7,6 @@
     "geometric"
   ],
   "description": "2D oscillator pattern",
-  "paramAliases": {
-    "frequency": "freq"
-  },
   "globals": {
     "oscType": {
       "type": "member",

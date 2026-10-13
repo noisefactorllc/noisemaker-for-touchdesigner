@@ -8,10 +8,6 @@
     "pixel"
   ],
   "description": "Ordered dithering with classic patterns and palettes",
-  "paramAliases": {
-    "ditherType": "type",
-    "mixAmount": "mix"
-  },
   "globals": {
     "type": {
       "type": "int",

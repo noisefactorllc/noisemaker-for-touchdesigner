@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Value normalization",
-  "paramAliases": {},
   "globals": {},
   "passes": [
     {

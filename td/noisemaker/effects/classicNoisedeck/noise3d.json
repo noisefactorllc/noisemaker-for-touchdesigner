@@ -8,10 +8,6 @@
     "noise"
   ],
   "description": "3D noise volumes",
-  "paramAliases": {
-    "noiseScale": "scale",
-    "noiseType": "type"
-  },
   "globals": {
     "type": {
       "type": "int",

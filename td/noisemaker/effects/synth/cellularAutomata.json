@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "2D cellular automata with rule presets",
-  "paramAliases": {},
   "uniformLayouts": {
     "ca": {
       "resolution": {

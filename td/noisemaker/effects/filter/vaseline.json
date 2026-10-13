@@ -7,7 +7,6 @@
     "blur"
   ],
   "description": "Vaseline lens blur effect",
-  "paramAliases": {},
   "globals": {
     "alpha": {
       "type": "float",

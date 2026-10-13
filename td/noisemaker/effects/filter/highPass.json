@@ -8,7 +8,6 @@
     "artist"
   ],
   "description": "High-pass filter isolating edge detail as a flat mid-gray field",
-  "paramAliases": {},
   "globals": {
     "radius": {
       "type": "float",

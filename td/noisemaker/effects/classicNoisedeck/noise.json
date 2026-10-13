@@ -7,10 +7,6 @@
     "noise"
   ],
   "description": "Noise pattern generator",
-  "paramAliases": {
-    "noiseType": "type",
-    "loopAmp": "speed"
-  },
   "uniformLayout": {
     "resolution": {
       "slot": 0,

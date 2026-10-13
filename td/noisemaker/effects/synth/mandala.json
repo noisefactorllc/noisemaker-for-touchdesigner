@@ -8,7 +8,6 @@
     "pattern"
   ],
   "description": "N-fold symmetric mandala generator",
-  "paramAliases": {},
   "globals": {
     "scale": {
       "type": "float",

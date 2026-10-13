@@ -8,10 +8,6 @@
     "noise"
   ],
   "description": "Low-polygon style render using Voronoi cells",
-  "paramAliases": {
-    "freq": "scale",
-    "nth": "mode"
-  },
   "globals": {
     "scale": {
       "type": "int",

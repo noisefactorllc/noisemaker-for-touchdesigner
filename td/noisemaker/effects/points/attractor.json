@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "Strange attractors: chaotic dynamic systems visualization",
-  "paramAliases": {},
   "globals": {
     "stateSize": {
       "type": "int",

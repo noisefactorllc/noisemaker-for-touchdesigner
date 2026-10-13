@@ -9,7 +9,6 @@
     "artist"
   ],
   "description": "Directional brush-mark engine with angled, sprayed, dark, sumi-e, and smudge modes",
-  "paramAliases": {},
   "globals": {
     "mode": {
       "type": "int",

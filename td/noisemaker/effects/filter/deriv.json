@@ -7,7 +7,6 @@
     "edges"
   ],
   "description": "Derivative-based edge detection",
-  "paramAliases": {},
   "globals": {
     "amount": {
       "type": "float",

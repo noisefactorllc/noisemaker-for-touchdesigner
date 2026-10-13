@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "Type-based attraction/repulsion particle simulation",
-  "paramAliases": {},
   "globals": {
     "stateSize": {
       "type": "int",

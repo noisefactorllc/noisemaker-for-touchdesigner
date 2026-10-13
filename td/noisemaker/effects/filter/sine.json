@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Sine wave color transform",
-  "paramAliases": {},
   "globals": {
     "amount": {
       "type": "float",

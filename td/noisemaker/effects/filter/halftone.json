@@ -9,7 +9,6 @@
     "artist"
   ],
   "description": "Rotated-screen halftone reproduction with subtractive color rosettes or monochrome dot, line, and circle screens",
-  "paramAliases": {},
   "globals": {
     "mode": {
       "type": "int",

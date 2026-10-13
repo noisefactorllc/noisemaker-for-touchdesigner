@@ -7,7 +7,6 @@
     "audio"
   ],
   "description": "Audio waveform oscilloscope",
-  "paramAliases": {},
   "globals": {
     "color": {
       "type": "color",

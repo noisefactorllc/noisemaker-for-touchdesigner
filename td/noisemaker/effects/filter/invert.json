@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Invert image luminance",
-  "paramAliases": {},
   "globals": {
     "mode": {
       "type": "int",

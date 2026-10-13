@@ -7,7 +7,6 @@
     "transform"
   ],
   "description": "Translate image in X and Y",
-  "paramAliases": {},
   "globals": {
     "x": {
       "type": "float",

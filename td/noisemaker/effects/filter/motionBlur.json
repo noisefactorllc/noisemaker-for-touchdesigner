@@ -8,7 +8,6 @@
     "blur"
   ],
   "description": "Simple motion blur via frame blending",
-  "paramAliases": {},
   "globals": {
     "amount": {
       "type": "float",

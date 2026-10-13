@@ -7,10 +7,6 @@
     "geometric"
   ],
   "description": "3D geometric shapes",
-  "paramAliases": {
-    "backgroundColor": "bgColor",
-    "backgroundOpacity": "bgAlpha"
-  },
   "uniformLayout": {
     "resolution": {
       "slot": 0,

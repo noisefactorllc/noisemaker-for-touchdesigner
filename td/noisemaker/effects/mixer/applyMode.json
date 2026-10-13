@@ -7,9 +7,6 @@
     "color"
   ],
   "description": "Apply brightness, hue, or saturation from source B to source A",
-  "paramAliases": {
-    "mixAmt": "mix"
-  },
   "globals": {
     "tex": {
       "type": "surface",

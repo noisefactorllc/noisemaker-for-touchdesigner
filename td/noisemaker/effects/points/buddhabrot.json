@@ -8,7 +8,6 @@
     "sim"
   ],
   "description": "Buddhabrot fractal via progressive orbit accumulation",
-  "paramAliases": {},
   "globals": {
     "stateSize": {
       "type": "int",

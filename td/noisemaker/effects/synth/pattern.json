@@ -8,9 +8,6 @@
     "pattern"
   ],
   "description": "Geometric pattern generator",
-  "paramAliases": {
-    "patternType": "type"
-  },
   "globals": {
     "type": {
       "type": "int",

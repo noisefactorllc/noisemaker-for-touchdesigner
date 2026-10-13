@@ -7,7 +7,6 @@
     "transform"
   ],
   "description": "Scrolling offset animation",
-  "paramAliases": {},
   "globals": {
     "x": {
       "type": "float",

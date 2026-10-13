@@ -8,7 +8,6 @@
     "artist"
   ],
   "description": "Grayscale morphology dilate/erode (Maximum/Minimum)",
-  "paramAliases": {},
   "globals": {
     "mode": {
       "type": "int",

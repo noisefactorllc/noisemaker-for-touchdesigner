@@ -8,7 +8,6 @@
     "transform"
   ],
   "description": "Edge-blend cross-fade for seamless tiling",
-  "paramAliases": {},
   "globals": {
     "blend": {
       "type": "float",

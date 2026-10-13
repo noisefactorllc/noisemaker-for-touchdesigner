@@ -42,7 +42,6 @@ def valid_definition():
         'uniformLayouts': {
             'alt': {'amount': {'slot': 0, 'components': 'x'}}
         },
-        'paramAliases': {'amt': 'amount'},
         'textures': {
             'scratch': {'width': 64, 'height': '100%', 'format': 'rgba16f'},
             'scaled': {
@@ -177,6 +176,7 @@ class TestEffectValidator(unittest.TestCase):
                                               'v': {'slot': 0, 'components': 'y'},
                                               'w': {'slot': 0, 'components': 'x'}}),
             lambda d: d.update(uniformLayouts={'p': 'layout'}),
+            lambda d: d.update(paramAliases={'amt': 'amount'}),
             lambda d: d.update(paramAliases='aliases'),
             lambda d: d.update(paramAliases={'amt': 'nosuchglobal'}),
             lambda d: d.update(tags='noise'),

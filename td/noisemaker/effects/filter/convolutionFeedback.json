@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "Convolution feedback with blur and sharpen",
-  "paramAliases": {},
   "globals": {
     "sharpenRadius": {
       "type": "int",

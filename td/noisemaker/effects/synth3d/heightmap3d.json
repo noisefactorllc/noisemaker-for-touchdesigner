@@ -7,7 +7,6 @@
     "3d"
   ],
   "description": "Voxel heightfield from separate 2D height and color surfaces",
-  "paramAliases": {},
   "globals": {
     "heightTex": {
       "type": "surface",

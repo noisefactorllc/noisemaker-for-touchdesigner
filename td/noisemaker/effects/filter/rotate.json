@@ -7,7 +7,6 @@
     "transform"
   ],
   "description": "Rotate image by specified angle",
-  "paramAliases": {},
   "globals": {
     "rotation": {
       "type": "float",

@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Posterization/color reduction with gamma control",
-  "paramAliases": {},
   "globals": {
     "levels": {
       "type": "int",

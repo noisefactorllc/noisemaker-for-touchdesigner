@@ -8,7 +8,6 @@
     "sim"
   ],
   "description": "3D cellular automata simulation",
-  "paramAliases": {},
   "globals": {
     "volumeSize": {
       "type": "int",

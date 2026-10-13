@@ -8,7 +8,6 @@
     "artist"
   ],
   "description": "Random per-pixel scatter with darken/lighten/anisotropic/clumped modes (Diffuse, Spatter)",
-  "paramAliases": {},
   "globals": {
     "radius": {
       "type": "float",

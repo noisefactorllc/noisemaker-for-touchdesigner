@@ -7,9 +7,6 @@
     "color"
   ],
   "description": "Multi-layer compositing",
-  "paramAliases": {
-    "mixAmt": "mix"
-  },
   "globals": {
     "tex": {
       "type": "surface",

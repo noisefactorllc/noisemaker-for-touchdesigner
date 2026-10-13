@@ -7,7 +7,6 @@
     "distort"
   ],
   "description": "CRT monitor simulation",
-  "paramAliases": {},
   "globals": {
     "alpha": {
       "type": "float",

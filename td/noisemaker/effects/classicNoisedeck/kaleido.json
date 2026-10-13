@@ -8,10 +8,6 @@
     "transform"
   ],
   "description": "Kaleidoscope effect",
-  "paramAliases": {
-    "kaleido": "sides",
-    "loopAmp": "speed"
-  },
   "globals": {
     "sides": {
       "type": "int",

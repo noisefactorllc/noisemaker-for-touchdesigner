@@ -8,11 +8,6 @@
     "geometric"
   ],
   "description": "Cellular noise patterns",
-  "paramAliases": {
-    "cellSmooth": "smooth",
-    "cellVariation": "variation",
-    "loopAmp": "speed"
-  },
   "uniformLayout": {
     "resolution": {
       "slot": 0,

@@ -8,7 +8,6 @@
     "geometry"
   ],
   "description": "Render meshes with Blinn-Phong lighting",
-  "paramAliases": {},
   "globals": {
     "scale": {
       "type": "float",

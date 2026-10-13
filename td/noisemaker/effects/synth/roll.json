@@ -7,7 +7,6 @@
     "midi"
   ],
   "description": "MIDI piano roll visualizer",
-  "paramAliases": {},
   "globals": {
     "color": {
       "type": "color",

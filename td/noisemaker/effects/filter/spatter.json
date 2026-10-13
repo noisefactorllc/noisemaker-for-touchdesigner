@@ -7,7 +7,6 @@
     "noise"
   ],
   "description": "Paint spatter effect",
-  "paramAliases": {},
   "globals": {
     "color": {
       "type": "color",

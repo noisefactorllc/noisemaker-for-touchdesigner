@@ -7,11 +7,6 @@
     "distort"
   ],
   "description": "Lens distortion simulation",
-  "paramAliases": {
-    "aberrationAmt": "aberration",
-    "opacity": "alpha",
-    "loopAmp": "speed"
-  },
   "globals": {
     "shape": {
       "type": "int",

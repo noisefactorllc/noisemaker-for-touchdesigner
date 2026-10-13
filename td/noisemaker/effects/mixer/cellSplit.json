@@ -8,7 +8,6 @@
     "noise"
   ],
   "description": "Split between inputs using Voronoi cell regions",
-  "paramAliases": {},
   "globals": {
     "tex": {
       "type": "surface",

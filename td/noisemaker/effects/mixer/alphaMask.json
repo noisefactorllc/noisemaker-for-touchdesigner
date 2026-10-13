@@ -7,9 +7,6 @@
     "blend"
   ],
   "description": "Alpha transparency blend",
-  "paramAliases": {
-    "mixAmt": "mix"
-  },
   "globals": {
     "tex": {
       "type": "surface",

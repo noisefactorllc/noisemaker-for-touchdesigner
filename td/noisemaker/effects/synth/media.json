@@ -8,10 +8,6 @@
     "video"
   ],
   "description": "Video/camera/image input",
-  "paramAliases": {
-    "backgroundColor": "bgColor",
-    "backgroundOpacity": "bgAlpha"
-  },
   "uniformLayout": {
     "resolution": {
       "slot": 0,

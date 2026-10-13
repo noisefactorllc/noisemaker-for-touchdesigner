@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Chromatic aberration",
-  "paramAliases": {},
   "globals": {
     "displacement": {
       "type": "float",

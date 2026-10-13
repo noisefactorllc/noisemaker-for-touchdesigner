@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "Hydraulic erosion flow simulation (gradient descent)",
-  "paramAliases": {},
   "globals": {
     "stride": {
       "type": "float",

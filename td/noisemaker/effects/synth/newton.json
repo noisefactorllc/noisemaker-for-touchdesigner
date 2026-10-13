@@ -7,7 +7,6 @@
     "fractal"
   ],
   "description": "Newton fractal explorer with deep zoom",
-  "paramAliases": {},
   "uniformLayout": {
     "resolution": {
       "slot": 0,

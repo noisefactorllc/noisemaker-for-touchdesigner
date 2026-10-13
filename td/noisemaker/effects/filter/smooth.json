@@ -7,7 +7,6 @@
     "antialiasing"
   ],
   "description": "Anti-aliasing with MSAA, SMAA, or edge-selective blur modes",
-  "paramAliases": {},
   "globals": {
     "type": {
       "type": "int",

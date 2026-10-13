@@ -7,7 +7,6 @@
     "lens"
   ],
   "description": "Radial vignette darkening edges",
-  "paramAliases": {},
   "globals": {
     "brightness": {
       "type": "float",

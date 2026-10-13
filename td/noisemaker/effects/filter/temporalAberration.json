@@ -8,7 +8,6 @@
     "lens"
   ],
   "description": "Chromatic aberration via per-channel temporal frame delay",
-  "paramAliases": {},
   "uniformLayouts": {
     "temporalAberration": {
       "redDelay": {

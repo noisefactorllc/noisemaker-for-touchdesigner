@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "2D \"Boids\" flocking agent simulation",
-  "paramAliases": {},
   "globals": {
     "separation": {
       "type": "float",

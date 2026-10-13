@@ -8,7 +8,6 @@
     "pixel"
   ],
   "description": "Pixel sorting glitch effect",
-  "paramAliases": {},
   "globals": {
     "angled": {
       "type": "float",

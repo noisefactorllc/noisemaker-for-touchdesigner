@@ -8,7 +8,6 @@
     "distort"
   ],
   "description": "Remap UVs of one input using color channels of another",
-  "paramAliases": {},
   "globals": {
     "tex": {
       "type": "surface",

@@ -8,7 +8,6 @@
     "edges"
   ],
   "description": "Threshold/step function",
-  "paramAliases": {},
   "globals": {
     "level": {
       "type": "float",

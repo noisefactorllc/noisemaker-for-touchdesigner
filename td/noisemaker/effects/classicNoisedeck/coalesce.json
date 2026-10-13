@@ -8,9 +8,6 @@
     "distort"
   ],
   "description": "Coalescing blend effect",
-  "paramAliases": {
-    "mixAmt": "mix"
-  },
   "globals": {
     "tex": {
       "type": "surface",

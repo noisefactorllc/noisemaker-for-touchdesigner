@@ -7,9 +7,6 @@
     "agents"
   ],
   "description": "Render particles as billboard sprites",
-  "paramAliases": {
-    "rotationVariation": "rotationVar"
-  },
   "globals": {
     "shapeMode": {
       "type": "int",

@@ -8,7 +8,6 @@
     "transform"
   ],
   "description": "Symmetry-based kaleidoscope tiler",
-  "paramAliases": {},
   "globals": {
     "symmetry": {
       "type": "int",

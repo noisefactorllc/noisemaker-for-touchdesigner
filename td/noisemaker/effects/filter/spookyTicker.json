@@ -7,7 +7,6 @@
     "text"
   ],
   "description": "Scrolling pseudo-text ticker overlay",
-  "paramAliases": {},
   "globals": {
     "rows": {
       "type": "int",

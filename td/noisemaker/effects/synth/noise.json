@@ -7,12 +7,6 @@
     "noise"
   ],
   "description": "Value noise with multiple interpolation types",
-  "paramAliases": {
-    "noiseType": "type",
-    "loopAmp": "speed",
-    "xScale": "scaleX",
-    "yScale": "scaleY"
-  },
   "uniformLayout": {
     "resolution": {
       "slot": 0,

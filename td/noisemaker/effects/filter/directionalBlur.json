@@ -8,7 +8,6 @@
     "artist"
   ],
   "description": "Linear motion blur along a single direction (Motion Blur)",
-  "paramAliases": {},
   "globals": {
     "angle": {
       "type": "float",

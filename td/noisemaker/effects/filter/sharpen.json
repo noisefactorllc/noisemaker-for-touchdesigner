@@ -7,7 +7,6 @@
     "edges"
   ],
   "description": "Sharpen using convolution",
-  "paramAliases": {},
   "globals": {
     "amount": {
       "type": "float",

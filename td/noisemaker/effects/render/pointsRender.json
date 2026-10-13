@@ -7,7 +7,6 @@
     "agents"
   ],
   "description": "Blend agent trails with input for particle systems",
-  "paramAliases": {},
   "globals": {
     "density": {
       "type": "float",

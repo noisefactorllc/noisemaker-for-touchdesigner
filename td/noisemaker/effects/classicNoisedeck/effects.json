@@ -9,7 +9,6 @@
     "transform"
   ],
   "description": "Multi-effect processor",
-  "paramAliases": {},
   "globals": {
     "effect": {
       "type": "int",

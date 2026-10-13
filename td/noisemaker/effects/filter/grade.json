@@ -7,9 +7,6 @@
     "color"
   ],
   "description": "Professional multi-stage color grading pipeline",
-  "paramAliases": {
-    "vignetteHighlightProtect": "vigHiProtect"
-  },
   "globals": {
     "preset": {
       "type": "int",

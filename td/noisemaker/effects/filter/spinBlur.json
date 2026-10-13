@@ -8,7 +8,6 @@
     "artist"
   ],
   "description": "Rotational blur around a center point (Radial Blur, Spin mode)",
-  "paramAliases": {},
   "globals": {
     "amount": {
       "type": "float",

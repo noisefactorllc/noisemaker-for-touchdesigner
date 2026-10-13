@@ -8,7 +8,6 @@
     "palette"
   ],
   "description": "Apply Tetra cosine palettes based on luminance",
-  "paramAliases": {},
   "uniformLayout": {
     "offsetR": {
       "slot": 0,

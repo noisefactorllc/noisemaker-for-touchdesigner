@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "Physics-based particle simulation with wind and gravity forces",
-  "paramAliases": {},
   "globals": {
     "stateSize": {
       "type": "int",

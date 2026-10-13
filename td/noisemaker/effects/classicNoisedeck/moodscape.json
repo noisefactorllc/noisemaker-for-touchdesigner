@@ -7,9 +7,6 @@
     "noise"
   ],
   "description": "Refracted value noise with multiple color modes",
-  "paramAliases": {
-    "loopAmp": "speed"
-  },
   "uniformLayout": {
     "resolution": {
       "slot": 0,

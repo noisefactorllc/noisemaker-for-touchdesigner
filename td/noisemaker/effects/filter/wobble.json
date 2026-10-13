@@ -7,7 +7,6 @@
     "transform"
   ],
   "description": "Wobble animation effect",
-  "paramAliases": {},
   "globals": {
     "speed": {
       "type": "float",

@@ -7,7 +7,6 @@
     "blend"
   ],
   "description": "Posterize a control input by luminance and route each band to a different surface",
-  "paramAliases": {},
   "uniformLayout": {
     "layers": {
       "slot": 0,

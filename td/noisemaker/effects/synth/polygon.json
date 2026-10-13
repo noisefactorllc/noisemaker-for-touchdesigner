@@ -7,7 +7,6 @@
     "geometric"
   ],
   "description": "Geometric shape generator",
-  "paramAliases": {},
   "globals": {
     "sides": {
       "type": "int",

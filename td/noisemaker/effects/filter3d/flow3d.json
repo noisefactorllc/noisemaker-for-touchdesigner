@@ -8,7 +8,6 @@
     "sim"
   ],
   "description": "3D agent-based flow field",
-  "paramAliases": {},
   "globals": {
     "volumeSize": {
       "type": "int",

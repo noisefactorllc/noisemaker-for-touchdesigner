@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "Particle Lenia artificial life simulation",
-  "paramAliases": {},
   "globals": {
     "muK": {
       "type": "float",

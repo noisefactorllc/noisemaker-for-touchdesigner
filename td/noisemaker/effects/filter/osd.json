@@ -7,7 +7,6 @@
     "text"
   ],
   "description": "On-screen display overlay",
-  "paramAliases": {},
   "globals": {
     "alpha": {
       "type": "float",

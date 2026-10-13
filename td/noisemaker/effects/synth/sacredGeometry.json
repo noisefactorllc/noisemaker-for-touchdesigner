@@ -8,7 +8,6 @@
     "pattern"
   ],
   "description": "Flower-of-life and related sacred-geometry lattices",
-  "paramAliases": {},
   "globals": {
     "geometry": {
       "type": "int",

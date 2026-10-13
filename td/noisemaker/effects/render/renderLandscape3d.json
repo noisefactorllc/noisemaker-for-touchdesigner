@@ -7,7 +7,6 @@
     "3d"
   ],
   "description": "Isometric and perspective voxel renderer with face lighting",
-  "paramAliases": {},
   "globals": {
     "volumeSize": {
       "type": "int",

@@ -9,7 +9,6 @@
     "artist"
   ],
   "description": "Simplified color washes with pigment pooling at edges and paper granulation",
-  "paramAliases": {},
   "globals": {
     "detail": {
       "type": "float",

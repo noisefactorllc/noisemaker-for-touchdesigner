@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Solid color fill",
-  "paramAliases": {},
   "globals": {
     "color": {
       "type": "color",

@@ -93,7 +93,7 @@ DIM_SPEC_KEYS = {'param', 'power', 'multiply', 'default', 'paramDefault',
 TOP_LEVEL_KEYS = {
     'name', 'namespace', 'func', 'description', 'tags', 'globals', 'passes',
     'textures', 'textures3d', 'shaders', 'uniformLayout', 'uniformLayouts',
-    'paramAliases', 'openCategories', 'defaultProgram', 'hidden', 'deprecatedBy',
+    'openCategories', 'defaultProgram', 'hidden', 'deprecatedBy',
     'externalTexture', 'externalMesh', 'builtinMeshes', 'outputTex3d', 'outputGeo',
     'state', 'uniforms', 'onInit', 'onUpdate', 'onDestroy', 'asyncInit',
     # Port deviation: see module docstring (converter-stamped starter flag).
@@ -944,18 +944,6 @@ def validate_effect_definition(defn):
         else:
             for prog, layout in uniform_layouts.items():
                 _validate_uniform_layout(layout, errors, f"uniformLayouts['{prog}']")
-
-    # --- param aliases ---
-    if 'paramAliases' in source:
-        param_aliases = source['paramAliases']
-        if not _is_obj(param_aliases):
-            errors.append('"paramAliases" must be an object mapping aliases to global names')
-        else:
-            for alias, target in param_aliases.items():
-                if not isinstance(target, str) or not target:
-                    errors.append(f"paramAliases['{alias}'] must be a non-empty string")
-                elif target not in context['globalKeys']:
-                    errors.append(f"paramAliases['{alias}'] references unknown global '{target}'")
 
     # --- top-level unknown-field diagnosis (plain definition objects only) ---
     if diagnose_top_level_unknowns:

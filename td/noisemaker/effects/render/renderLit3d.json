@@ -7,7 +7,6 @@
     "3d"
   ],
   "description": "Universal 3D volume raymarcher with advanced lighting",
-  "paramAliases": {},
   "globals": {
     "volumeSize": {
       "type": "int",

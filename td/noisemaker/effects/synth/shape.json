@@ -7,10 +7,6 @@
     "geometric"
   ],
   "description": "Interference patterns from geometric shapes",
-  "paramAliases": {
-    "loopAAmp": "speedA",
-    "loopBAmp": "speedB"
-  },
   "uniformLayout": {
     "resolution": {
       "slot": 0,

@@ -9,7 +9,6 @@
     "artist"
   ],
   "description": "Ink-on-paper via edge and tonal difference-of-Gaussians, like a bad photocopy",
-  "paramAliases": {},
   "globals": {
     "detail": {
       "type": "float",

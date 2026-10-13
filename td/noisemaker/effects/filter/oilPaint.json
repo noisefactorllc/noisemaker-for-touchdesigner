@@ -9,7 +9,6 @@
     "artist"
   ],
   "description": "Painterly oil-paint effect covering Facet, Paint Daubs, Dry Brush, Fresco, Palette Knife, and Sponge modes over a sector-Kuwahara flattening core",
-  "paramAliases": {},
   "globals": {
     "mode": {
       "type": "int",

@@ -7,7 +7,6 @@
     "transform"
   ],
   "description": "Skew and rotate transform",
-  "paramAliases": {},
   "globals": {
     "skew": {
       "type": "float",

@@ -7,7 +7,6 @@
     "noise"
   ],
   "description": "TV snow/static noise",
-  "paramAliases": {},
   "globals": {
     "alpha": {
       "type": "float",

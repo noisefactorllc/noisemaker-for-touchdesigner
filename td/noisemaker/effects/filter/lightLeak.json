@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Film light leak overlay with colorful Voronoi regions",
-  "paramAliases": {},
   "globals": {
     "alpha": {
       "type": "float",

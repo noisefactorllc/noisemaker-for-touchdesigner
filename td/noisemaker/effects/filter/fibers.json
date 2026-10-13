@@ -7,7 +7,6 @@
     "noise"
   ],
   "description": "Chaotic fiber texture overlay",
-  "paramAliases": {},
   "globals": {
     "density": {
       "type": "float",

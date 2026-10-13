@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "Gray-Scott reaction-diffusion",
-  "paramAliases": {},
   "uniformLayouts": {
     "rd": {
       "resolution": {

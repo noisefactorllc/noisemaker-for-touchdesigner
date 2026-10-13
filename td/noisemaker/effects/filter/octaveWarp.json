@@ -7,9 +7,6 @@
     "distort"
   ],
   "description": "Per-octave noise warp distortion",
-  "paramAliases": {
-    "frequency": "freq"
-  },
   "globals": {
     "freq": {
       "type": "float",

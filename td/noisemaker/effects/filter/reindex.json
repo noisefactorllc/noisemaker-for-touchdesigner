@@ -7,7 +7,6 @@
     "color"
   ],
   "description": "Palette reindexing",
-  "paramAliases": {},
   "globals": {
     "displacement": {
       "type": "float",

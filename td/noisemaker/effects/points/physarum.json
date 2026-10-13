@@ -7,7 +7,6 @@
     "sim"
   ],
   "description": "Physarum slime mold simulation",
-  "paramAliases": {},
   "globals": {
     "moveSpeed": {
       "type": "float",

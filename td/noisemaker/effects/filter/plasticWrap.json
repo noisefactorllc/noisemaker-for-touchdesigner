@@ -9,7 +9,6 @@
     "artist"
   ],
   "description": "Glossy specular plastic film hugging image contours",
-  "paramAliases": {},
   "globals": {
     "highlight": {
       "type": "float",
