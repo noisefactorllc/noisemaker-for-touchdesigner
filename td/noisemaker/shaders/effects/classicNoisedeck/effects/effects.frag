@@ -646,8 +646,12 @@ vec3 zoomBlur(vec2 st) {
         // budget (as filter/lens and filter/parallax do): the raw
         // displacement is a fraction of fullResolution, so an unclamped tap
         // would reach past the fixed 1024 px tile overlap on large prints.
-        // Untiled the clamp is off and the output is byte-identical.
-        if (tileOffset.x != 0.0 || tileOffset.y != 0.0) {
+        // Tiling is detected from the full-image size differing from the
+        // local render size. tileOffset alone cannot detect tiling: the
+        // origin tile's offset is (0, 0), the same value the runtime writes
+        // when not tiling. Untiled the clamp is off and the output is
+        // byte-identical.
+        if (any(notEqual(fullResolution, resolution))) {
             vec2 tapBudget = vec2(256.0) * invFullResolution;
             tapB = min(max(tapB, -tapBudget), tapBudget);
         }
