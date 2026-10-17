@@ -37,36 +37,23 @@ FRAGS = os.path.join(REPO, 'td', 'noisemaker', 'shaders', 'effects')
 EXPORT = os.path.join(REPO, 'tools', 'export-graph.mjs')
 BATCH = os.path.join(REPO, 'parity', 'batch-golden.mjs')
 
-# Multi-frame feedback-accumulation effects — driven by the evolve harness (the single-frame sweep
-# can't accumulate their feedback). Reported here, not rendered as single-frame goldens.
-# convolutionFeedback is the same class (a `feedbackTex` temporal blend); driven + graded by
-# parity/accumulate.sh — f1/f2 byte-exact, f8 ssim 0.99483 (8-bit-feedback drift, like motionBlur —
-# Metal vs ANGLE convolution over frames).
-# The synth3d_* pair are the 3D-volume statefuls (a `<sim>3d().render3d()` chain over a ca_state /
-# rd_state feedback volume): same feedback class, graded by parity/accumulate.sh — f1/f2 bit-exact
-# (max-abs-diff=1), then cellularAutomata3d ssim-gated (0.996 @ f8) and reactionDiffusion3d chaos-
-# reported (continuous Gray-Scott, 0.977 @ f8), mirroring their 2D counterparts.
+# Multi-frame stateful cases — driven and graded by parity/accumulate.sh (the single-frame sweep
+# can't evolve their state). Must equal ACCUMULATION_CASES in parity/write-ledger.py, which holds
+# their per-frame bounds.
 ACCUM_EFFECTS = {'cellularAutomata', 'reactionDiffusion', 'motionBlur', 'convolutionFeedback',
-                 'synth3d_cellularAutomata3d', 'synth3d_reactionDiffusion3d', 'present_hero'}
+                 'synth3d_cellularAutomata3d', 'synth3d_reactionDiffusion3d', 'present_hero',
+                 'buddhabrot', 'physical', 'filter3d_flow3d', 'heightGrid_billboard',
+                 'heightGrid_billboard_alpha', 'heightGrid_pointsRender_perspective'}
 STATIC_3D_EFFECTS = {
     '_vs32probe', 'filter3d_palette3d', 'synth3d_cell3d', 'synth3d_flythrough3d',
     'synth3d_fractal3d', 'synth3d_noise', 'synth3d_renderLit3d', 'synth3d_shape3d',
-}
-CUBEMAP_EFFECTS = {'synth3d_renderCubemap3d', 'synth3d_renderCubemapSurface'}
-DEFERRED_EFFECTS = {
-    'buddhabrot', 'filter3d_flow3d', 'physical',
-    # 2026-09-15 agent/3D additions (same MRT/points/3D class as above): the heightGrid
-    # fixtures carry the points-deposit chain (render/pointsEmit, points/heightGrid agent,
-    # render/points{,Billboard}Render deposit — hand-maintained GL_POINT GLSL, multiple render
-    # targets) and heightmap3d_landscape carries the 3D-volume chain (synth3d/heightmap3d
-    # precompute + renderLandscape3d MRT raymarch). The single-frame sweep grades one output
-    # surface against one golden, which is meaningless for these; each is graded on the actual
-    # TouchDesigner host by the separate agent/3D harnesses (parity/points_probe.sh,
-    # parity/present_screenshot.sh) and its measured result recorded
-    # in the register — never silently skipped.
-    'heightGrid_billboard', 'heightGrid_billboard_alpha', 'heightGrid_pointsRender_perspective',
     'heightmap3d_landscape',
 }
+CUBEMAP_EFFECTS = {'synth3d_renderCubemap3d', 'synth3d_renderCubemapSurface'}
+# Programs excluded from the canonical sweep. Every in-repo program is graded: the agent and 3D
+# cases that were deferred here are graded by parity/accumulate.sh (ACCUM_EFFECTS) or the single-
+# frame sweep (STATIC_3D_EFFECTS).
+DEFERRED_EFFECTS = set()
 
 
 def reference_root():

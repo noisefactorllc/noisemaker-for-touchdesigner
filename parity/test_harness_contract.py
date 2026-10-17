@@ -33,6 +33,13 @@ def fixture_png(rgba, first_pixel=None):
             + chunk(b"IEND", b""))
 
 
+def load_write_ledger():
+    spec = importlib.util.spec_from_file_location("nm_td_write_ledger", REPO / "parity" / "write-ledger.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def load_stage_coverage():
     spec = importlib.util.spec_from_file_location(
         "nm_td_stage_coverage", REPO / "parity" / "stage_coverage.py"
@@ -192,8 +199,32 @@ class HarnessContractTests(unittest.TestCase):
     def test_selected_reaction_3d_accumulation_enters_the_canonical_summary(self):
         self.check_selected_accumulation("synth3d_reactionDiffusion3d")
 
-    def test_selected_hero_accumulation_limits_near_to_frame_eight(self):
+    def test_selected_hero_accumulation_enters_the_canonical_summary(self):
         self.check_selected_accumulation("present_hero")
+
+    def test_selected_buddhabrot_accumulation_enters_the_canonical_summary(self):
+        self.check_selected_accumulation("buddhabrot")
+
+    def test_selected_physical_accumulation_enters_the_canonical_summary(self):
+        self.check_selected_accumulation("physical")
+
+    def test_selected_flow3d_accumulation_enters_the_canonical_summary(self):
+        self.check_selected_accumulation("filter3d_flow3d")
+
+    def test_selected_billboard_accumulation_enters_the_canonical_summary(self):
+        self.check_selected_accumulation("heightGrid_billboard")
+
+    def test_selected_billboard_alpha_accumulation_enters_the_canonical_summary(self):
+        self.check_selected_accumulation("heightGrid_billboard_alpha")
+
+    def test_selected_perspective_points_accumulation_enters_the_canonical_summary(self):
+        self.check_selected_accumulation("heightGrid_pointsRender_perspective")
+
+    def test_stage_and_ledger_share_the_accumulation_cases(self):
+        stage = load_stage_coverage()
+        self.assertEqual(stage.ACCUM_EFFECTS, set(load_write_ledger().ACCUMULATION_CASES))
+        self.assertEqual(stage.DEFERRED_EFFECTS, set())
+        self.assertEqual(len(stage.expected_sweep_names()), len(stage.program_names()))
 
     def test_hero_uses_the_accumulation_manifest_route(self):
         stage = load_stage_coverage()
@@ -262,6 +293,10 @@ class HarnessContractTests(unittest.TestCase):
                 self.assertIn("unclassified gateable cases: synth3d_shape3d", errors.getvalue())
 
     def check_selected_accumulation(self, name):
+        ledger_module = load_write_ledger()
+        frame_bounds = {frame: ledger_module.accumulation_frame_bound(name, frame) for frame in (1, 2, 8)}
+        tolerance, aggregate_ssim = ledger_module.accumulation_bound(name)
+        near_frames = [frame for frame, bound in frame_bounds.items() if bound[0] > 2.001]
         reference_sha = "6cb1a3c3e21010db956d41e7a6d57a02b0be1e7d" if name == "present_hero" else "a" * 40
         with tempfile.TemporaryDirectory(prefix="nm-td-accumulate-") as temp:
             root = Path(temp)
@@ -274,7 +309,7 @@ class HarnessContractTests(unittest.TestCase):
             python = root / "bin" / "python3"
             python.write_text("#!" + sys.executable + "\nimport os,sys\nos.execv(sys.executable,[sys.executable,*sys.argv[1:]])\n")
             python.chmod(0o755)
-            for helper in ("accumulate.sh", "write-ledger.py", "sweep.sh", "stage_coverage.py"):
+            for helper in ("accumulate.sh", "write-ledger.py", "sweep.sh", "stage_coverage.py", "compare.py"):
                 shutil.copy2(REPO / "parity" / helper, parity / helper)
             if name == "present_hero":
                 shutil.copy2(REPO / "parity" / "batch-golden.mjs", parity / "batch-golden.mjs")
@@ -293,19 +328,15 @@ class HarnessContractTests(unittest.TestCase):
             fixtures = root / "fixtures"
             fixtures.mkdir()
             (fixtures / "golden.png").write_bytes(fixture_png((255, 255, 255, 255)))
-            for frame in (1, 2, 8):
-                rgba = (252, 252, 252, 253) if name == "motionBlur" and frame == 8 else (254, 254, 254, 255)
-                first_pixel = (214, 214, 214, 255) if name in ("convolutionFeedback", "reactionDiffusion") and frame == 8 else None
-                if name == "reactionDiffusion" and frame == 8:
-                    rgba = (250, 250, 250, 255)
-                if name == "synth3d_cellularAutomata3d" and frame == 8:
-                    rgba, first_pixel = (255, 255, 255, 255), (255, 77, 255, 255)
-                if name == "synth3d_reactionDiffusion3d" and frame == 8:
-                    rgba, first_pixel = (255, 255, 255, 255), (255, 78, 255, 255)
-                if name == "present_hero" and frame == 8:
-                    first_pixel = (255, 255, 180, 255)
-                (fixtures / f"{name}.f{frame:04d}.png").write_bytes(fixture_png(
-                    rgba, first_pixel))
+            for frame, bound in frame_bounds.items():
+                # Strict frames differ by one level everywhere; NEAR frames differ in one pixel by
+                # the integer part of their bound, keeping the mean far below the frame's limit.
+                if frame in near_frames:
+                    level = 255 - int(bound[0])
+                    data = fixture_png((255, 255, 255, 255), (level, level, level, 255))
+                else:
+                    data = fixture_png((254, 254, 254, 255))
+                (fixtures / f"{name}.f{frame:04d}.png").write_bytes(data)
             image_stub = root / "image-stub" / "PIL"
             image_stub.mkdir(parents=True)
             (image_stub / "__init__.py").write_text(
@@ -363,19 +394,6 @@ class HarnessContractTests(unittest.TestCase):
                 'touch evolve-called\n'
                 'for f in 0001 0002 0008; do cp "fixtures/$1.f$f.png" "parity/out/$1.f$f.candidate.png"; done\n'
             )
-            (parity / "compare.py").write_text(
-                "import argparse,json\n"
-                "p=argparse.ArgumentParser(); p.add_argument('golden'); p.add_argument('candidate'); "
-                "p.add_argument('--name'); p.add_argument('--tolerance',type=float); "
-                "p.add_argument('--ssim-min',type=float); p.add_argument('--report'); a=p.parse_args()\n"
-                "assert a.report\n"
-                "diff=3.0 if a.name=='motionBlur.f0008' else 1.0\n"
-                "json.dump({'name':a.name,'golden':a.golden,'candidate':a.candidate,'shape':[256,256,4],"
-                "'max_abs_diff':diff,'mean_abs_diff':0.125,'ssim':0.99992,'tolerance':a.tolerance,"
-                "'ssim_min':a.ssim_min,'passed':True},open(a.report,'w'))\n"
-            )
-            if name in ("convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"):
-                shutil.copy2(REPO / "parity" / "compare.py", parity / "compare.py")
             report = root / f"{name}.json"
             environment = dict(os.environ, PATH=os.pathsep.join((str(root / "bin"),
                                str(Path(sys.executable).parent), os.environ["PATH"])),
@@ -394,65 +412,22 @@ class HarnessContractTests(unittest.TestCase):
             evidence = json.loads(report.read_text())
             self.assertEqual(evidence["reference_sha"], reference_sha)
             self.assertEqual([frame["frame"] for frame in evidence["frames"]], [1, 2, 8])
-            means = [frame["report"]["mean_abs_diff"] for frame in evidence["frames"]]
-            if name in ("convolutionFeedback", "reactionDiffusion"):
-                final_mean = 0.750457763671875 if name == "convolutionFeedback" else 3.7504119873046875
-                for actual, expected in zip(means, (0.75, 0.75, final_mean)):
-                    self.assertAlmostEqual(actual, expected, delta=0.0001)
-                final = evidence["frames"][-1]
-                self.assertEqual(final["report"]["tolerance"], 41.001)
-                self.assertEqual(final["report"]["ssim_min"], 0.9948 if name == "convolutionFeedback" else 0.9879)
-                self.assertEqual(final["pixel_counts"]["channel_abs_histogram"],
-                                 {"0": 65536, "1" if name == "convolutionFeedback" else "5": 196605, "41": 3})
-                self.assertEqual(final["pixel_counts"]["peak"], {
-                    "origin": "top-left", "x": 0, "y": 0, "channel": 0, "golden_rgba": [255, 255, 255, 255],
-                    "candidate_rgba": [214, 214, 214, 255],
-                })
-            elif name in ("synth3d_cellularAutomata3d", "synth3d_reactionDiffusion3d"):
-                final_mean = 0.00067901611328125 if name == "synth3d_cellularAutomata3d" else 0.000675201416015625
-                for actual, expected in zip(means, (0.75, 0.75, final_mean)):
-                    self.assertAlmostEqual(actual, expected, delta=0.0001)
-                for early in evidence["frames"][:2]:
-                    self.assertEqual(early["pixel_counts"]["channel_abs_histogram"], {"0": 65536, "1": 196608})
-                final = evidence["frames"][-1]
-                self.assertEqual(final["report"]["tolerance"], 178.001 if name == "synth3d_cellularAutomata3d" else 177.001)
-                self.assertEqual(final["report"]["ssim_min"], 0.9968 if name == "synth3d_cellularAutomata3d" else 0.9792)
-                self.assertEqual(final["pixel_counts"]["channel_abs_histogram"],
-                                 {"0": 262143, "178" if name == "synth3d_cellularAutomata3d" else "177": 1})
-                self.assertEqual(final["pixel_counts"]["peak"], {
-                    "origin": "top-left", "x": 0, "y": 0, "channel": 1, "golden_rgba": [255, 255, 255, 255],
-                    "candidate_rgba": [255, 77 if name == "synth3d_cellularAutomata3d" else 78, 255, 255],
-                })
-            elif name == "present_hero":
-                for actual, expected in zip(means, (0.75, 0.75, 0.750274658203125)):
-                    self.assertAlmostEqual(actual, expected, delta=0.0001)
-                for early in evidence["frames"][:2]:
-                    self.assertEqual(early["report"]["tolerance"], 2.001)
-                    self.assertEqual(early["report"]["ssim_min"], 0.98)
-                final = evidence["frames"][-1]
-                self.assertEqual(final["report"]["tolerance"], 75.001)
-                self.assertEqual(final["report"]["ssim_min"], 0.9983)
-                self.assertEqual(final["pixel_counts"]["channel_abs_histogram"],
-                                 {"0": 65538, "1": 196605, "75": 1})
+            self.assertIn("candidate_sources", evidence)
+            for item in evidence["frames"]:
+                bound = frame_bounds[item["frame"]]
+                self.assertEqual((item["report"]["tolerance"], item["report"]["ssim_min"]), bound[:2])
+                histogram = item["pixel_counts"]["channel_abs_histogram"]
+                if item["frame"] in near_frames:
+                    self.assertEqual(histogram, {"0": 262141, str(int(bound[0])): 3})
+                else:
+                    self.assertEqual(histogram, {"0": 65536, "1": 196608})
+            if name == "present_hero":
                 self.assertEqual(evidence["protocol"], {
                     "reference_sha": reference_sha,
                     "size": 256, "time": 0.25, "timestep": 0,
                     "reference_backend": "webgl2", "reference_frames": [1, 2, 8],
                     "native_frames": 8, "native_samples": [1, 2, 8], "initial_state": "zeroed",
                     "fixture_sha256": "e0c083445a843a137e76fbba4572c897a6a0b034956253910dd61b9638493e08",
-                })
-                self.assertEqual(evidence["visual_limit"],
-                                 "Edge differences are substantial. This policy covers saved RGBA PNGs only.")
-            else:
-                self.assertEqual(means, [0.125] * 3)
-            self.assertIn("candidate_sources", evidence)
-            if name == "motionBlur":
-                self.assertEqual(evidence["frames"][-1]["report"]["tolerance"], 3.001)
-                self.assertEqual(evidence["frames"][-1]["report"]["ssim_min"], 0.9999)
-                self.assertEqual(evidence["frames"][-1]["pixel_counts"], {
-                    "pixels": 65536, "channels": 262144, "different_pixels": 65536,
-                    "different_channels": 262144, "pixels_over_1": 65536,
-                    "channels_over_1": 262144, "pixels_over_2": 65536, "channels_over_2": 196608,
                 })
             mismatch = subprocess.run(result.args, cwd=root, capture_output=True, text=True,
                                       env=dict(environment, TEST_REFERENCE_HEAD="b" * 40))
@@ -471,10 +446,6 @@ class HarnessContractTests(unittest.TestCase):
                     self.assertFalse((root / "evolve-called").exists())
             report.write_text(json.dumps(evidence))
             results = root / "results.tsv"
-            tolerance = {"motionBlur": 3.001, "convolutionFeedback": 41.001,
-                         "synth3d_cellularAutomata3d": 178.001, "reactionDiffusion": 41.001,
-                         "synth3d_reactionDiffusion3d": 177.001, "present_hero": 75.001}.get(name, 2.001)
-            aggregate_ssim = 0.9792 if name == "synth3d_reactionDiffusion3d" else 0.9983 if name == "present_hero" else 0.98
             results.write_text(f"{name}\tACCUMULATE\t{report}\t{tolerance}\t{aggregate_ssim}\n")
             written = subprocess.run(
                 [sys.executable, str(parity / "write-ledger.py"), "--root", str(root),
@@ -482,15 +453,14 @@ class HarnessContractTests(unittest.TestCase):
                  "--output", str(out / "ledger.tsv")], capture_output=True, text=True, env=environment,
             )
             self.assertEqual(written.returncode, 0, written.stdout + written.stderr)
-            if name in ("synth3d_reactionDiffusion3d", "present_hero"):
-                self.assertIn(f"\t{tolerance}\t{aggregate_ssim}\taccumulate\t", (out / "ledger.tsv").read_text())
-                correct_result = results.read_text()
-                results.write_text(f"{name}\tACCUMULATE\t{report}\t{tolerance}\t0.98\n")
-                wrong_bound = subprocess.run(written.args, capture_output=True, text=True, env=environment)
-                self.assertNotEqual(wrong_bound.returncode, 0, wrong_bound.stdout + wrong_bound.stderr)
-                results.write_text(correct_result)
-                restored = subprocess.run(written.args, capture_output=True, text=True, env=environment)
-                self.assertEqual(restored.returncode, 0, restored.stdout + restored.stderr)
+            self.assertIn(f"\t{tolerance}\t{aggregate_ssim}\taccumulate\t", (out / "ledger.tsv").read_text())
+            correct_result = results.read_text()
+            results.write_text(f"{name}\tACCUMULATE\t{report}\t{tolerance + 1}\t{aggregate_ssim}\n")
+            wrong_bound = subprocess.run(written.args, capture_output=True, text=True, env=environment)
+            self.assertNotEqual(wrong_bound.returncode, 0, wrong_bound.stdout + wrong_bound.stderr)
+            results.write_text(correct_result)
+            restored = subprocess.run(written.args, capture_output=True, text=True, env=environment)
+            self.assertEqual(restored.returncode, 0, restored.stdout + restored.stderr)
             if name == "present_hero":
                 (root / "scripts" / "test").write_text('NM_REFERENCE_SHA_PINNED="' + "b" * 40 + '"\n')
                 later_pin = json.loads(json.dumps(evidence))
@@ -509,8 +479,7 @@ class HarnessContractTests(unittest.TestCase):
             self.assertEqual(summary.returncode, 0, summary.stdout + summary.stderr)
             counts = json.loads(summary.stdout.split("PARITY-SUMMARY ", 1)[1])
             self.assertEqual(counts, {"expected": 1, "executed": 1, "exact": 0,
-                                      "strict": 1 if name == "cellularAutomata" else 0,
-                                      "near": 0 if name == "cellularAutomata" else 1,
+                                      "strict": 0 if near_frames else 1, "near": 1 if near_frames else 0,
                                       "defer": 0, "skip": 0, "fail": 0, "missing": 0})
             (root / "reference-dirty").unlink(missing_ok=True)
             (parity / "run.sh").write_text("exit 29\n")
@@ -522,73 +491,55 @@ class HarnessContractTests(unittest.TestCase):
                 env=dict(environment, LEDGER_PATH=str(sweep_output / "ledger.tsv")),
             )
             self.assertEqual(swept.returncode, 0, swept.stdout + swept.stderr)
-            verdict = "PASS" if name == "cellularAutomata" else "NEAR"
+            verdict = "NEAR" if near_frames else "PASS"
             self.assertIn(f"{name}\t{verdict}\t", (sweep_output / "ledger.tsv").read_text())
             self.assertTrue((sweep_output / f"{name}.json").exists())
             defects = ["missing_frame", "wrong_pin", "wide_frame", "failed_frame", "invalid_mean",
-                       "wrong_frame_bound", "wrong_capture", "early_wide"]
-            if name in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"):
-                defects.append("low_f8_ssim")
-            if name in ("convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"):
-                defects.extend(("missing_histogram", "wrong_mean"))
-            if name in ("synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"):
-                defects.append("plausible_wrong_histogram")
-            if name in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"):
-                defects.extend(("missing_counts", "invalid_counts", "plausible_wrong_counts"))
+                       "wrong_frame_bound", "wrong_capture", "early_wide", "low_ssim", "missing_counts",
+                       "invalid_counts", "missing_histogram", "wrong_mean", "plausible_wrong_histogram"]
             if name == "present_hero":
                 defects.extend(("missing_protocol", "wrong_size", "wrong_time", "wrong_timestep",
                                 "wrong_reference_backend", "wrong_reference_frames", "wrong_native_frames",
-                                "wrong_native_samples", "wrong_initial_state", "wrong_fixture_sha256",
-                                "missing_visual_limit", "second_frame_wide", "second_frame_bound"))
+                                "wrong_native_samples", "wrong_initial_state", "wrong_fixture_sha256"))
             for defect in defects:
                 with self.subTest(defect=defect):
                     invalid = json.loads(json.dumps(evidence))
+                    first, last = invalid["frames"][0], invalid["frames"][-1]
                     if defect == "missing_frame":
                         invalid["frames"].pop()
                     elif defect == "wrong_pin":
                         invalid["reference_sha"] = "b" * 40
                     elif defect == "wide_frame":
-                        invalid["frames"][-1]["report"]["max_abs_diff"] = tolerance + 1
+                        last["report"]["max_abs_diff"] = frame_bounds[8][0] + 1
                     elif defect == "failed_frame":
-                        invalid["frames"][-1]["report"]["passed"] = False
+                        last["report"]["passed"] = False
                     elif defect == "invalid_mean":
-                        invalid["frames"][-1]["report"]["mean_abs_diff"] = float("nan")
+                        last["report"]["mean_abs_diff"] = float("nan")
                     elif defect == "wrong_frame_bound":
-                        invalid["frames"][0]["report"]["tolerance"] = 3.001
+                        first["report"]["tolerance"] = 99.0
                     elif defect == "wrong_capture":
-                        invalid["frames"][-1]["candidate_sha256"] = "0" * 64
+                        last["candidate_sha256"] = "0" * 64
                     elif defect == "early_wide":
-                        invalid["frames"][0]["report"]["max_abs_diff"] = 3.0
-                    elif defect == "second_frame_wide":
-                        invalid["frames"][1]["report"]["max_abs_diff"] = 3.0
-                    elif defect == "second_frame_bound":
-                        invalid["frames"][1]["report"]["tolerance"] = 75.001
-                    elif defect == "low_f8_ssim":
-                        invalid["frames"][-1]["report"]["ssim"] = {
-                            "convolutionFeedback": 0.9947, "synth3d_cellularAutomata3d": 0.9967,
-                            "reactionDiffusion": 0.9878, "synth3d_reactionDiffusion3d": 0.9791,
-                            "present_hero": 0.9982,
-                        }.get(name, 0.9998)
+                        first["report"]["max_abs_diff"] = frame_bounds[1][0] + 1
+                    elif defect == "low_ssim":
+                        last["report"]["ssim"] = frame_bounds[8][1] - 0.0001
                     elif defect == "missing_counts":
-                        del invalid["frames"][-1]["pixel_counts"]
+                        del last["pixel_counts"]
                     elif defect == "invalid_counts":
-                        invalid["frames"][-1]["pixel_counts"]["different_channels"] = 262145
+                        last["pixel_counts"]["different_channels"] = 262145
                     elif defect == "missing_histogram":
-                        del invalid["frames"][-1]["pixel_counts"]["channel_abs_histogram"]
+                        del last["pixel_counts"]["channel_abs_histogram"]
                     elif defect == "wrong_mean":
-                        invalid["frames"][-1]["report"]["mean_abs_diff"] = 0.5
+                        last["report"]["mean_abs_diff"] += 0.5
                     elif defect == "plausible_wrong_histogram":
-                        histogram = invalid["frames"][-1]["pixel_counts"]["pixel_max_histogram"]
-                        histogram["5" if name == "reactionDiffusion" else "1" if name == "present_hero" else "0"] -= 1
-                        histogram["2" if name == "present_hero" else "1"] = 1
+                        histogram = last["pixel_counts"]["pixel_max_histogram"]
+                        key = max(histogram, key=histogram.get)
+                        histogram[key] -= 1
+                        histogram["2" if key != "2" else "3"] = histogram.get("2" if key != "2" else "3", 0) + 1
                     elif defect == "missing_protocol":
                         del invalid["protocol"]
-                    elif defect == "missing_visual_limit":
-                        del invalid["visual_limit"]
                     elif defect.startswith("wrong_") and defect[6:] in invalid.get("protocol", {}):
                         invalid["protocol"][defect[6:]] = "other"
-                    else:
-                        invalid["frames"][0]["pixel_counts"]["different_channels"] -= 1
                     report.write_text(json.dumps(invalid))
                     rejected = subprocess.run(written.args, capture_output=True, text=True, env=environment)
                     self.assertNotEqual(rejected.returncode, 0, rejected.stdout + rejected.stderr)
@@ -614,23 +565,15 @@ class HarnessContractTests(unittest.TestCase):
             changed_fixture = subprocess.run(written.args, capture_output=True, text=True, env=environment)
             self.assertNotEqual(changed_fixture.returncode, 0, changed_fixture.stdout + changed_fixture.stderr)
             self.assertIn(f"{name}\tFAIL\t", (out / "ledger.tsv").read_text())
-
-            if name in ("convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"):
-                if name == "present_hero":
-                    shutil.copy2(REPO / "parity" / "programs" / "present_hero.dsl",
-                                 parity / "programs" / "present_hero.dsl")
-                rgba = ((254, 254, 254, 255) if name == "synth3d_cellularAutomata3d" else
-                        (253, 253, 253, 255) if name == "present_hero" else (249, 249, 249, 255))
-                (fixtures / f"{name}.f0008.png").write_bytes(fixture_png(rgba))
+            if near_frames:
+                # A NEAR frame within its max bound but over its mean limit is rejected.
+                (parity / "programs" / f"{name}.dsl").write_text(f"{name}().write(o0)\n")
+                (fixtures / f"{name}.f{near_frames[0]:04d}.png").write_bytes(fixture_png((253, 253, 253, 255)))
                 high_mean = subprocess.run(result.args, cwd=root, capture_output=True, text=True, env=environment)
                 self.assertNotEqual(high_mean.returncode, 0, high_mean.stdout + high_mean.stderr)
-                measured = json.loads(Path(str(report) + ".frames/8.json").read_text())
-                self.assertLessEqual(measured["max_abs_diff"], tolerance)
-                self.assertGreaterEqual(measured["ssim"], {"convolutionFeedback": 0.9948,
-                                        "synth3d_cellularAutomata3d": 0.9968, "reactionDiffusion": 0.9879,
-                                        "synth3d_reactionDiffusion3d": 0.9792, "present_hero": 0.9983}[name])
-                self.assertAlmostEqual(measured["mean_abs_diff"], 0.75 if name == "synth3d_cellularAutomata3d" else 1.5 if name == "present_hero" else 4.5,
-                                       delta=0.0001)
+                measured = json.loads(Path(str(report) + f".frames/{near_frames[0]}.json").read_text())
+                self.assertLessEqual(measured["max_abs_diff"], frame_bounds[near_frames[0]][0])
+                self.assertGreater(measured["mean_abs_diff"], frame_bounds[near_frames[0]][2])
 
     def test_single_and_batch_exporters_use_the_full_clean_start_protocol(self):
         single = (REPO / "parity" / "export-and-render.mjs").read_text()

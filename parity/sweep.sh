@@ -79,23 +79,13 @@ tol_for() { case "$1" in
   *)          echo "2.001 0.98" ;;
 esac; }
 
-# Multi-frame FEEDBACK-ACCUMULATION effects. The single-frame sweep force-cooks ONE frame, so it
-# cannot drive a feedback loop that only latches on a real engine tick. These are driven + graded
-# separately by parity/accumulate.sh (the evolve harness IS that frame loop — 8 frames-from-zero,
-# the reference golden protocol). Verdicts there (8/8 gated checks pass): cellularAutomata
-# byte-identical at every frame (strict); motionBlur f1/f2 byte-exact then SSIM-gated at f8 (8-bit
-# rgba8unorm feedback re-quantization rounding drift, Metal vs ANGLE); reactionDiffusion seed/f1/f2
-# bit-exact then f4+ chaos-gated (continuous Gray-Scott — no stable golden; even two reference
-# WebGL2 harnesses diverge). So here they are reported, not graded.
-defer_reason() { case "$1" in
-  cellularAutomata|reactionDiffusion|motionBlur|convolutionFeedback)
-    echo "multi-frame feedback — driven + graded by parity/accumulate.sh (8/8 gated checks pass)" ;;
-  synth3d_cellularAutomata3d|synth3d_reactionDiffusion3d)
-    echo "3D-volume stateful (<sim>3d().render3d()) — driven + graded by parity/accumulate.sh (f1/f2 max-diff=1)" ;;
-  present_hero)
-    echo "frame-one/two strict and frame-eight visual policy require parity/accumulate.sh" ;;
-  *) echo "" ;;
-esac; }
+# Multi-frame cases (parity/write-ledger.py ACCUMULATION_CASES). The single-frame sweep force-cooks
+# ONE frame, so it cannot drive state that only latches on a real engine tick. Each is driven and
+# graded by parity/accumulate.sh (8 frames-from-zero, frames 1/2/8 against the reference) with the
+# per-frame bounds in ACCUMULATION_NEAR; in --compare-only mode they are reported, not graded.
+ACCUM="$("$PY" "$REPO/parity/write-ledger.py" --accumulation-cases)" || exit 2
+is_accum() { case " $ACCUM " in *" $1 "*) return 0 ;; esac; return 1; }
+defer_reason() { if is_accum "$1"; then echo "multi-frame — driven and graded by parity/accumulate.sh"; fi; }
 
 stage=1; render=1
 for a in "$@"; do case "$a" in
@@ -117,7 +107,8 @@ render_failed=""
 if [ "$render" = 1 ]; then
   ALL=()
   for name in $SET; do
-    case "$name" in cellularAutomata|motionBlur|convolutionFeedback|synth3d_cellularAutomata3d|reactionDiffusion|synth3d_reactionDiffusion3d|present_hero|synth3d_renderCubemap3d|synth3d_renderCubemapSurface) ;; *) ALL+=("$name") ;; esac
+    is_accum "$name" && continue
+    case "$name" in synth3d_renderCubemap3d|synth3d_renderCubemapSurface) ;; *) ALL+=("$name") ;; esac
   done
   n=${#ALL[@]}; i=0
   while [ $i -lt $n ]; do
@@ -150,13 +141,8 @@ for name in $SET; do
       record_result "$name" FAIL "TouchDesigner renderer exited nonzero" - -
       fail=$((fail + 1)); failed="$failed $name"; continue ;;
   esac
-  if { [ "$name" = cellularAutomata ] || [ "$name" = motionBlur ] || [ "$name" = convolutionFeedback ] || [ "$name" = synth3d_cellularAutomata3d ] || [ "$name" = reactionDiffusion ] || [ "$name" = synth3d_reactionDiffusion3d ] || [ "$name" = present_hero ]; } && [ "$render" = 1 ]; then
-    TOL=2.001; SSIM=0.98
-    if [ "$name" = motionBlur ]; then TOL=3.001; fi
-    if [ "$name" = convolutionFeedback ] || [ "$name" = reactionDiffusion ]; then TOL=41.001; fi
-    if [ "$name" = synth3d_cellularAutomata3d ]; then TOL=178.001; fi
-    if [ "$name" = synth3d_reactionDiffusion3d ]; then TOL=177.001; SSIM=0.9792; fi
-    if [ "$name" = present_hero ]; then TOL=75.001; SSIM=0.9983; fi
+  if is_accum "$name" && [ "$render" = 1 ]; then
+    read -r TOL SSIM <<< "$("$PY" "$REPO/parity/write-ledger.py" --accumulation-bound "$name")"
     report="$(dirname "$LEDGER_PATH")/$name.json"
     if bash "$REPO/parity/accumulate.sh" --effect "$name" --report "$report"; then
       record_result "$name" ACCUMULATE "$report" "$TOL" "$SSIM"

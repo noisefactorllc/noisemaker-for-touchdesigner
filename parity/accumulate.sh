@@ -1,43 +1,17 @@
 #!/usr/bin/env bash
 # parity/accumulate.sh — parity for the multi-frame FEEDBACK-ACCUMULATION effects.
 #
-# The single-frame sweep.sh force-cooks ONE frame, which cannot drive a feedback effect whose state
-# only latches on a real engine tick. These three instead evolve 8 frames-from-zero (timestep 0 — the
+# The single-frame sweep.sh force-cooks ONE frame, which cannot drive a stateful effect whose state
+# only latches on a real engine tick. These cases instead evolve 8 frames-from-zero (timestep 0 — the
 # reference golden protocol, parity/batch-golden.mjs) through the evolve harness (non-real-time
-# timeline playback; the Feedback TOP latches once per frame), then grade against a batch-golden
-# reference. They were [DEFER]'d in sweep.sh ("needs an async engine frame loop"); the evolve harness
-# is that loop, so this is where they are now actually driven and graded.
+# timeline playback; one simulation step per Feedback TOP latch), then grade frames 1, 2 and 8
+# against batch-golden references.
 #
-#   cellularAutomata   discrete CA — byte-identical to the reference at EVERY frame (strict). seed:1
-#                      zoom:8 is a fixed point (f1==f8), so this also proves the feedback re-feeds
-#                      stably over 8 frames (a stuck/!latching feedback would drift or blacken).
-#   motionBlur         rgba8unorm feedback (the REFERENCE's own surface format — verified in the
-#                      graph). f1/f2 byte-exact; then a mild per-frame 8-bit re-quantization rounding
-#                      drift (Metal round-to-nearest tie-break vs ANGLE) makes the contractive blend
-#                      approach its fixed point a hair slower — peaks ~max-diff 10 mid-transient, back
-#                      to max-diff 3 / ssim 0.99992 at the canonical f8. SSIM-gated, like the sweep's
-#                      other cross-backend-drift effects (edge/crt/...). The alpha series
-#                      0.60->0.84->0.94->0.99 (1-0.4^n) is the proof the accumulation actually runs.
-#   convolutionFeedback  a `feedbackTex` temporal-convolution blend — the same rgba8 8-bit-feedback
-#                      drift class as motionBlur. f1/f2 byte-exact, then a mild per-frame re-quant drift;
-#                      SSIM-gated at f8 (figure pinned by this harness).
-#   reactionDiffusion  continuous Gray-Scott at the stability limit. seed + f1/f2 are bit-exact (the
-#                      diffusion kernel + reaction term are a faithful port) then it chaotically
-#                      amplifies sub-ULP cross-backend fp differences (f4 ssim ~0.88). NO stable
-#                      golden exists to hit: even two reference WebGL2 harnesses (batch-golden vs
-#                      export-and-render) diverge to ssim ~0.47. So it is gated on the early frames
-#                      only; f4+ is reported, not failed — the same chaos class as navierStokes and
-#                      the flagship target (see docs/CHAOS-GATE.md).
-#   synth3d_cellularAutomata3d   the 3D-volume discrete CA, evolved as a ca_state feedback volume and
-#                      turned to pixels by render3d()'s raymarch. f1/f2 max-abs-diff=1 (the seed
-#                      volume + 3D neighbour update are an exact port); at f8 a few boundary cells
-#                      flip after 8 generations of cross-backend ULP and the raymarch over the sharp
-#                      voxel amplifies that single flip to a high max-diff (170) at a negligible mean
-#                      (0.43) — ssim-gated (0.996), the discrete-CA class but read through a raymarch.
-#   synth3d_reactionDiffusion3d  the 3D-volume Gray-Scott (rd_state feedback volume) through render3d().
-#                      f1/f2 bit-exact (max-abs-diff=1) then the continuous reaction term chaotically
-#                      amplifies sub-ULP fp differences (f8 ssim ~0.977) — same chaos class as the 2D
-#                      effect; f8 reported, not failed.
+# The case list and every frame bound come from parity/write-ledger.py (ACCUMULATION_CASES,
+# ACCUMULATION_NEAR). Frames are strict (max-abs-diff <= 2, SSIM >= 0.98) except the reviewed NEAR
+# frames listed there with their measured bounds. Earlier "chaos" classifications of
+# reactionDiffusion and the 3D sims were a harness defect: the evolve driver lost one step at frame 3
+# (td/parity_evolve.py). With exact stepping they match at frame 8 with max-abs-diff 1.
 #
 #   NM_REFERENCE_ROOT=/path/to/noisemaker parity/accumulate.sh   # regen goldens, drive all, grade
 #   parity/accumulate.sh --no-stage   # reuse existing parity/out/<e>.f*.golden.png; just drive+grade
@@ -46,7 +20,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"; REPO="$(cd "$HERE/.." && pwd)"
 PY="$REPO/parity/.venv/bin/python"; [ -x "$PY" ] || PY=python3
 OUT="$REPO/parity/out"; mkdir -p "$OUT"
 
-EFFECTS="cellularAutomata motionBlur convolutionFeedback reactionDiffusion synth3d_cellularAutomata3d synth3d_reactionDiffusion3d"
+EFFECTS="$("$PY" "$REPO/parity/write-ledger.py" --accumulation-cases)" || exit 2
 GRADE_FRAMES="1 2 8"          # frames captured + graded (per-effect verdict below)
 
 stage=1; selected=""; result_report=""
@@ -79,7 +53,7 @@ print(actual)
 PY
 }
 if [ -n "$selected$result_report" ]; then
-  case "$selected" in cellularAutomata|motionBlur|convolutionFeedback|synth3d_cellularAutomata3d|reactionDiffusion|synth3d_reactionDiffusion3d|present_hero) ;; *) exit 2 ;; esac
+  case " $EFFECTS " in *" $selected "*) ;; *) exit 2 ;; esac
   [ -n "$result_report" ] && [ "$stage" = 1 ] || exit 2
   EFFECTS="$selected"
   rm -f "$result_report"
@@ -100,14 +74,14 @@ PY
 fi
 
 # 1. Reference goldens — batch-golden.mjs renders frame N from a clean zeroed start (timestep 0,
-#    time 0.25). One run per frame count over the 3-effect manifest; rename to <name>.f<NNNN>.golden.
+#    time 0.25). One run per frame count over the case manifest; rename to <name>.f<NNNN>.golden.
 if [ "$stage" = 1 ]; then
   command -v node >/dev/null || { echo "node not found (needed to regenerate goldens); use --no-stage"; exit 2; }
   MAN="$(mktemp)"; for e in $EFFECTS; do echo "$e parity/programs/$e.dsl" >> "$MAN"; done
   backend_args=(); [ "$selected" != present_hero ] || backend_args=(--backend webgl2)
   for N in $GRADE_FRAMES; do
     f="$(printf '%04d' "$N")"; gdir="$OUT/_acc_g$N"; rm -rf "$gdir"
-    ( cd "$REPO" && node parity/batch-golden.mjs "$MAN" "$gdir" --size 256 --frames "$N" --timestep 0 --time 0.25 "${backend_args[@]}" ) \
+    ( cd "$REPO" && node parity/batch-golden.mjs "$MAN" "$gdir" --size 256 --frames "$N" --timestep 0 --time 0.25 ${backend_args[@]+"${backend_args[@]}"} ) \
       >/dev/null 2>&1 || { echo "golden gen failed at frames=$N (set NM_REFERENCE_ROOT to the upstream engine)"; exit 2; }
     for e in $EFFECTS; do
       cp "$gdir/$e.golden.png" "$OUT/$e.f$f.golden.png" || exit 2
@@ -125,7 +99,7 @@ for e in $EFFECTS; do
   evolve_size="${NM_SIZE:-256}"; [ "$e" != present_hero ] || evolve_size=256
   native_env=(); [ "$e" != present_hero ] || native_env=(env -u NM_DUMP_PROG -u NM_DUMP_TEXID)
   if ! NM_SIZE="$evolve_size" NM_FRAMES=8 NM_TIMESTEP=0 NM_TIME=0.25 NM_SAMPLES="$SMPL" NM_WAIT="${NM_WAIT:-280}" \
-    TOL=255 SSIM=0 "${native_env[@]}" bash "$REPO/parity/evolve.sh" "$e" >/dev/null 2>&1; then
+    TOL=255 SSIM=0 ${native_env[@]+"${native_env[@]}"} bash "$REPO/parity/evolve.sh" "$e" >/dev/null 2>&1; then
     [ -z "$result_report" ] || exit 1
   fi
 done
@@ -141,32 +115,12 @@ grade() { # <effect> <frame> <tol> <ssim> ; prints PASS/FAIL line, returns nonze
     "$@" \
     | sed 's/^/  /'
 }
-report() { # informational only — never fails the sweep (chaos-gated frame)
-  local e="$1" n="$2" f; f="$(printf '%04d' "$n")"
-  local g="$OUT/$e.f$f.golden.png" c="$OUT/$e.f$f.candidate.png"
-  [ -f "$c" ] || { echo "  [skip] $e f$f — no candidate"; return 0; }
-  local line; line="$("$PY" "$REPO/parity/compare.py" "$g" "$c" --name "$e.f$f" --tolerance 255 --ssim-min 0 2>&1)"
-  echo "  [chaos-gate] ${line#\[PASS\] }"
-}
+bound() { "$PY" "$REPO/parity/write-ledger.py" --accumulation-bound "$1" "$2"; }
 
-pass=0; fail=0
 if [ -n "$selected" ]; then
   for n in $GRADE_FRAMES; do
-    if [ "$selected" = motionBlur ] && [ "$n" = 8 ]; then
-      grade "$selected" "$n" 3.001 0.9999 || exit 1
-    elif [ "$selected" = convolutionFeedback ] && [ "$n" = 8 ]; then
-      grade "$selected" "$n" 41.001 0.9948 || exit 1
-    elif [ "$selected" = synth3d_cellularAutomata3d ] && [ "$n" = 8 ]; then
-      grade "$selected" "$n" 178.001 0.9968 || exit 1
-    elif [ "$selected" = reactionDiffusion ] && [ "$n" = 8 ]; then
-      grade "$selected" "$n" 41.001 0.9879 || exit 1
-    elif [ "$selected" = synth3d_reactionDiffusion3d ] && [ "$n" = 8 ]; then
-      grade "$selected" "$n" 177.001 0.9792 || exit 1
-    elif [ "$selected" = present_hero ] && [ "$n" = 8 ]; then
-      grade "$selected" "$n" 75.001 0.9983 || exit 1
-    else
-      grade "$selected" "$n" 2.001 0.98 || exit 1
-    fi
+    read -r tol ssim <<< "$(bound "$selected" "$n")" || exit 2
+    grade "$selected" "$n" "$tol" "$ssim" || exit 1
   done
   "$PY" - "$result_report" "$reference_sha" "$frame_reports" "$REPO" "$selected" <<'PY'
 import hashlib
@@ -182,56 +136,31 @@ sources = json.loads((Path(directory) / "candidate-sources.json").read_text())
 if sources != ledger["candidate_sources"](root, selected):
     raise ValueError("candidate sources changed during accumulation")
 frames = []
-for frame in (1, 2, 8):
+for frame in ledger["ACCUMULATION_FRAMES"]:
     report = json.loads((Path(directory) / f"{frame}.json").read_text())
     captures = {kind: Path(report[kind]).read_bytes() for kind in ("golden", "candidate")}
     frames.append({"frame": frame, "report": report, **{
         f"{kind}_sha256": hashlib.sha256(captures[kind]).hexdigest()
         for kind in ("golden", "candidate")
-    }})
-    if selected in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"):
-        frames[-1]["pixel_counts"] = ledger["frame_pixel_counts"](
-            **captures, details=selected in ("convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"))
+    }, "pixel_counts": ledger["frame_pixel_counts"](**captures, details=True)})
 evidence = {"case": selected, "reference_sha": reference_sha,
             "candidate_sources": sources, "frames": frames}
 if selected == "present_hero":
-    evidence.update(protocol=ledger["PRESENT_HERO_PROTOCOL"], visual_limit=ledger["PRESENT_HERO_VISUAL_LIMIT"])
+    evidence.update(protocol=ledger["PRESENT_HERO_PROTOCOL"])
 Path(output).write_text(json.dumps(evidence, indent=2) + "\n")
-maximum = {"convolutionFeedback": 41.001, "synth3d_cellularAutomata3d": 178.001,
-           "reactionDiffusion": 41.001, "synth3d_reactionDiffusion3d": 177.001, "present_hero": 75.001}.get(selected)
-minimum_ssim = 0.9792 if selected == "synth3d_reactionDiffusion3d" else 0.9983 if selected == "present_hero" else 0.98
-if maximum is not None and ledger["accumulate_row"](root, selected, Path(output), maximum, minimum_ssim)["verdict"] == "FAIL":
+if ledger["accumulate_row"](root, selected, Path(output), *ledger["accumulation_bound"](selected))["verdict"] == "FAIL":
     raise SystemExit("The selected accumulation failed canonical evidence checks.")
 PY
   exit $?
 fi
-echo "=== cellularAutomata (discrete CA — strict at every frame) ==="
-for n in 1 2 8; do if grade cellularAutomata "$n" 2.001 0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi; done
 
-echo "=== motionBlur (rgba8 feedback — f1/f2 strict, f8 SSIM-gated for 8-bit re-quant drift) ==="
-if grade motionBlur 1 2.001 0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi
-if grade motionBlur 2 2.001 0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi
-if grade motionBlur 8 3.001 0.999; then pass=$((pass+1)); else fail=$((fail+1)); fi
-
-echo "=== convolutionFeedback (rgba8 feedback-convolution — f1/f2 strict, f8 SSIM-gated for 8-bit re-quant drift) ==="
-if grade convolutionFeedback 1 2.001 0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi
-if grade convolutionFeedback 2 2.001 0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi
-if grade convolutionFeedback 8 255   0.99; then pass=$((pass+1)); else fail=$((fail+1)); fi
-
-echo "=== reactionDiffusion (continuous Gray-Scott — seed/f1/f2 strict, f4+ chaos-gated) ==="
-if grade reactionDiffusion 1 2.001 0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi
-if grade reactionDiffusion 2 2.001 0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi
-report reactionDiffusion 8
-
-echo "=== cellularAutomata3d (3D discrete CA via render3d — f1/f2 max-diff=1 strict, f8 ssim-gated) ==="
-if grade synth3d_cellularAutomata3d 1 2.001 0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi
-if grade synth3d_cellularAutomata3d 2 2.001 0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi
-if grade synth3d_cellularAutomata3d 8 255   0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi
-
-echo "=== reactionDiffusion3d (3D Gray-Scott via render3d — f1/f2 strict, f8 chaos-gated) ==="
-if grade synth3d_reactionDiffusion3d 1 2.001 0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi
-if grade synth3d_reactionDiffusion3d 2 2.001 0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi
-report synth3d_reactionDiffusion3d 8
-
-echo "=== ACCUMULATE: $pass / $((pass+fail)) gated checks PASS (reactionDiffusion + reactionDiffusion3d f8 chaos-gated, reported) ==="
+pass=0; fail=0
+for e in $EFFECTS; do
+  echo "=== $e ==="
+  for n in $GRADE_FRAMES; do
+    read -r tol ssim <<< "$(bound "$e" "$n")" || exit 2
+    if grade "$e" "$n" "$tol" "$ssim"; then pass=$((pass+1)); else fail=$((fail+1)); fi
+  done
+done
+echo "=== ACCUMULATE: $pass / $((pass+fail)) graded frames PASS ==="
 [ "$fail" = 0 ]

@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import re
+import sys
 import runpy
 from pathlib import Path
 
@@ -25,7 +26,37 @@ PRESENT_HERO_PROTOCOL = {
     "native_frames": 8, "native_samples": [1, 2, 8], "initial_state": "zeroed",
     "fixture_sha256": "e0c083445a843a137e76fbba4572c897a6a0b034956253910dd61b9638493e08",
 }
-PRESENT_HERO_VISUAL_LIMIT = "Edge differences are substantial. This policy covers saved RGBA PNGs only."
+# Multi-frame cases graded by parity/accumulate.sh at frames 1, 2 and 8 from a zeroed start.
+ACCUMULATION_CASES = (
+    "cellularAutomata", "motionBlur", "convolutionFeedback", "reactionDiffusion",
+    "synth3d_cellularAutomata3d", "synth3d_reactionDiffusion3d", "present_hero",
+    "buddhabrot", "physical", "filter3d_flow3d", "heightGrid_billboard",
+    "heightGrid_billboard_alpha", "heightGrid_pointsRender_perspective",
+)
+ACCUMULATION_FRAMES = (1, 2, 8)
+# Reviewed NEAR frames: (max_abs_diff bound, SSIM minimum, mean_abs_diff limit), each the measured
+# value rounded up, with side-by-side review at native size. Every other frame is strict.
+#   convolutionFeedback f8: rgba8 feedback convolution re-quantization; max 9, mean 0.1936.
+#   physical f1/f2/f8: agents whose summed float16 deposits differ in one pixel; max 3, 4, 4.
+ACCUMULATION_NEAR = {
+    ("convolutionFeedback", 8): (9.001, 0.9999, 0.194),
+    ("physical", 1): (3.001, 0.9999, 0.254),
+    ("physical", 2): (4.001, 0.9999, 0.233),
+    ("physical", 8): (4.001, 0.9999, 0.178),
+}
+
+
+def accumulation_frame_bound(name, frame):
+    """(max_abs_diff bound, SSIM minimum, mean limit or None) for one accumulation frame."""
+    if name not in ACCUMULATION_CASES:
+        raise ValueError("unsupported accumulation case")
+    return ACCUMULATION_NEAR.get((name, frame), (STRICT_TOLERANCE, STRICT_SSIM_MIN, None))
+
+
+def accumulation_bound(name):
+    """The case's aggregate (max_abs_diff bound, SSIM minimum) across its graded frames."""
+    bounds = [accumulation_frame_bound(name, frame) for frame in ACCUMULATION_FRAMES]
+    return max(bound[0] for bound in bounds), min(bound[1] for bound in bounds)
 CUBEMAP_CASES = {"synth3d_renderCubemap3d", "synth3d_renderCubemapSurface"}
 CUBEMAP_PROTOCOL = {"size": 256, "time": 0.25, "backend": "webgl2",
                     "face_order": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"],
@@ -33,7 +64,7 @@ CUBEMAP_PROTOCOL = {"size": 256, "time": 0.25, "backend": "webgl2",
 
 
 def candidate_sources(root, name="cellularAutomata"):
-    if name not in ("cellularAutomata", "motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"):
+    if name not in ACCUMULATION_CASES:
         raise ValueError("unsupported accumulation case")
     if name == "present_hero":
         override = root / "parity" / "corpus" / "present_hero.dsl"
@@ -239,37 +270,20 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
         pin = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
                         (root / "scripts" / "test").read_text(), re.M).group(1)
         frames = evidence["frames"]
-        expected_tolerance = {"motionBlur": 3.001, "convolutionFeedback": 41.001,
-                              "synth3d_cellularAutomata3d": 178.001, "reactionDiffusion": 41.001,
-                              "synth3d_reactionDiffusion3d": 177.001, "present_hero": 75.001}.get(name, STRICT_TOLERANCE)
-        if (name not in ("cellularAutomata", "motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero")
+        if (name not in ACCUMULATION_CASES
                 or evidence["case"] != name
                 or evidence["reference_sha"] != pin
                 or evidence["candidate_sources"] != candidate_sources(root, name)
-                or [item["frame"] for item in frames] != [1, 2, 8]
-                or tolerance != expected_tolerance
-                or ssim_min != (0.9792 if name == "synth3d_reactionDiffusion3d" else
-                                0.9983 if name == "present_hero" else STRICT_SSIM_MIN)):
+                or [item["frame"] for item in frames] != list(ACCUMULATION_FRAMES)
+                or (tolerance, ssim_min) != accumulation_bound(name)):
             return row
         if name == "present_hero" and (
                 evidence.get("protocol") != PRESENT_HERO_PROTOCOL
-                or evidence.get("visual_limit") != PRESENT_HERO_VISUAL_LIMIT
                 or evidence["candidate_sources"]["parity/programs/present_hero.dsl"] != PRESENT_HERO_PROTOCOL["fixture_sha256"]):
             return row
         for item in frames:
             report = item["report"]
-            frame_tolerance, frame_ssim = (3.001, 0.9999) if name == "motionBlur" and item["frame"] == 8 else (
-                STRICT_TOLERANCE, STRICT_SSIM_MIN)
-            if name == "convolutionFeedback" and item["frame"] == 8:
-                frame_tolerance, frame_ssim = 41.001, 0.9948
-            if name == "synth3d_cellularAutomata3d" and item["frame"] == 8:
-                frame_tolerance, frame_ssim = 178.001, 0.9968
-            if name == "reactionDiffusion" and item["frame"] == 8:
-                frame_tolerance, frame_ssim = 41.001, 0.9879
-            if name == "synth3d_reactionDiffusion3d" and item["frame"] == 8:
-                frame_tolerance, frame_ssim = 177.001, 0.9792
-            if name == "present_hero" and item["frame"] == 8:
-                frame_tolerance, frame_ssim = 75.001, 0.9983
+            frame_tolerance, frame_ssim, mean_limit = accumulation_frame_bound(name, item["frame"])
             if (report["name"] != f'{name}.f{item["frame"]:04d}'
                     or report["passed"] is not True
                     or report["tolerance"] != frame_tolerance
@@ -286,22 +300,16 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
             for kind in ("golden", "candidate"):
                 if hashlib.sha256(captures[kind]).hexdigest() != item[f"{kind}_sha256"]:
                     return row
-            if name in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"):
-                counts = item["pixel_counts"]
-                detailed = name in ("convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero")
-                expected_counts = frame_pixel_counts(**captures, details=detailed)
-                if json.dumps(counts, sort_keys=True) != json.dumps(expected_counts, sort_keys=True):
-                    return row
-                if detailed:
-                    histogram = expected_counts["channel_abs_histogram"]
-                    mean = sum(int(value) * count for value, count in histogram.items()) / expected_counts["channels"]
-                    maximum = max(map(int, histogram))
-                    if (abs(report["max_abs_diff"] - maximum) > 0.001
-                            or abs(report["mean_abs_diff"] - mean) > 0.001
-                            or (item["frame"] == 8 and mean > {"convolutionFeedback": 3.8,
-                                "synth3d_cellularAutomata3d": 0.41, "reactionDiffusion": 3.92,
-                                "synth3d_reactionDiffusion3d": 0.811, "present_hero": 1.188}[name])):
-                        return row
+            counts = item["pixel_counts"]
+            expected_counts = frame_pixel_counts(**captures, details=True)
+            if json.dumps(counts, sort_keys=True) != json.dumps(expected_counts, sort_keys=True):
+                return row
+            histogram = expected_counts["channel_abs_histogram"]
+            mean = sum(int(value) * count for value, count in histogram.items()) / expected_counts["channels"]
+            if (abs(report["max_abs_diff"] - max(map(int, histogram))) > 0.001
+                    or abs(report["mean_abs_diff"] - mean) > 0.001
+                    or (mean_limit is not None and mean > mean_limit)):
+                return row
         max_diff = max(item["report"]["max_abs_diff"] for item in frames)
         row.update(verdict="PASS" if max_diff <= STRICT_TOLERANCE else "NEAR", max_abs_diff=str(max_diff),
                    ssim=str(min(item["report"]["ssim"] for item in frames)),
@@ -312,6 +320,16 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
 
 
 def main():
+    if sys.argv[1:2] == ["--accumulation-cases"]:
+        print(" ".join(ACCUMULATION_CASES))
+        return
+    if sys.argv[1:2] == ["--accumulation-bound"]:
+        name = sys.argv[2]
+        if len(sys.argv) > 3:
+            print("%s %s" % accumulation_frame_bound(name, int(sys.argv[3]))[:2])
+        else:
+            print("%s %s" % accumulation_bound(name))
+        return
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--results", type=Path, required=True)
