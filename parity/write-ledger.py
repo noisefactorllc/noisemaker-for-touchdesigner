@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import re
+import runpy
 from pathlib import Path
 
 
@@ -25,6 +26,10 @@ PRESENT_HERO_PROTOCOL = {
     "fixture_sha256": "e0c083445a843a137e76fbba4572c897a6a0b034956253910dd61b9638493e08",
 }
 PRESENT_HERO_VISUAL_LIMIT = "Edge differences are substantial. This policy covers saved RGBA PNGs only."
+CUBEMAP_CASES = {"synth3d_renderCubemap3d", "synth3d_renderCubemapSurface"}
+CUBEMAP_PROTOCOL = {"size": 256, "time": 0.25, "backend": "webgl2",
+                    "face_order": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"],
+                    "cross_cells": [[0, 1], [2, 1], [1, 0], [1, 2], [1, 1], [3, 1]]}
 
 
 def candidate_sources(root, name="cellularAutomata"):
@@ -93,6 +98,87 @@ def frame_pixel_counts(golden, candidate, details=False):
                   "golden_rgba": arrays[0][y, x].tolist(), "candidate_rgba": arrays[1][y, x].tolist()},
         )
     return counts
+
+
+def cubemap_sources(root, name):
+    if name not in CUBEMAP_CASES:
+        raise ValueError("unsupported cubemap case")
+    runtime = root / "td/noisemaker"
+    entries = list(runtime.rglob("*"))
+    if runtime.is_symlink() or any(path.is_symlink() for path in entries):
+        raise ValueError("candidate runtime contains a symbolic link")
+    paths = [path for path in entries if path.is_file()
+             and "__pycache__" not in path.parts and path.suffix != ".pyc"]
+    if not paths:
+        raise ValueError("candidate runtime sources are missing")
+    paths.extend(root / relative for relative in (
+        "td/cubemap_bake.py", "td/build_points_probe_toe.py", "parity/cubemap.sh",
+        "parity/cube_cross.py", "parity/export-and-render.mjs", "parity/harness-port.mjs",
+        "parity/compare.py", "parity/write-ledger.py", "tools/export-graph.mjs",
+        "tools/reference-root.mjs", "scripts/test",
+        f"parity/programs/{name}.dsl",
+    ))
+    if any(path.is_symlink() for path in paths):
+        raise ValueError("candidate sources contain a symbolic link")
+    return {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(paths)}
+
+
+def cubemap_row(root, name, report_path, tolerance, ssim_min):
+    row = {"case": name, "verdict": "FAIL", "max_abs_diff": "-", "ssim": "-",
+           "tol_max": str(tolerance), "tol_ssim": str(ssim_min), "source": "cubemap", "golden": str(report_path)}
+    try:
+        evidence = json.loads(report_path.read_text())
+        pin = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
+                        (root / "scripts/test").read_text(), re.M).group(1)
+        outputs = evidence["outputs"]
+        if (name not in CUBEMAP_CASES or evidence["case"] != name
+                or evidence["reference_sha"] != pin or evidence["protocol"] != CUBEMAP_PROTOCOL
+                or evidence["candidate_sources"] != cubemap_sources(root, name)
+                or tolerance != STRICT_TOLERANCE or ssim_min != STRICT_SSIM_MIN
+                or [item["output"] for item in outputs] != [f"face{face}" for face in range(6)] + ["cross"]):
+            return row
+        from io import BytesIO
+        import numpy as np
+
+        compare = runpy.run_path(str(root / "parity/compare.py"))
+        arrays = {kind: [] for kind in ("golden", "candidate")}
+        for item in outputs:
+            report = item["report"]
+            shape = [768, 1024, 4] if item["output"] == "cross" else [256, 256, 4]
+            if (report["name"] != f'{name}.{item["output"]}' or report["passed"] is not True
+                    or report["shape"] != shape or report["tolerance"] != STRICT_TOLERANCE
+                    or report["ssim_min"] != STRICT_SSIM_MIN
+                    or not all(math.isfinite(report[key]) for key in ("max_abs_diff", "mean_abs_diff", "ssim"))
+                    or not 0 <= report["max_abs_diff"] <= STRICT_TOLERANCE
+                    or not 0 <= report["mean_abs_diff"] <= report["max_abs_diff"]
+                    or not STRICT_SSIM_MIN <= report["ssim"] <= 1.000001):
+                return row
+            for kind in arrays:
+                path = Path(report[kind])
+                if path.is_symlink() or path.name != f'{name}.{item["output"]}.{kind}.png':
+                    return row
+                capture = path.read_bytes()
+                if hashlib.sha256(capture).hexdigest() != item[f"{kind}_sha256"]:
+                    return row
+                array = compare["load_rgba"](BytesIO(capture))
+                if list(array.shape) != shape:
+                    return row
+                arrays[kind].append(array)
+            pair = [arrays[kind][-1] for kind in arrays]
+            for key, function in (("max_abs_diff", "max_abs_diff"), ("mean_abs_diff", "mean_abs_diff"), ("ssim", "global_ssim")):
+                if not math.isclose(report[key], compare[function](*pair), rel_tol=0, abs_tol=0.000001):
+                    return row
+        for captures in arrays.values():
+            cross = np.zeros_like(captures[-1])
+            for face, (x, y) in enumerate(CUBEMAP_PROTOCOL["cross_cells"]):
+                cross[y * 256:(y + 1) * 256, x * 256:(x + 1) * 256] = captures[face]
+            if not np.array_equal(cross, captures[-1]):
+                return row
+        row.update(verdict="PASS", max_abs_diff=str(max(item["report"]["max_abs_diff"] for item in outputs)),
+                   ssim=str(min(item["report"]["ssim"] for item in outputs)), golden=outputs[-1]["report"]["golden"])
+    except (OSError, AttributeError, ImportError, IndexError, KeyError, TypeError, ValueError):
+        pass
+    return row
 
 
 def load_existing(path):
@@ -268,6 +354,10 @@ def main():
                 )
             elif kind == "ACCUMULATE":
                 rows[name] = accumulate_row(
+                    args.root, name, Path(detail), float(tolerance_text), float(ssim_text)
+                )
+            elif kind == "CUBEMAP":
+                rows[name] = cubemap_row(
                     args.root, name, Path(detail), float(tolerance_text), float(ssim_text)
                 )
             elif kind == "DEFER":

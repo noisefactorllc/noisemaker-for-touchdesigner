@@ -48,11 +48,13 @@ BATCH = os.path.join(REPO, 'parity', 'batch-golden.mjs')
 # reported (continuous Gray-Scott, 0.977 @ f8), mirroring their 2D counterparts.
 ACCUM_EFFECTS = {'cellularAutomata', 'reactionDiffusion', 'motionBlur', 'convolutionFeedback',
                  'synth3d_cellularAutomata3d', 'synth3d_reactionDiffusion3d', 'present_hero'}
+STATIC_3D_EFFECTS = {
+    '_vs32probe', 'filter3d_palette3d', 'synth3d_cell3d', 'synth3d_flythrough3d',
+    'synth3d_fractal3d', 'synth3d_noise', 'synth3d_renderLit3d', 'synth3d_shape3d',
+}
+CUBEMAP_EFFECTS = {'synth3d_renderCubemap3d', 'synth3d_renderCubemapSurface'}
 DEFERRED_EFFECTS = {
-    '_vs32probe', 'buddhabrot', 'filter3d_flow3d', 'filter3d_palette3d', 'physical',
-    'synth3d_cell3d', 'synth3d_flythrough3d', 'synth3d_fractal3d',
-    'synth3d_noise', 'synth3d_renderCubemap3d', 'synth3d_renderCubemapSurface',
-    'synth3d_renderLit3d', 'synth3d_shape3d',
+    'buddhabrot', 'filter3d_flow3d', 'physical',
     # 2026-09-15 agent/3D additions (same MRT/points/3D class as above): the heightGrid
     # fixtures carry the points-deposit chain (render/pointsEmit, points/heightGrid agent,
     # render/points{,Billboard}Render deposit — hand-maintained GL_POINT GLSL, multiple render
@@ -123,8 +125,8 @@ def export_graph(name):
     return dst, None
 
 
-def frag_status(graph_path):
-    """(ok, reasons) — ok iff every effect pass has an existing, non-MRT .frag."""
+def frag_status(graph_path, *, allow_mrt=False):
+    """Require every effect fragment. Defer MRT unless the static case was measured."""
     with open(graph_path) as fh:
         graph = json.load(fh)
     missing, mrt = [], []
@@ -137,7 +139,7 @@ def frag_status(graph_path):
             missing.append(key)
             continue
         with open(frag) as fh:
-            if 'NM_OUTPUT: MRT' in fh.read(400):
+            if 'NM_OUTPUT: MRT' in fh.read(400) and not allow_mrt:
                 mrt.append(key)
     reasons = []
     if missing:
@@ -181,22 +183,25 @@ def main():
         return
     reference_root()
     os.makedirs(OUT, exist_ok=True)
-    render, defer, accum = [], [], []
+    render, defer, accum, cubemap = [], [], [], []
     for name in program_names():
         if name in ACCUM_EFFECTS:
             accum.append(name)
+            continue
+        if name in CUBEMAP_EFFECTS:
+            cubemap.append(name)
             continue
         graph, err = export_graph(name)
         if not graph:
             defer.append((name, 'export-graph failed: %s' % err))
             continue
-        ok, reasons = frag_status(graph)
+        ok, reasons = frag_status(graph, allow_mrt=name in STATIC_3D_EFFECTS)
         if ok:
             render.append(name)
         else:
             defer.append((name, '; '.join(reasons)))
 
-    actual = set(render + accum)
+    actual = set(render + accum + cubemap)
     expected = set(expected_sweep_names())
     if actual != expected:
         missing = sorted(expected - actual)
@@ -216,11 +221,12 @@ def main():
 
     # _render_set.txt drives sweep.sh; include ACCUM names so it reports them ([ACCUM] -> accumulate.sh).
     with open(os.path.join(OUT, '_render_set.txt'), 'w') as fh:
-        fh.write(' '.join(render + accum) + '\n')
+        fh.write(' '.join(render + accum + cubemap) + '\n')
     print('=== classified %d in-repo programs (goldens from NM_REFERENCE_ROOT) ===' % (
-        len(render) + len(defer) + len(accum)))
+        len(render) + len(defer) + len(accum) + len(cubemap)))
     print('RENDER (%d):\n  %s' % (len(render), ' '.join(render)))
     print('ACCUM  (%d):  %s   (-> parity/accumulate.sh)' % (len(accum), ' '.join(accum)))
+    print('CUBEMAP (%d):  %s   (-> parity/cubemap.sh)' % (len(cubemap), ' '.join(cubemap)))
     print('DEFER  (%d):' % len(defer))
     for name, reason in defer:
         print('  %-22s %s' % (name, reason))

@@ -2,6 +2,7 @@
 """App-free regressions for parity gate failure propagation."""
 
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -12,6 +13,7 @@ import tempfile
 import unittest
 import zlib
 from pathlib import Path
+from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 
@@ -121,6 +123,66 @@ class HarnessContractTests(unittest.TestCase):
         self.assertIn("present_hero", stage.ACCUM_EFFECTS)
         self.assertNotIn("present_hero", stage.DEFERRED_EFFECTS)
         self.assertIn("present_hero", stage.expected_sweep_names())
+
+    def test_stage_keeps_measured_static_3d_separate_from_cubemap_dispatch(self):
+        stage = load_stage_coverage()
+        names = ["_vs32probe", "filter3d_palette3d", "synth3d_cell3d",
+                 "synth3d_flythrough3d", "synth3d_fractal3d", "synth3d_noise",
+                 "synth3d_renderLit3d", "synth3d_shape3d"]
+        with tempfile.TemporaryDirectory(prefix="nm-td-static-3d-stage-") as temp:
+            root = Path(temp)
+            programs = root / "programs"
+            programs.mkdir()
+            (root / "shaders").mkdir()
+            for name in names + ["synth3d_renderCubemap3d", "synth3d_renderCubemapSurface"]:
+                (programs / f"{name}.dsl").write_text("shape3d().render3d().write(o0)\n")
+            graph = root / "graph.json"
+            graph.write_text(json.dumps({"passes": [{"passType": "effect",
+                "namespace": "synth3d", "func": "shape3d", "progName": "precompute"}]}))
+            stage.PROGRAMS = str(programs)
+            stage.OUT = str(root / "out")
+            output = io.StringIO()
+            with mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root)}), \
+                    mock.patch.object(stage, "export_graph", return_value=(str(graph), None)), \
+                    mock.patch.object(sys, "argv", ["stage_coverage.py", "--emit", "render"]), \
+                    redirect_stdout(output):
+                stage.main()
+            self.assertEqual(output.getvalue().split(), names)
+            staged = root / "render-set.txt"
+            cubemaps = ["synth3d_renderCubemap3d", "synth3d_renderCubemapSurface"]
+            staged.write_text(output.getvalue() + " ".join(cubemaps))
+            self.assertTrue(stage.validate_render_set(staged))
+            staged.write_text(" ".join(names[1:] + cubemaps))
+            errors = io.StringIO()
+            with redirect_stderr(errors):
+                self.assertFalse(stage.validate_render_set(staged))
+            self.assertIn("missing staged cases: _vs32probe", errors.getvalue())
+
+    def test_stage_rejects_missing_fragments_and_graphs_for_measured_static_3d(self):
+        for defect in ("missing_fragment", "missing_graph"):
+            with self.subTest(defect=defect), \
+                    tempfile.TemporaryDirectory(prefix="nm-td-static-3d-reject-") as temp:
+                stage = load_stage_coverage()
+                root = Path(temp)
+                programs = root / "programs"
+                programs.mkdir()
+                (root / "shaders").mkdir()
+                (programs / "synth3d_shape3d.dsl").write_text("shape3d().render3d().write(o0)\n")
+                graph = root / "graph.json"
+                graph.write_text(json.dumps({"passes": [{"passType": "effect",
+                    "namespace": "synth3d", "func": "shape3d", "progName": "missing"}]}))
+                stage.PROGRAMS = str(programs)
+                stage.OUT = str(root / "out")
+                exported = (str(graph), None) if defect == "missing_fragment" else (None, "compile failed")
+                errors = io.StringIO()
+                with mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root)}), \
+                        mock.patch.object(stage, "export_graph", return_value=exported), \
+                        mock.patch.object(sys, "argv", ["stage_coverage.py", "--emit", "render"]), \
+                        redirect_stdout(io.StringIO()), redirect_stderr(errors):
+                    with self.assertRaises(SystemExit) as raised:
+                        stage.main()
+                self.assertEqual(raised.exception.code, 2)
+                self.assertIn("unclassified gateable cases: synth3d_shape3d", errors.getvalue())
 
     def check_selected_accumulation(self, name):
         reference_sha = "6cb1a3c3e21010db956d41e7a6d57a02b0be1e7d" if name == "present_hero" else "a" * 40

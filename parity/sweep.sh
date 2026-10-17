@@ -117,7 +117,7 @@ render_failed=""
 if [ "$render" = 1 ]; then
   ALL=()
   for name in $SET; do
-    case "$name" in cellularAutomata|motionBlur|convolutionFeedback|synth3d_cellularAutomata3d|reactionDiffusion|synth3d_reactionDiffusion3d|present_hero) ;; *) ALL+=("$name") ;; esac
+    case "$name" in cellularAutomata|motionBlur|convolutionFeedback|synth3d_cellularAutomata3d|reactionDiffusion|synth3d_reactionDiffusion3d|present_hero|synth3d_renderCubemap3d|synth3d_renderCubemapSurface) ;; *) ALL+=("$name") ;; esac
   done
   n=${#ALL[@]}; i=0
   while [ $i -lt $n ]; do
@@ -132,6 +132,18 @@ fi
 # 2. per-effect compare with the tolerance table.
 pass=0; fail=0; defer=0; failed=""
 for name in $SET; do
+  case "$name" in synth3d_renderCubemap3d|synth3d_renderCubemapSurface)
+    report="$(dirname "$LEDGER_PATH")/$name.json"
+    if [ "$render" = 1 ]; then
+      rm -f "$report"
+      if ! SIZE=256 TOL=2.001 SSIM=0.98 bash "$REPO/parity/cubemap.sh" "$name" --report "$report"; then
+        record_result "$name" FAIL "cubemap harness exited nonzero" 2.001 0.98
+        fail=$((fail + 1)); failed="$failed $name"; continue
+      fi
+    fi
+    record_result "$name" CUBEMAP "$report" 2.001 0.98
+    pass=$((pass + 1)); continue ;;
+  esac
   case " $render_failed " in
     *" $name "*)
       echo "[FAIL] $name (renderer exited nonzero)"
