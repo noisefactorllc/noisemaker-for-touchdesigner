@@ -2,26 +2,23 @@
 
 The reference `render/pointsRender/glsl/deposit.{vert,frag}` and `pointsBillboardRender/...` run as
 a bufferless `gl.drawArrays(POINTS|TRIANGLES, 0, N|N*6)` keyed off `gl_VertexID`. TD has no
-bufferless draw: the deposit is a Geo COMP (Grid SOP -> Convert SOP "point sprites") + this GLSL MAT
-+ a Render TOP (see docs/TD-PLATFORM-NOTES.md "GPU point scatter"). So the ONLY change vs the
-reference is the agent-index source: `gl_VertexID` -> recovered from the Grid point POSITION
-(`TDPos()`), validated bit-for-placement by td/points_probe.py. Math, culling, view transform, and
+bufferless draw: the deposit is a Geo COMP + this GLSL MAT + a Render TOP (see
+docs/TD-PLATFORM-NOTES.md "GPU point scatter"). Points use a Grid SOP converted to point sprites, and
+the agent index is recovered from the grid point POSITION (`TDPos()`), validated bit-for-placement by
+td/points_probe.py. Billboards instance a corner-at-+-1 rectangle once per agent, so
+`TDInstanceID()` is the agent index and `TDPos()` the quad corner. Math, culling, view transform, and
 the fragment shading are mirrored verbatim from the reference.
 
-These are MAT vertex/pixel shaders (TDPos / TDPointCoord / TDOutputSwizzle, direct gl_Position NDC),
+These are MAT vertex/pixel shaders (TDPos / TDInstanceID / TDOutputSwizzle, direct gl_Position NDC),
 not fullscreen TOP frags, so they live here rather than in the auto-transpiled shaders/ tree.
 
 Reference 0ed489ec adds to both deposit programs: a perspective VIEW_MODE (2), sharing a camera
 model at world Z=80 (posZ/fieldOfView). pointsBillboardRender additionally adds a depth-sorted
 alpha-blend path (BLEND_MODE 1 reindexes the scatter through `orderTex`, produced by depthKeys +
 depthMerge) and aperture defocus blur (spriteMeanTiles/spriteMean precompute + a blurred `defocus`
-composite). All three port onto TD's GL_POINT model. The reference renders each agent as a
-screen-aligned QUAD of `finalSize` pixels whose sprite UV is `offset * (0.5 + blurPadding +
-supportRadius) + 0.5`. A point sprite of the same size covers the same pixels, and
-`TDPointCoord() * 2 - 1` equals that quad's `offset`, so the padded UV range and the spriteMean
-blur kernel are reproduced exactly. `BLUR_LAYER` (1 for depositDefocus, 0 otherwise) is injected as
-a `#define` per pass clone, exactly as the reference compiles it. Per-particle ROTATION is the only
-quad behaviour a screen-aligned point sprite cannot reproduce (rotationVar > 0).
+composite). All three are ported verbatim on the instanced quads. `BLUR_LAYER` (1 for
+depositDefocus, 0 otherwise) is injected as a `#define` per pass clone, exactly as the reference
+compiles it.
 """
 
 # Shared vertex prologue: recover the agent texel (x,y) and linear id from the grid point position,
@@ -125,73 +122,113 @@ void main() {
 }
 """
 
-# ---- pointsBillboardRender: a sized point sprite per agent; SDF/sprite shading in the frag --------
-# Mirrors render/pointsBillboardRender/glsl/deposit.vert. Per-particle SIZE variation mirrors the
-# reference (seeded hash). Per-particle ROTATION is dropped: point sprites are screen-aligned (TD
-# can't rotate them per-vertex). BLUR_LAYER is a per-pass `#define` injected by td_backend.py.
-BILLBOARD_VERT = _VERT_PROLOGUE + """
+# ---- pointsBillboardRender: one instanced quad per agent; SDF/sprite shading in the frag ----------
+# Mirrors render/pointsBillboardRender/glsl/deposit.vert. The Geo COMP instances a corner-at-+-1
+# rectangle once per agent: TDInstanceID() is the reference's gl_VertexID / 6 and TDPos().xy the
+# quad corner `offset`. BLUR_LAYER is a per-pass `#define` injected by td_backend.py.
+BILLBOARD_VERT = """uniform sampler2D xyzTex;
+uniform sampler2D rgbaTex;
 uniform sampler2D orderTex;   // depthKeys+depthMerge output; read only when blendMode==1
-uniform float blendMode;      // float (TD Vectors page is float-only); cast to int in-shader
+uniform vec2 resolution;
+uniform float density;
+uniform float viewMode;       // float (TD Vectors page is float-only); cast to int in-shader
+uniform float rotateX;
+uniform float rotateY;
+uniform float rotateZ;
+uniform float viewScale;
+uniform float posX;
+uniform float posY;
+uniform float posZ;
+uniform float fieldOfView;
+uniform float blendMode;
 uniform float shapeMode;
 uniform float pointSize;
 uniform float sizeVariation;
+uniform float rotationVar;
 uniform float seed;
 uniform float sizeDistance;
 uniform float brightnessDistance;
 uniform float aperture;
 uniform float focalDistance;
 out vec4 vColor;
+out vec2 vSpriteUV;
 out float vBlurRadius;
-out float vUVScale;           // reference vSpriteUV = offset * vUVScale + 0.5
-uint nm_hash_uint(uint s) {
+uint hash_uint(uint s) {
     uint state = s * 747796405u + 2891336453u;
     uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
     return (word >> 22u) ^ word;
 }
-float nm_hash(float n) { return float(nm_hash_uint(floatBitsToUint(n + seed))) / 4294967295.0; }
+float hash(float n) {
+    return float(hash_uint(floatBitsToUint(n + seed))) / 4294967295.0;
+}
 void nm_cull() {
-    gl_Position = vec4(2.0, 2.0, 0.0, 1.0); gl_PointSize = 0.0; vColor = vec4(0.0);
-    vBlurRadius = 0.0; vUVScale = 0.5;
+    gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
+    vColor = vec4(0.0);
+    vSpriteUV = vec2(0.0);
 }
 void main() {
     vBlurRadius = 0.0;
-    vUVScale = 0.5;
+    int vm = int(viewMode + 0.5);
+    int bm = int(blendMode + 0.5);
+    int sm = int(shapeMode + 0.5);
 #if BLUR_LAYER == 1
     if (aperture <= 0.0) { nm_cull(); return; }
 #endif
-    int vid, ax, ay;
-    int ss = nm_agentTexel(vid, ax, ay);
-    int bm = int(blendMode + 0.5);
-    int vm = int(viewMode + 0.5);
-    int sm = int(shapeMode + 0.5);
-    // Depth-sorted alpha-blend path (reference 0ed489ec): redirect to the agent at this DRAW
-    // position's rank in the depthKeys/depthMerge back-to-front order, exactly as the reference's
-    // per-vertex reindex (gl_VertexID -> orderTex[...].g). Grid draw order stays row-major; only
-    // WHICH agent's state each grid point samples changes.
+    int particleID = TDInstanceID();
+    ivec2 texSize = textureSize(xyzTex, 0);
+    int stateSize = texSize.x;
+    if (particleID >= stateSize * stateSize) { nm_cull(); return; }
     if (bm == 1 && vm != 0) {
-        vid = int(texelFetch(orderTex, ivec2(vid % ss, vid / ss), 0).g);
-        ax = vid % ss; ay = vid / ss;
+        particleID = int(texelFetch(orderTex, ivec2(particleID % stateSize, particleID / stateSize), 0).g);
     }
     float cullThreshold = density / 100.0;
-    float particleRandom = nm_particleRandom(vid);
+    float particleRandom = fract(float(particleID) * 0.618033988749895);
     if (particleRandom > cullThreshold) { nm_cull(); return; }
-    vec4 pos = texelFetch(xyzTex, ivec2(ax, ay), 0);
-    vec4 col = texelFetch(rgbaTex, ivec2(ax, ay), 0);
+    int x = particleID % stateSize;
+    int y = particleID / stateSize;
+    vec4 pos = texelFetch(xyzTex, ivec2(x, y), 0);
+    vec4 col = texelFetch(rgbaTex, ivec2(x, y), 0);
     if (pos.w < 0.5) { nm_cull(); return; }
-    float cameraDepth; vec2 worldXY;
-    vec2 clipPos = nm_clipPos(pos, cameraDepth, worldXY);
+    vec2 clipPos;
+    float cameraDepth = 80.0;
     float cameraDistance = 0.0;
     float projectedScale = 1.0;
-    if (vm != 0) {
-        cameraDistance = length(vec3(worldXY, cameraDepth));
+    if (vm == 0) {
+        clipPos = pos.xy * 2.0 - 1.0;
+    } else {
+        vec3 p = pos.xyz;
+        bool is2DSystem = vm == 1 && abs(p.z) < 1.0 && p.x >= 0.0 && p.x <= 1.0 && p.y >= 0.0 && p.y <= 1.0;
+        if (is2DSystem) {
+            p.xy = p.xy - 0.5;
+            p.z = 0.0;
+        }
+        float cosX = cos(rotateX);
+        float sinX = sin(rotateX);
+        p = vec3(p.x, p.y * cosX - p.z * sinX, p.y * sinX + p.z * cosX);
+        float cosY = cos(rotateY);
+        float sinY = sin(rotateY);
+        p = vec3(p.x * cosY + p.z * sinY, p.y, -p.x * sinY + p.z * cosY);
+        float cosZ = cos(rotateZ);
+        float sinZ = sin(rotateZ);
+        p = vec3(p.x * cosZ - p.y * sinZ, p.x * sinZ + p.y * cosZ, p.z);
+        p.x += posX;
+        p.y += posY;
+        p.z += posZ;
+        cameraDepth = 80.0 - p.z;
+        cameraDistance = length(vec3(p.xy, cameraDepth));
         if (vm == 2) {
-            // Camera looks down -Z from z=80. Reject the near plane before division.
             if (cameraDepth <= 0.1) { nm_cull(); return; }
             float focalLength = 1.0 / tan(clamp(fieldOfView, 10.0, 150.0) * 0.00872664626);
+            clipPos = p.xy * focalLength * viewScale / cameraDepth;
+            clipPos.x *= resolution.y / resolution.x;
             projectedScale = 80.0 * focalLength * viewScale / (1.732050808 * cameraDepth);
+        } else if (is2DSystem) {
+            clipPos = p.xy * 3.5 * viewScale;
+        } else {
+            clipPos = p.xy / 40.0 * viewScale;
         }
     }
-    float sizeNoise = nm_hash(float(vid));
+    float sizeNoise = hash(float(particleID));
     float sizeMultiplier = 1.0 - (sizeVariation / 100.0) * (sizeNoise - 0.5);
     float sizeFade = 1.0;
     float brightnessFade = 1.0;
@@ -211,23 +248,29 @@ void main() {
     float finalSize = (baseSize * (1.0 + 2.0 * blurPadding) + 2.0 * supportPixels) * sizeFade;
     if (finalSize <= 0.0 || brightnessFade <= 0.0 || layerWeight <= 0.0) { nm_cull(); return; }
     vBlurRadius = blurRadius;
-    vUVScale = 0.5 + blurPadding + supportRadius;
-    gl_PointSize = finalSize;
-    gl_Position = vec4(clipPos, 0.0, 1.0);
+    float rotationNoise = hash(float(particleID) + 1234.5);
+    float rotation = (rotationVar / 100.0) * rotationNoise * 6.283185;
+    vec2 pixelToClip = 2.0 / resolution;
+    float halfSize = finalSize * 0.5;
+    vec2 sizeClip = halfSize * pixelToClip;
+    vec2 offset = TDPos().xy;
+    float cosR = cos(rotation);
+    float sinR = sin(rotation);
+    vec2 rotatedOffset = vec2(offset.x * cosR - offset.y * sinR, offset.x * sinR + offset.y * cosR);
+    gl_Position = vec4(clipPos + rotatedOffset * sizeClip, 0.0, 1.0);
     vColor = col * brightnessFade * layerWeight;
+    vSpriteUV = offset * (0.5 + blurPadding + supportRadius) + 0.5;
 }
 """
 
-# Fragment mirrors render/pointsBillboardRender/glsl/deposit.frag. The reference quad's
-# `vSpriteUV = offset * vUVScale + 0.5` becomes `(TDPointCoord() * 2 - 1) * vUVScale + 0.5`
-# (point-sprite auto texcoord, (0,0) bottom-left .. (1,1) top-right, the quad's offset convention).
+# Fragment mirrors render/pointsBillboardRender/glsl/deposit.frag.
 BILLBOARD_FRAG = """uniform sampler2D spriteTex;
 uniform sampler2D spriteMeanTex;
 uniform float shapeMode;     // float (TD Vectors page is float-only); cast to int in-shader
 uniform float depositOpacity;
 in vec4 vColor;
+in vec2 vSpriteUV;
 in float vBlurRadius;
-in float vUVScale;
 layout(location = 0) out vec4 fragColor;
 vec4 shadeSprite(vec2 uv) {
     int sm = int(shapeMode + 0.5);
@@ -284,8 +327,8 @@ float blurWeight(vec2 uv, vec2 center, float expansion) {
     float normalization = 1.0 / (0.19724318 * expansion * expansion);
     return gaussian * normalization;
 }
-vec4 shadeParticle(vec2 uv) {
-    if (vBlurRadius <= 0.0) return shadeSprite(uv);
+vec4 shadeParticle() {
+    if (vBlurRadius <= 0.0) return shadeSprite(vSpriteUV);
     int sm = int(shapeMode + 0.5);
     float expansion = max(1.0 + 2.0 * vBlurRadius, 2.2516403);
     vec4 blurred = vec4(0.0);
@@ -293,21 +336,20 @@ vec4 shadeParticle(vec2 uv) {
         for (int y = 0; y < 5; y++) {
             for (int x = 0; x < 5; x++) {
                 vec4 source = texelFetch(spriteMeanTex, ivec2(x, y), 0);
-                blurred += source * blurWeight(uv, vec2(x, y) / 4.0, expansion);
+                blurred += source * blurWeight(vSpriteUV, vec2(x, y) / 4.0, expansion);
             }
         }
         blurred *= vColor * (depositOpacity / 100.0);
     } else {
         vec4 meanColor = texelFetch(spriteMeanTex, ivec2(0), 0) * vColor * (depositOpacity / 100.0);
         vec2 center = sm == 5 ? vec2(0.5, 0.54) : vec2(0.5);
-        blurred = meanColor * blurWeight(uv, center, expansion);
+        blurred = meanColor * blurWeight(vSpriteUV, center, expansion);
     }
     if (vBlurRadius >= 0.5) return blurred;
-    return mix(blurSample(uv), blurred, smoothstep(0.0, 0.5, vBlurRadius));
+    return mix(blurSample(vSpriteUV), blurred, smoothstep(0.0, 0.5, vBlurRadius));
 }
 void main() {
-    vec2 uv = (TDPointCoord() * 2.0 - 1.0) * vUVScale + 0.5;
-    fragColor = TDOutputSwizzle(shadeParticle(uv));
+    fragColor = TDOutputSwizzle(shadeParticle());
 }
 """
 

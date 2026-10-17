@@ -59,6 +59,12 @@ on their predicted pixels with exact colors + additive sum):
   default `torus1` SOP whose render flag is ON — destroy all `geo.children` before adding yours**, or it
   renders through your MAT (collapses into a filled quad). Set flags: grid `render`/`display` = False,
   convert = True.
+- **Billboards (drawMode `billboards`):** the reference draws one screen-space QUAD (two triangles)
+  per agent. The Geo COMP holds a **Rectangle SOP** (`sizex`/`sizey` 2, corners at ±1) with
+  `instancing` on, `instancecountmode` `manual`, `numinstances` = stateSize². `TDInstanceID()` is the
+  reference's `gl_VertexID / 6` and `TDPos().xy` the corner `offset`, so coverage, sprite UVs and
+  per-agent rotation match the reference. Point sprites rasterize their edges differently (measured
+  max-diff 95 on heightGrid_billboard, 204 on its alpha variant; quads give 1).
 - **Material:** type global is **`glslMAT`** (not `glslmaterialMAT`). Params: `vdat` (vertex DAT),
   `pdat` (pixel DAT), `glslversion` `4.60`. Samplers via the Samplers page: `sampler0name`='xyzTex'
   + `sampler0top`=TOP, `sampler1name`/`sampler1top`, … Custom uniforms via `vec0name`+`vec0valuex..w`.
@@ -69,8 +75,7 @@ on their predicted pixels with exact colors + additive sum):
   Point-sprite conversion overwrites texcoords, so recover each agent's state texel from the point
   **position**: `ivec2(floor((TDPos().xy*0.5+0.5)*(ss-1)+0.5))` → `texelFetch(xyzTex, texel, 0)`. Write
   `gl_PointSize` (1.0 for points; the billboard size for sprites). Pass `out vec4 vColor` to the frag.
-- **Pixel shader:** `layout(location=0) out vec4 fragColor; fragColor = TDOutputSwizzle(c);`. For
-  billboard SDFs use `TDPointCoord()` (auto 0..1 across the sprite, (0,0)=bottom-left) as the sprite UV.
+- **Pixel shader:** `layout(location=0) out vec4 fragColor; fragColor = TDOutputSwizzle(c);`.
 - **Render TOP:** `geometry`=Geo COMP, `camera`=a (dummy/ortho) Camera COMP — required even when the VS
   writes gl_Position directly; `outputresolution`/`resolutionw`/`resolutionh`/`format`; transparent bg
   `bgcolora`=0; `antialias`='aa1' (1x, off). A bare `'1'` selects menu index 1, which is `aa2` (2x
@@ -81,8 +86,10 @@ on their predicted pixels with exact colors + additive sum):
 - `count:"input"` → stateSize² where stateSize = the xyz state-texture width. **`numpyArray`/`save` row
   0 = BOTTOM** (GL origin; verify-anchored by a GLSL-TOP `gl_FragCoord.y` ramp) — consistent with the
   rest of the port, so the deposit needs no Y-flip vs the WebGL2 reference.
-- Point sprites are screen-aligned (no per-vertex rotation), so `rotationVar`>0 billboards would need
-  real quads; the flagship uses `rotationVar:0`, so point sprites are exact for it.
+- **MRT attachment formats:** a Render Select TOP ignores its own `format` and keeps the source
+  attachment's storage format. An attachment narrower than the common MRT storage (agent colour is
+  rgba8 beside rgba32f position) is copied through a GLSL TOP in its logical format, so passes later in
+  the same frame read the quantized value the reference reads.
 
 ## File & component model
 

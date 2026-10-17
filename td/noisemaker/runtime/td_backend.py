@@ -603,7 +603,7 @@ class TDBackend:
         if p.is_mrt and len(p.outputs) > 1:
             for idx, (attach, tex_id) in enumerate(p.outputs.items()):
                 self.tex_top[tex_id] = self._register_mrt_buffer(
-                    g, idx, tex_id, tag, graph.spec_for(tex_id))
+                    g, idx, tex_id, tag, graph.spec_for(tex_id), storage_format=mrt_format)
                 if self.surfaces is not None:
                     self.surfaces.note_write(tex_id, self.tex_top[tex_id])
         else:
@@ -613,17 +613,38 @@ class TDBackend:
                     self.surfaces.note_write(tex_id, g)
         return g
 
-    def _register_mrt_buffer(self, glsl_top, idx, tex_id, tag, spec=None):
+    def _register_mrt_buffer(self, glsl_top, idx, tex_id, tag, spec=None, storage_format=None):
         """A Render Select TOP that exposes color-buffer `idx` of an MRT GLSL TOP as a readable TOP.
         TD's Render Select reads its source from the `top` PARAM (not an input wire) and picks the
-        attachment with `bufferindex`."""
+        attachment with `bufferindex`.
+
+        Render Select ignores its own `format` (TouchDesigner 2025.32820 keeps the source
+        attachment's storage format), so an attachment whose logical format is narrower than the
+        common MRT storage is copied through a GLSL TOP in the logical format. The reference stores
+        e.g. agent colour in rgba8, and passes later in the same frame read the quantized value."""
         sel = self.parent.create(_td('renderselectTOP'), '%s_b%d' % (tag, idx))
         self.ops.append(sel)
         _try(lambda: setattr(sel.par, 'top', glsl_top))
         _try(lambda: setattr(sel.par, 'bufferindex', idx))
-        if spec is not None:
-            _try(lambda: setattr(sel.par, 'format', FORMAT_MAP.get(spec.fmt, 'rgba16float')))
-        return sel
+        if spec is None:
+            return sel
+        logical = FORMAT_MAP.get(spec.fmt, 'rgba16float')
+        _try(lambda: setattr(sel.par, 'format', logical))
+        if storage_format is None or _FORMAT_BYTES[logical] >= _FORMAT_BYTES[storage_format]:
+            return sel
+        dat = self.parent.create(_td('textDAT'), '%s_b%d_fmt_src' % (tag, idx))
+        dat.text = ('layout(location = 0) out vec4 fragColor;\n'
+                    'void main(){ fragColor = TDOutputSwizzle('
+                    'texelFetch(sTD2DInputs[0], ivec2(gl_FragCoord.xy), 0)); }\n')
+        cvt = self.parent.create(_td('glslTOP'), '%s_b%d_fmt' % (tag, idx))
+        self.ops.extend([dat, cvt])
+        cvt.par.pixeldat = dat
+        _try(lambda: setattr(cvt.par, 'glslversion', '4.60'))
+        _try(lambda: setattr(cvt.par, 'outputresolution', 'useinput'))
+        _try(lambda: setattr(cvt.par, 'format', logical))
+        _try(lambda: cvt.inputConnectors[0].connect(sel))
+        _match_reference_sampling(cvt)
+        return cvt
 
     def _default_input_top(self):
         """A 1x1 transparent-black (0,0,0,0) Constant TOP, matching the reference's default texture
@@ -719,14 +740,27 @@ class TDBackend:
         self.ops.append(geo)
         for _c in list(geo.children):             # a fresh Geo COMP ships a default torus1 SOP
             _try(lambda _c=_c: _c.destroy())
-        grid = geo.create(_td('gridSOP'), tag + '_grid')
-        for _p, _v in (('rows', ss), ('cols', ss), ('sizex', 2), ('sizey', 2), ('orient', 'xy')):
-            _try(lambda _p=_p, _v=_v: setattr(grid.par, _p, _v))
-        conv = geo.create(_td('convertSOP'), tag + '_conv')
-        conv.inputConnectors[0].connect(grid)
-        for _p, _v in (('totype', 'part'), ('prtype', 'pointsprites')):
-            _try(lambda _p=_p, _v=_v: setattr(conv.par, _p, _v))
-        for _o, _r in ((grid, False), (conv, True)):
+        if p.draw_mode == 'billboards':
+            # The reference draws one screen-space QUAD (two triangles) per agent. Instance a
+            # corner-at-+-1 rectangle once per agent; TDInstanceID() is the reference's
+            # gl_VertexID / 6 and TDPos() the quad corner, so coverage and sprite UVs match exactly.
+            quad = geo.create(_td('rectangleSOP'), tag + '_quad')
+            for _p, _v in (('sizex', 2), ('sizey', 2), ('orient', 'xy')):
+                _try(lambda _p=_p, _v=_v: setattr(quad.par, _p, _v))
+            for _p, _v in (('instancing', True), ('instancecountmode', 'manual'),
+                           ('numinstances', ss * ss)):
+                _try(lambda _p=_p, _v=_v: setattr(geo.par, _p, _v))
+            renderables = ((quad, True),)
+        else:
+            grid = geo.create(_td('gridSOP'), tag + '_grid')
+            for _p, _v in (('rows', ss), ('cols', ss), ('sizex', 2), ('sizey', 2), ('orient', 'xy')):
+                _try(lambda _p=_p, _v=_v: setattr(grid.par, _p, _v))
+            conv = geo.create(_td('convertSOP'), tag + '_conv')
+            conv.inputConnectors[0].connect(grid)
+            for _p, _v in (('totype', 'part'), ('prtype', 'pointsprites')):
+                _try(lambda _p=_p, _v=_v: setattr(conv.par, _p, _v))
+            renderables = ((grid, False), (conv, True))
+        for _o, _r in renderables:
             for _f in ('render', 'display'):
                 _try(lambda _o=_o, _f=_f, _r=_r: setattr(_o, _f, _r))
 

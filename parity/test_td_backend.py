@@ -266,6 +266,29 @@ class DepositRenderSettingsTests(unittest.TestCase):
             self.assertTrue(self._one(created, "_vert").text.startswith(
                 "#define BLUR_LAYER %d\n" % layer))
 
+    def test_billboard_instances_one_quad_per_agent(self):
+        created = self._build(self._billboard("bb", True, 0, 0))
+        geo = self._one(created, "_geo")
+        self.assertEqual([child.name.rsplit("_", 1)[-1] for child in geo.children], ["quad"])
+        quad = geo.children[0]
+        self.assertEqual((quad.par.sizex, quad.par.sizey), (2, 2))
+        self.assertEqual((geo.par.instancing, geo.par.instancecountmode, geo.par.numinstances),
+                         (True, "manual", 16 * 16))
+
+    def test_narrow_mrt_attachment_is_copied_in_its_logical_format(self):
+        class FakeParent:
+            def create(self, _operator_type, name):
+                return DepositRefreshEngineUniformsTests._fake_op(name)
+
+        backend = td_backend.TDBackend(FakeParent(), "/unused")
+        with mock.patch.object(td_backend, "_td", return_value="op"):
+            rgba = backend._register_mrt_buffer(object(), 2, "rgba", "agent",
+                                                SimpleNamespace(fmt="rgba8"), "rgba32float")
+            xyz = backend._register_mrt_buffer(object(), 0, "xyz", "agent",
+                                               SimpleNamespace(fmt="rgba32f"), "rgba32float")
+        self.assertEqual((rgba.name, rgba.par.format), ("agent_b2_fmt", "rgba8fixed"))
+        self.assertEqual(xyz.name, "agent_b0")
+
     def test_billboard_binds_sprite_mean_texture(self):
         created = self._build(self._billboard("bb", True, 1, 0))
         self.assertEqual(self._one(created, "_mat").par.sampler4name, "spriteMeanTex")
@@ -360,16 +383,21 @@ class DepositShaderSourceTests(unittest.TestCase):
 
     def test_density_cull_uses_reference_float32_expression(self):
         self.assertIn("return fract(float(vid) * 0.618033988749895);", self.shaders._VERT_PROLOGUE)
+        self.assertIn("fract(float(particleID) * 0.618033988749895)", self.shaders.BILLBOARD_VERT)
 
-    def test_billboard_maps_point_coord_to_padded_quad_uv(self):
-        self.assertIn("vUVScale = 0.5 + blurPadding + supportRadius;", self.shaders.BILLBOARD_VERT)
-        self.assertIn("(TDPointCoord() * 2.0 - 1.0) * vUVScale + 0.5", self.shaders.BILLBOARD_FRAG)
+    def test_billboard_draws_reference_quads_per_instance(self):
+        vert = self.shaders.BILLBOARD_VERT
+        self.assertIn("int particleID = TDInstanceID();", vert)
+        self.assertIn("vec2 offset = TDPos().xy;", vert)
+        self.assertIn("vSpriteUV = offset * (0.5 + blurPadding + supportRadius) + 0.5;", vert)
+        self.assertNotIn("gl_PointSize", vert)
+        self.assertNotIn("TDPointCoord", self.shaders.BILLBOARD_FRAG)
 
     def test_billboard_splits_energy_between_blur_layers(self):
         vert = self.shaders.BILLBOARD_VERT
         self.assertIn("float layerWeight = BLUR_LAYER == 1 ? lowWeight : 1.0 - lowWeight;", vert)
         self.assertIn("vColor = col * brightnessFade * layerWeight;", vert)
-        self.assertIn("blurWeight(uv, center, expansion)", self.shaders.BILLBOARD_FRAG)
+        self.assertIn("blurWeight(vSpriteUV, center, expansion)", self.shaders.BILLBOARD_FRAG)
 
 
 class TexturePolicyFieldsTests(unittest.TestCase):
