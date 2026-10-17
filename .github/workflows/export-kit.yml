@@ -4,17 +4,19 @@ name: Export kit
 # export-kit-release.yml, which builds this repo's export kit at this exact
 # SHA and ships it to kits.noisedeck.app. See scaffold
 # docs/runbook/export-kits.md.
+#
+# Publication is manual or weekly, never on push, and the release dispatch
+# needs a full rendered TouchDesigner parity run at the same SHA (GAP-013).
+# The parity job runs on the self-hosted spare-noisemaker-gpu runner, which
+# runs one job at a time. TouchDesigner has no headless mode: the runner's
+# logged-in macOS session must be unlocked, and a locked or logged-out
+# session blocks the render. Every TouchDesigner process the harness starts
+# quits itself; the job sends no OS input.
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "export-kit/**"
-      - ".github/workflows/export-kit.yml"
-      # LICENSE is shipped kit content (vendored into LICENSES/): a relicense must auto-publish.
-      - "LICENSE"
-      - "td/noisemaker/**"
+  schedule:
+    - cron: "47 9 * * 1"
 
 permissions: {}
 
@@ -23,11 +25,83 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  parity:
+    if: github.ref == 'refs/heads/main'
+    runs-on:
+      group: noisemaker-gpu
+      labels: [noisemaker-gpu]
+    timeout-minutes: 90
+    concurrency:
+      group: noisemaker-for-touchdesigner-rendered-parity
+      cancel-in-progress: false
+    steps:
+      - name: Require qualified M4 host and TouchDesigner
+        run: |
+          set -euo pipefail
+          test "$(sysctl -n machdep.cpu.brand_string)" = 'Apple M4'
+          test "$(sysctl -n hw.model)" = 'Mac16,12'
+          test "$(defaults read /Applications/TouchDesigner.app/Contents/Info.plist CFBundleShortVersionString)" = '2025.32820'
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+
+      - name: Install parity dependencies
+        run: |
+          set -euo pipefail
+          python311="$(realpath "$HOME/.local/bin/python3.11")"
+          "$python311" -m venv --copies parity/.venv
+          test -z "$(find parity/.venv -type l -print -quit)"
+          parity/.venv/bin/python -m pip install -r requirements.txt
+
+      - name: Check out the pinned reference
+        run: |
+          set -euo pipefail
+          pin="$(sed -n 's/^NM_REFERENCE_SHA_PINNED="\([0-9a-f]\{40\}\)"$/\1/p' scripts/test)"
+          [[ "$pin" =~ ^[0-9a-f]{40}$ ]]
+          reference="$RUNNER_TEMP/noisemaker-reference"
+          rm -rf "$reference"
+          git clone -q https://github.com/noisefactorllc/noisemaker "$reference"
+          git -C "$reference" checkout -q --detach "$pin"
+          npm ci --prefix "$reference" --ignore-scripts --no-audit --no-fund
+          (cd "$reference" && npx playwright install chromium)
+          test "$(git -C "$reference" rev-parse HEAD)" = "$pin"
+          test -z "$(git -C "$reference" status --porcelain)"
+          echo "NM_REFERENCE_ROOT=$reference" >> "$GITHUB_ENV"
+
+      - name: Run full rendered parity
+        run: parity/.venv/bin/python scripts/parity-summary
+
   dispatch:
+    needs: parity
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check whether this SHA was released
+        id: gate
+        run: |
+          set +e
+          scripts/export-kit-gate
+          rc=$?
+          if [ "$rc" -eq 1 ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          [ "$rc" -eq 0 ] || exit "$rc"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
       - name: Mint scaffold-dispatch token
+        if: steps.gate.outputs.release == 'true'
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
@@ -36,7 +110,24 @@ jobs:
           owner: noisefactorllc
           repositories: scaffold
 
+      - name: Reserve this SHA before dispatch
+        if: steps.gate.outputs.release == 'true'
+        id: reserve
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          scripts/export-kit-reserve
+          rc=$?
+          set -e
+          case "$rc" in
+            0) echo "release=true" >> "$GITHUB_OUTPUT" ;;
+            1) echo "release=false" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$rc" ;;
+          esac
+
       - name: Dispatch export-kit-release
+        if: steps.reserve.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |

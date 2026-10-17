@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# scripts/export-kit-gate [sha] [repo-url]
+#
+# Release gate for the export kit: refuses a commit that already carries a
+# kit-* tag, because the kit release mints a new version for every dispatch
+# and must never release the same commit twice.
+#
+#   exit 0  the commit carries no kit-* tag; a release may proceed
+#   exit 1  the commit already carries a kit-* tag; skip the release
+#   exit 2  the check could not run (bad arguments, no git, ls-remote
+#           failed); callers must treat this as "do not release"
+#
+# An annotated tag appears in `git ls-remote --tags` twice: once as the tag
+# object and once peeled under a `^{}` suffix. Only the peeled entry carries
+# the commit; a lightweight tag's single entry is the commit itself. Both
+# forms are matched, so a released commit is skipped whichever form the
+# release used. The rendered-parity precondition itself stays with the
+# calling workflow: it is a job dependency there, not a tag lookup here.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+usage() {
+	echo "usage: scripts/export-kit-gate [sha] [repo-url]" >&2
+	exit 2
+}
+
+# An explicitly passed empty argument is refused; only a missing argument
+# falls back to GITHUB_SHA.
+if [ "$#" -ge 1 ]; then
+	SHA="$1"
+else
+	SHA="${GITHUB_SHA:-}"
+fi
+URL="${2:-}"
+
+[ -n "$SHA" ] || { echo "export-kit-gate: no SHA argument and no GITHUB_SHA" >&2; usage; }
+# tr instead of ${SHA,,}: macOS ships bash 3.2, which lacks the case expansion.
+SHA="$(printf '%s' "$SHA" | tr 'A-Z' 'a-z')"
+[[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || {
+	echo "export-kit-gate: not a full 40-hex SHA: $SHA" >&2
+	exit 2
+}
+
+command -v git >/dev/null || { echo "export-kit-gate: git is required" >&2; exit 2; }
+
+if [ -z "$URL" ]; then
+	URL="$(git -C "$ROOT" remote get-url origin 2>/dev/null)" || {
+		echo "export-kit-gate: no repo URL argument and no origin remote" >&2
+		exit 2
+	}
+fi
+
+tags="$(git ls-remote --tags "$URL" 'refs/tags/kit-*')" || {
+	echo "export-kit-gate: git ls-remote failed for $URL" >&2
+	exit 2
+}
+
+released="$(printf '%s\n' "$tags" | awk -v want="$SHA" '
+	$2 ~ /^refs\/tags\/kit-/ && $1 == want { print $2 }
+')"
+if [ -n "$released" ]; then
+	echo "$SHA already carries a kit tag ($released); nothing to release."
+	exit 1
+fi
+echo "$SHA carries no kit tag; a release may proceed."

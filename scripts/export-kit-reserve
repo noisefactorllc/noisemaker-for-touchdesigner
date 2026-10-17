@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Reserve a TouchDesigner export-kit source SHA before asynchronous release dispatch.
+# Exit 0 only for a newly created tag, 1 if it already exists, 2 on error.
+set -euo pipefail
+
+SHA="${GITHUB_SHA:-}"
+REPO="${GITHUB_REPOSITORY:-}"
+if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]] || [ "$REPO" != noisefactorllc/noisemaker-for-touchdesigner ]; then
+  echo "export-kit-reserve: invalid TouchDesigner source context" >&2
+  exit 2
+fi
+command -v gh >/dev/null || { echo "export-kit-reserve: gh is required" >&2; exit 2; }
+
+tag="export-kit-pending-$SHA"
+ref="refs/tags/$tag"
+endpoint="repos/$REPO/git/ref/tags/$tag"
+if created="$(gh api -X POST "repos/$REPO/git/refs" -f "ref=$ref" -f "sha=$SHA" \
+    --jq '.object.sha' 2>/dev/null)"; then
+  if [ "$created" != "$SHA" ]; then
+    echo "export-kit-reserve: created tag returned the wrong SHA" >&2
+    exit 2
+  fi
+  echo "reserved $ref at $SHA"
+  exit 0
+fi
+
+# A create response can be lost after GitHub committed the ref. In that case,
+# the existing ref still blocks another dispatch. Any other error fails closed.
+if existing="$(gh api "$endpoint" --jq '.object.sha' 2>/dev/null)"; then
+  if [ "$existing" = "$SHA" ]; then
+    echo "$ref already reserves $SHA; skipping dispatch"
+    exit 1
+  fi
+  echo "export-kit-reserve: existing tag points at a different SHA" >&2
+  exit 2
+fi
+echo "export-kit-reserve: could not create or verify $ref" >&2
+exit 2
