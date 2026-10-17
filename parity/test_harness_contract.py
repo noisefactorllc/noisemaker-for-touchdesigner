@@ -59,7 +59,35 @@ class HarnessContractTests(unittest.TestCase):
             self.assertFalse((root / "single-render-called").exists())
             self.assertIn("cellularAutomata\tFAIL\t", (out / "ledger.tsv").read_text())
 
+    def test_sweep_rejects_failed_motion_accumulation_instead_of_deferring(self):
+        with tempfile.TemporaryDirectory(prefix="nm-td-motion-status-") as temp:
+            root = Path(temp)
+            parity = root / "parity"
+            out = parity / "out"
+            out.mkdir(parents=True)
+            (parity / "programs").mkdir()
+            (parity / "programs" / "motionBlur.dsl").write_text("noise().motionBlur().write(o0)\n")
+            (out / "_render_set.txt").write_text("motionBlur\n")
+            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py"):
+                shutil.copy2(REPO / "parity" / helper, parity / helper)
+            (parity / "run.sh").write_text("touch single-render-called\nexit 0\n")
+            (parity / "accumulate.sh").write_text("touch accumulation-called\nexit 7\n")
+            result = subprocess.run(
+                ["bash", str(parity / "sweep.sh"), "--no-stage"],
+                cwd=root, capture_output=True, text=True,
+            )
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertTrue((root / "accumulation-called").exists())
+            self.assertFalse((root / "single-render-called").exists())
+            self.assertIn("motionBlur\tFAIL\t", (out / "ledger.tsv").read_text())
+
     def test_selected_cellular_accumulation_enters_the_canonical_summary(self):
+        self.check_selected_accumulation("cellularAutomata")
+
+    def test_selected_motion_accumulation_enters_the_canonical_summary(self):
+        self.check_selected_accumulation("motionBlur")
+
+    def check_selected_accumulation(self, name):
         with tempfile.TemporaryDirectory(prefix="nm-td-accumulate-") as temp:
             root = Path(temp)
             parity = root / "parity"
@@ -68,7 +96,7 @@ class HarnessContractTests(unittest.TestCase):
             (parity / "programs").mkdir()
             (root / "scripts").mkdir()
             (root / "bin").mkdir()
-            for helper in ("accumulate.sh", "write-ledger.py"):
+            for helper in ("accumulate.sh", "write-ledger.py", "sweep.sh", "stage_coverage.py"):
                 shutil.copy2(REPO / "parity" / helper, parity / helper)
             (root / "td" / "noisemaker" / "runtime").mkdir(parents=True)
             runtime_source = root / "td" / "noisemaker" / "runtime" / "probe.py"
@@ -77,17 +105,17 @@ class HarnessContractTests(unittest.TestCase):
                 shutil.copy2(REPO / "td" / helper, root / "td" / helper)
             shutil.copy2(REPO / "scripts" / "parity-summary", root / "scripts" / "parity-summary")
             (root / "scripts" / "test").write_text('NM_REFERENCE_SHA_PINNED="' + "a" * 40 + '"\n')
-            (out / "_render_set.txt").write_text("cellularAutomata\n")
-            (parity / "programs" / "cellularAutomata.dsl").write_text("cellularAutomata().write(o0)\n")
+            (out / "_render_set.txt").write_text(name + "\n")
+            (parity / "programs" / f"{name}.dsl").write_text(f"{name}().write(o0)\n")
             node = root / "bin" / "node"
             node.write_text(
                 "#!" + sys.executable + "\n"
-                "import pathlib,sys\n"
+                "import pathlib,sys\nfrom PIL import Image\n"
                 "manifest=pathlib.Path(sys.argv[2]).read_text().splitlines()\n"
-                "assert len(manifest)==1 and manifest[0].split()[0]=='cellularAutomata'\n"
+                f"assert len(manifest)==1 and manifest[0].split()[0]=={name!r}\n"
                 "out=pathlib.Path(sys.argv[3]); out.mkdir(parents=True)\n"
-                "(out/'cellularAutomata.golden.png').write_bytes(b'fresh golden')\n"
-                "(out/'cellularAutomata.graph.json').write_text('{}')\n"
+                f"Image.new('RGBA',(256,256),(255,255,255,255)).save(out/{name + '.golden.png'!r})\n"
+                f"(out/{name + '.graph.json'!r}).write_text('{{}}')\n"
                 "import os\n"
                 "if os.environ.get('TEST_DIRTY_AFTER_GOLDENS'):\n"
                 "    pathlib.Path(os.environ['TEST_REFERENCE_DIRTY_MARKER']).touch()\n"
@@ -105,9 +133,15 @@ class HarnessContractTests(unittest.TestCase):
             )
             git.chmod(0o755)
             (parity / "evolve.sh").write_text(
-                'test "$1" = cellularAutomata || exit 19\n'
+                f'test "$1" = {name} || exit 19\n'
                 'touch evolve-called\n'
-                'for f in 0001 0002 0008; do printf fresh > "parity/out/$1.f$f.candidate.png"; done\n'
+                + sys.executable + " - <<'PY'\n"
+                "from pathlib import Path\nfrom PIL import Image\n"
+                f"name={name!r}\n"
+                "for frame in (1,2,8):\n"
+                "    rgba=(252,252,252,253) if name=='motionBlur' and frame==8 else (254,254,254,255)\n"
+                "    Image.new('RGBA',(256,256),rgba).save(Path('parity/out')/f'{name}.f{frame:04d}.candidate.png')\n"
+                "PY\n"
             )
             (parity / "compare.py").write_text(
                 "import argparse,json\n"
@@ -115,17 +149,19 @@ class HarnessContractTests(unittest.TestCase):
                 "p.add_argument('--name'); p.add_argument('--tolerance',type=float); "
                 "p.add_argument('--ssim-min',type=float); p.add_argument('--report'); a=p.parse_args()\n"
                 "assert a.report\n"
+                "diff=3.0 if a.name=='motionBlur.f0008' else 1.0\n"
                 "json.dump({'name':a.name,'golden':a.golden,'candidate':a.candidate,'shape':[256,256,4],"
-                "'max_abs_diff':1.0,'mean_abs_diff':0.125,'ssim':0.9999,'tolerance':a.tolerance,"
+                "'max_abs_diff':diff,'mean_abs_diff':0.125,'ssim':0.99992,'tolerance':a.tolerance,"
                 "'ssim_min':a.ssim_min,'passed':True},open(a.report,'w'))\n"
             )
-            report = root / "cellular.json"
-            environment = dict(os.environ, PATH=str(root / "bin") + os.pathsep + os.environ["PATH"],
+            report = root / f"{name}.json"
+            environment = dict(os.environ, PATH=os.pathsep.join((str(root / "bin"),
+                               str(Path(sys.executable).parent), os.environ["PATH"])),
                                NM_REFERENCE_SHA="a" * 40, NM_REFERENCE_ROOT=str(root / "authority"),
                                TEST_REFERENCE_HEAD="a" * 40,
                                TEST_REFERENCE_DIRTY_MARKER=str(root / "reference-dirty"))
             result = subprocess.run(
-                ["bash", str(parity / "accumulate.sh"), "--effect", "cellularAutomata", "--report", str(report)],
+                ["bash", str(parity / "accumulate.sh"), "--effect", name, "--report", str(report)],
                 cwd=root, capture_output=True, text=True,
                 env=environment,
             )
@@ -135,6 +171,14 @@ class HarnessContractTests(unittest.TestCase):
             self.assertEqual([frame["frame"] for frame in evidence["frames"]], [1, 2, 8])
             self.assertEqual([frame["report"]["mean_abs_diff"] for frame in evidence["frames"]], [0.125] * 3)
             self.assertIn("candidate_sources", evidence)
+            if name == "motionBlur":
+                self.assertEqual(evidence["frames"][-1]["report"]["tolerance"], 3.001)
+                self.assertEqual(evidence["frames"][-1]["report"]["ssim_min"], 0.9999)
+                self.assertEqual(evidence["frames"][-1]["pixel_counts"], {
+                    "pixels": 65536, "channels": 262144, "different_pixels": 65536,
+                    "different_channels": 262144, "pixels_over_1": 65536,
+                    "channels_over_1": 262144, "pixels_over_2": 65536, "channels_over_2": 196608,
+                })
             mismatch = subprocess.run(result.args, cwd=root, capture_output=True, text=True,
                                       env=dict(environment, TEST_REFERENCE_HEAD="b" * 40))
             self.assertNotEqual(mismatch.returncode, 0, mismatch.stdout + mismatch.stderr)
@@ -152,7 +196,8 @@ class HarnessContractTests(unittest.TestCase):
                     self.assertFalse((root / "evolve-called").exists())
             report.write_text(json.dumps(evidence))
             results = root / "results.tsv"
-            results.write_text(f"cellularAutomata\tACCUMULATE\t{report}\t2.001\t0.98\n")
+            tolerance = 3.001 if name == "motionBlur" else 2.001
+            results.write_text(f"{name}\tACCUMULATE\t{report}\t{tolerance}\t0.98\n")
             written = subprocess.run(
                 [sys.executable, str(parity / "write-ledger.py"), "--root", str(root),
                  "--results", str(results), "--expected-set", str(out / "_render_set.txt"),
@@ -165,9 +210,28 @@ class HarnessContractTests(unittest.TestCase):
             )
             self.assertEqual(summary.returncode, 0, summary.stdout + summary.stderr)
             counts = json.loads(summary.stdout.split("PARITY-SUMMARY ", 1)[1])
-            self.assertEqual(counts, {"expected": 1, "executed": 1, "exact": 0, "strict": 1,
-                                      "near": 0, "defer": 0, "skip": 0, "fail": 0, "missing": 0})
-            for defect in ("missing_frame", "wrong_pin", "wide_frame", "failed_frame", "invalid_mean"):
+            self.assertEqual(counts, {"expected": 1, "executed": 1, "exact": 0,
+                                      "strict": 0 if name == "motionBlur" else 1,
+                                      "near": 1 if name == "motionBlur" else 0,
+                                      "defer": 0, "skip": 0, "fail": 0, "missing": 0})
+            (root / "reference-dirty").unlink(missing_ok=True)
+            (parity / "run.sh").write_text("exit 29\n")
+            sweep_output = root / "sweep-output"
+            sweep_output.mkdir()
+            swept = subprocess.run(
+                ["bash", str(parity / "sweep.sh"), "--no-stage"], cwd=root,
+                capture_output=True, text=True,
+                env=dict(environment, LEDGER_PATH=str(sweep_output / "ledger.tsv")),
+            )
+            self.assertEqual(swept.returncode, 0, swept.stdout + swept.stderr)
+            verdict = "NEAR" if name == "motionBlur" else "PASS"
+            self.assertIn(f"{name}\t{verdict}\t", (sweep_output / "ledger.tsv").read_text())
+            self.assertTrue((sweep_output / f"{name}.json").exists())
+            defects = ["missing_frame", "wrong_pin", "wide_frame", "failed_frame", "invalid_mean",
+                       "wrong_frame_bound", "wrong_capture", "early_wide"]
+            if name == "motionBlur":
+                defects.extend(("low_f8_ssim", "missing_counts", "invalid_counts", "plausible_wrong_counts"))
+            for defect in defects:
                 with self.subTest(defect=defect):
                     invalid = json.loads(json.dumps(evidence))
                     if defect == "missing_frame":
@@ -175,20 +239,39 @@ class HarnessContractTests(unittest.TestCase):
                     elif defect == "wrong_pin":
                         invalid["reference_sha"] = "b" * 40
                     elif defect == "wide_frame":
-                        invalid["frames"][-1]["report"]["max_abs_diff"] = 3.0
+                        invalid["frames"][-1]["report"]["max_abs_diff"] = 4.0
                     elif defect == "failed_frame":
                         invalid["frames"][-1]["report"]["passed"] = False
-                    else:
+                    elif defect == "invalid_mean":
                         invalid["frames"][-1]["report"]["mean_abs_diff"] = float("nan")
+                    elif defect == "wrong_frame_bound":
+                        invalid["frames"][0]["report"]["tolerance"] = 3.001
+                    elif defect == "wrong_capture":
+                        invalid["frames"][-1]["candidate_sha256"] = "0" * 64
+                    elif defect == "early_wide":
+                        invalid["frames"][0]["report"]["max_abs_diff"] = 3.0
+                    elif defect == "low_f8_ssim":
+                        invalid["frames"][-1]["report"]["ssim"] = 0.9998
+                    elif defect == "missing_counts":
+                        del invalid["frames"][-1]["pixel_counts"]
+                    elif defect == "invalid_counts":
+                        invalid["frames"][-1]["pixel_counts"]["different_channels"] = 262145
+                    else:
+                        invalid["frames"][-1]["pixel_counts"]["pixels_over_2"] -= 1
                     report.write_text(json.dumps(invalid))
                     rejected = subprocess.run(written.args, capture_output=True, text=True)
                     self.assertNotEqual(rejected.returncode, 0, rejected.stdout + rejected.stderr)
-                    self.assertIn("cellularAutomata\tFAIL\t", (out / "ledger.tsv").read_text())
+                    self.assertIn(f"{name}\tFAIL\t", (out / "ledger.tsv").read_text())
             report.write_text(json.dumps(evidence))
             runtime_source.write_text("version = 2\n")
             stale = subprocess.run(written.args, capture_output=True, text=True)
             self.assertNotEqual(stale.returncode, 0, stale.stdout + stale.stderr)
-            self.assertIn("cellularAutomata\tFAIL\t", (out / "ledger.tsv").read_text())
+            self.assertIn(f"{name}\tFAIL\t", (out / "ledger.tsv").read_text())
+            runtime_source.write_text("version = 1\n")
+            (parity / "programs" / f"{name}.dsl").write_text(f"{name}().write(o1)\n")
+            changed_fixture = subprocess.run(written.args, capture_output=True, text=True)
+            self.assertNotEqual(changed_fixture.returncode, 0, changed_fixture.stdout + changed_fixture.stderr)
+            self.assertIn(f"{name}\tFAIL\t", (out / "ledger.tsv").read_text())
 
     def test_single_and_batch_exporters_use_the_full_clean_start_protocol(self):
         single = (REPO / "parity" / "export-and-render.mjs").read_text()
@@ -272,12 +355,14 @@ class HarnessContractTests(unittest.TestCase):
             for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py"):
                 shutil.copy2(REPO / "parity" / helper, parity / helper)
             (parity / "programs").mkdir()
-            for name in ("adjust", "chrome", "cellularAutomata"):
+            deferred = ("cellularAutomata", "motionBlur", "convolutionFeedback", "reactionDiffusion",
+                        "synth3d_cellularAutomata3d", "synth3d_reactionDiffusion3d")
+            for name in ("adjust", "chrome", *deferred):
                 (parity / "programs" / f"{name}.dsl").write_text(
                     f"noise().{name}().write(o0)\n"
                 )
             (out / "_render_set.txt").write_text(
-                "adjust chrome cellularAutomata\n"
+                "adjust chrome " + " ".join(deferred) + "\n"
             )
             for name in ("adjust", "chrome"):
                 (out / f"{name}.golden.png").touch()
@@ -312,7 +397,8 @@ class HarnessContractTests(unittest.TestCase):
             }
             self.assertEqual(rows["adjust"][1:3], ["PASS", "1.0"])
             self.assertEqual(rows["chrome"][1:3], ["NEAR", "32.0"])
-            self.assertEqual(rows["cellularAutomata"][1], "DEFER")
+            for name in deferred:
+                self.assertEqual(rows[name][1], "DEFER")
             self.assertEqual(rows["legacy3d"][1], "DEFER")
 
     def test_renderer_nonzero_with_a_current_candidate_cannot_pass(self):

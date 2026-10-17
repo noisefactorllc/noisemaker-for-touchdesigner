@@ -79,21 +79,22 @@ print(actual)
 PY
 }
 if [ -n "$selected$result_report" ]; then
-  [ "$selected" = cellularAutomata ] && [ -n "$result_report" ] && [ "$stage" = 1 ] || exit 2
+  case "$selected" in cellularAutomata|motionBlur) ;; *) exit 2 ;; esac
+  [ -n "$result_report" ] && [ "$stage" = 1 ] || exit 2
   EFFECTS="$selected"
   rm -f "$result_report"
   reference_sha="$(check_reference)" || exit 2
   frame_reports="$result_report.frames"
   mkdir -p "$frame_reports"
   for n in $GRADE_FRAMES; do rm -f "$frame_reports/$n.json"; done
-  "$PY" - "$REPO" "$frame_reports/candidate-sources.json" <<'PY' || exit 2
+  "$PY" - "$REPO" "$frame_reports/candidate-sources.json" "$selected" <<'PY' || exit 2
 import json
 import runpy
 import sys
 from pathlib import Path
 
 root = Path(sys.argv[1])
-sources = runpy.run_path(str(root / "parity" / "write-ledger.py"))["candidate_sources"](root)
+sources = runpy.run_path(str(root / "parity" / "write-ledger.py"))["candidate_sources"](root, sys.argv[3])
 Path(sys.argv[2]).write_text(json.dumps(sources))
 PY
 fi
@@ -146,28 +147,38 @@ report() { # informational only — never fails the sweep (chaos-gated frame)
 }
 
 pass=0; fail=0
-if [ "$selected" = cellularAutomata ]; then
-  for n in $GRADE_FRAMES; do grade cellularAutomata "$n" 2.001 0.98 || exit 1; done
-  "$PY" - "$result_report" "$reference_sha" "$frame_reports" "$REPO" <<'PY'
+if [ -n "$selected" ]; then
+  for n in $GRADE_FRAMES; do
+    if [ "$selected" = motionBlur ] && [ "$n" = 8 ]; then
+      grade "$selected" "$n" 3.001 0.9999 || exit 1
+    else
+      grade "$selected" "$n" 2.001 0.98 || exit 1
+    fi
+  done
+  "$PY" - "$result_report" "$reference_sha" "$frame_reports" "$REPO" "$selected" <<'PY'
 import hashlib
 import json
 import runpy
 import sys
 from pathlib import Path
 
-output, reference_sha, directory, repository = sys.argv[1:]
+output, reference_sha, directory, repository, selected = sys.argv[1:]
 root = Path(repository)
+ledger = runpy.run_path(str(root / "parity" / "write-ledger.py"))
 sources = json.loads((Path(directory) / "candidate-sources.json").read_text())
-if sources != runpy.run_path(str(root / "parity" / "write-ledger.py"))["candidate_sources"](root):
+if sources != ledger["candidate_sources"](root, selected):
     raise ValueError("candidate sources changed during accumulation")
 frames = []
 for frame in (1, 2, 8):
     report = json.loads((Path(directory) / f"{frame}.json").read_text())
+    captures = {kind: Path(report[kind]).read_bytes() for kind in ("golden", "candidate")}
     frames.append({"frame": frame, "report": report, **{
-        f"{kind}_sha256": hashlib.sha256(Path(report[kind]).read_bytes()).hexdigest()
+        f"{kind}_sha256": hashlib.sha256(captures[kind]).hexdigest()
         for kind in ("golden", "candidate")
     }})
-Path(output).write_text(json.dumps({"case": "cellularAutomata", "reference_sha": reference_sha,
+    if selected == "motionBlur":
+        frames[-1]["pixel_counts"] = ledger["frame_pixel_counts"](**captures)
+Path(output).write_text(json.dumps({"case": selected, "reference_sha": reference_sha,
                                    "candidate_sources": sources,
                                    "frames": frames}, indent=2) + "\n")
 PY

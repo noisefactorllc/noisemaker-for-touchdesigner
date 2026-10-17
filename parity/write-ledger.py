@@ -19,7 +19,9 @@ STRICT_SSIM_MIN = 0.98
 ALLOWED_PRESERVED_SOURCES = {"3d/mrt/points", "accumulate", "cubemap"}
 
 
-def candidate_sources(root):
+def candidate_sources(root, name="cellularAutomata"):
+    if name not in ("cellularAutomata", "motionBlur"):
+        raise ValueError("unsupported accumulation case")
     runtime = root / "td" / "noisemaker"
     entries = list(runtime.rglob("*"))
     if runtime.is_symlink() or any(path.is_symlink() for path in entries):
@@ -31,12 +33,33 @@ def candidate_sources(root):
     paths.extend(root / name for name in (
         "td/parity_evolve.py", "td/build_evolve_toe.py", "parity/evolve.sh",
         "parity/accumulate.sh", "parity/compare.py", "parity/write-ledger.py",
-        "parity/programs/cellularAutomata.dsl",
+        f"parity/programs/{name}.dsl",
     ))
     if any(path.is_symlink() for path in paths):
         raise ValueError("candidate sources contain a symbolic link")
     return {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in sorted(paths)}
+
+
+def frame_pixel_counts(golden, candidate):
+    from io import BytesIO
+    import numpy as np
+    from PIL import Image
+
+    arrays = [np.asarray(Image.open(BytesIO(data)).convert("RGBA"), dtype=np.int16)
+              for data in (golden, candidate)]
+    if any(array.shape != (256, 256, 4) for array in arrays):
+        raise ValueError("unexpected accumulation capture shape")
+    difference = np.abs(arrays[0] - arrays[1])
+    return {
+        "pixels": int(difference.shape[0] * difference.shape[1]),
+        "channels": int(difference.size),
+        "different_pixels": int(np.any(difference != 0, axis=2).sum()),
+        "different_channels": int((difference != 0).sum()),
+        **{f"{kind}_over_{limit}": int((np.any(difference > limit, axis=2)
+            if kind == "pixels" else difference > limit).sum())
+           for limit in (1, 2) for kind in ("pixels", "channels")},
+    }
 
 
 def load_existing(path):
@@ -97,30 +120,40 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
         pin = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
                         (root / "scripts" / "test").read_text(), re.M).group(1)
         frames = evidence["frames"]
-        if (name != "cellularAutomata" or evidence["case"] != name
+        expected_tolerance = 3.001 if name == "motionBlur" else STRICT_TOLERANCE
+        if (name not in ("cellularAutomata", "motionBlur") or evidence["case"] != name
                 or evidence["reference_sha"] != pin
-                or evidence["candidate_sources"] != candidate_sources(root)
+                or evidence["candidate_sources"] != candidate_sources(root, name)
                 or [item["frame"] for item in frames] != [1, 2, 8]
-                or tolerance != STRICT_TOLERANCE or ssim_min != STRICT_SSIM_MIN):
+                or tolerance != expected_tolerance or ssim_min != STRICT_SSIM_MIN):
             return row
         for item in frames:
             report = item["report"]
+            frame_tolerance, frame_ssim = (3.001, 0.9999) if name == "motionBlur" and item["frame"] == 8 else (
+                STRICT_TOLERANCE, STRICT_SSIM_MIN)
             if (report["name"] != f'{name}.f{item["frame"]:04d}'
                     or report["passed"] is not True
-                    or report["tolerance"] != STRICT_TOLERANCE
-                    or report["ssim_min"] != STRICT_SSIM_MIN
+                    or report["tolerance"] != frame_tolerance
+                    or report["ssim_min"] != frame_ssim
                     or report["shape"] != [256, 256, 4]
                     or not math.isfinite(report["max_abs_diff"])
                     or not math.isfinite(report["mean_abs_diff"])
                     or not math.isfinite(report["ssim"])
-                    or not 0 <= report["max_abs_diff"] <= STRICT_TOLERANCE
+                    or not 0 <= report["max_abs_diff"] <= frame_tolerance
                     or not 0 <= report["mean_abs_diff"] <= report["max_abs_diff"]
-                    or not STRICT_SSIM_MIN <= report["ssim"] <= 1):
+                    or not frame_ssim <= report["ssim"] <= 1):
                 return row
+            captures = {kind: Path(report[kind]).read_bytes() for kind in ("golden", "candidate")}
             for kind in ("golden", "candidate"):
-                if hashlib.sha256(Path(report[kind]).read_bytes()).hexdigest() != item[f"{kind}_sha256"]:
+                if hashlib.sha256(captures[kind]).hexdigest() != item[f"{kind}_sha256"]:
                     return row
-        row.update(verdict="PASS", max_abs_diff=str(max(item["report"]["max_abs_diff"] for item in frames)),
+            if name == "motionBlur":
+                counts = item["pixel_counts"]
+                if (any(type(value) is not int for value in counts.values())
+                        or counts != frame_pixel_counts(**captures)):
+                    return row
+        max_diff = max(item["report"]["max_abs_diff"] for item in frames)
+        row.update(verdict="PASS" if max_diff <= STRICT_TOLERANCE else "NEAR", max_abs_diff=str(max_diff),
                    ssim=str(min(item["report"]["ssim"] for item in frames)),
                    golden=frames[-1]["report"]["golden"])
     except (OSError, AttributeError, KeyError, TypeError, ValueError):
