@@ -79,7 +79,7 @@ print(actual)
 PY
 }
 if [ -n "$selected$result_report" ]; then
-  case "$selected" in cellularAutomata|motionBlur|convolutionFeedback|synth3d_cellularAutomata3d|reactionDiffusion|synth3d_reactionDiffusion3d) ;; *) exit 2 ;; esac
+  case "$selected" in cellularAutomata|motionBlur|convolutionFeedback|synth3d_cellularAutomata3d|reactionDiffusion|synth3d_reactionDiffusion3d|present_hero) ;; *) exit 2 ;; esac
   [ -n "$result_report" ] && [ "$stage" = 1 ] || exit 2
   EFFECTS="$selected"
   rm -f "$result_report"
@@ -104,9 +104,10 @@ fi
 if [ "$stage" = 1 ]; then
   command -v node >/dev/null || { echo "node not found (needed to regenerate goldens); use --no-stage"; exit 2; }
   MAN="$(mktemp)"; for e in $EFFECTS; do echo "$e parity/programs/$e.dsl" >> "$MAN"; done
+  backend_args=(); [ "$selected" != present_hero ] || backend_args=(--backend webgl2)
   for N in $GRADE_FRAMES; do
     f="$(printf '%04d' "$N")"; gdir="$OUT/_acc_g$N"; rm -rf "$gdir"
-    ( cd "$REPO" && node parity/batch-golden.mjs "$MAN" "$gdir" --size 256 --frames "$N" --timestep 0 --time 0.25 ) \
+    ( cd "$REPO" && node parity/batch-golden.mjs "$MAN" "$gdir" --size 256 --frames "$N" --timestep 0 --time 0.25 "${backend_args[@]}" ) \
       >/dev/null 2>&1 || { echo "golden gen failed at frames=$N (set NM_REFERENCE_ROOT to the upstream engine)"; exit 2; }
     for e in $EFFECTS; do
       cp "$gdir/$e.golden.png" "$OUT/$e.f$f.golden.png" || exit 2
@@ -121,8 +122,10 @@ if [ -n "$result_report" ]; then [ "$(check_reference)" = "$reference_sha" ] || 
 #    authoritative per-effect verdict is step 3). Candidates land in parity/out/<e>.f<NNNN>.candidate.
 SMPL="$(echo $GRADE_FRAMES | tr ' ' ',')"
 for e in $EFFECTS; do
-  if ! NM_FRAMES=8 NM_TIMESTEP=0 NM_TIME=0.25 NM_SAMPLES="$SMPL" NM_WAIT="${NM_WAIT:-280}" \
-    TOL=255 SSIM=0 bash "$REPO/parity/evolve.sh" "$e" >/dev/null 2>&1; then
+  evolve_size="${NM_SIZE:-256}"; [ "$e" != present_hero ] || evolve_size=256
+  native_env=(); [ "$e" != present_hero ] || native_env=(env -u NM_DUMP_PROG -u NM_DUMP_TEXID)
+  if ! NM_SIZE="$evolve_size" NM_FRAMES=8 NM_TIMESTEP=0 NM_TIME=0.25 NM_SAMPLES="$SMPL" NM_WAIT="${NM_WAIT:-280}" \
+    TOL=255 SSIM=0 "${native_env[@]}" bash "$REPO/parity/evolve.sh" "$e" >/dev/null 2>&1; then
     [ -z "$result_report" ] || exit 1
   fi
 done
@@ -159,6 +162,8 @@ if [ -n "$selected" ]; then
       grade "$selected" "$n" 41.001 0.9879 || exit 1
     elif [ "$selected" = synth3d_reactionDiffusion3d ] && [ "$n" = 8 ]; then
       grade "$selected" "$n" 177.001 0.9792 || exit 1
+    elif [ "$selected" = present_hero ] && [ "$n" = 8 ]; then
+      grade "$selected" "$n" 75.001 0.9983 || exit 1
     else
       grade "$selected" "$n" 2.001 0.98 || exit 1
     fi
@@ -184,15 +189,17 @@ for frame in (1, 2, 8):
         f"{kind}_sha256": hashlib.sha256(captures[kind]).hexdigest()
         for kind in ("golden", "candidate")
     }})
-    if selected in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d"):
+    if selected in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"):
         frames[-1]["pixel_counts"] = ledger["frame_pixel_counts"](
-            **captures, details=selected in ("convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d"))
-Path(output).write_text(json.dumps({"case": selected, "reference_sha": reference_sha,
-                                   "candidate_sources": sources,
-                                   "frames": frames}, indent=2) + "\n")
+            **captures, details=selected in ("convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"))
+evidence = {"case": selected, "reference_sha": reference_sha,
+            "candidate_sources": sources, "frames": frames}
+if selected == "present_hero":
+    evidence.update(protocol=ledger["PRESENT_HERO_PROTOCOL"], visual_limit=ledger["PRESENT_HERO_VISUAL_LIMIT"])
+Path(output).write_text(json.dumps(evidence, indent=2) + "\n")
 maximum = {"convolutionFeedback": 41.001, "synth3d_cellularAutomata3d": 178.001,
-           "reactionDiffusion": 41.001, "synth3d_reactionDiffusion3d": 177.001}.get(selected)
-minimum_ssim = 0.9792 if selected == "synth3d_reactionDiffusion3d" else 0.98
+           "reactionDiffusion": 41.001, "synth3d_reactionDiffusion3d": 177.001, "present_hero": 75.001}.get(selected)
+minimum_ssim = 0.9792 if selected == "synth3d_reactionDiffusion3d" else 0.9983 if selected == "present_hero" else 0.98
 if maximum is not None and ledger["accumulate_row"](root, selected, Path(output), maximum, minimum_ssim)["verdict"] == "FAIL":
     raise SystemExit("The selected accumulation failed canonical evidence checks.")
 PY

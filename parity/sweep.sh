@@ -92,6 +92,8 @@ defer_reason() { case "$1" in
     echo "multi-frame feedback — driven + graded by parity/accumulate.sh (8/8 gated checks pass)" ;;
   synth3d_cellularAutomata3d|synth3d_reactionDiffusion3d)
     echo "3D-volume stateful (<sim>3d().render3d()) — driven + graded by parity/accumulate.sh (f1/f2 max-diff=1)" ;;
+  present_hero)
+    echo "frame-one/two strict and frame-eight visual policy require parity/accumulate.sh" ;;
   *) echo "" ;;
 esac; }
 
@@ -115,7 +117,7 @@ render_failed=""
 if [ "$render" = 1 ]; then
   ALL=()
   for name in $SET; do
-    case "$name" in cellularAutomata|motionBlur|convolutionFeedback|synth3d_cellularAutomata3d|reactionDiffusion|synth3d_reactionDiffusion3d) ;; *) ALL+=("$name") ;; esac
+    case "$name" in cellularAutomata|motionBlur|convolutionFeedback|synth3d_cellularAutomata3d|reactionDiffusion|synth3d_reactionDiffusion3d|present_hero) ;; *) ALL+=("$name") ;; esac
   done
   n=${#ALL[@]}; i=0
   while [ $i -lt $n ]; do
@@ -136,12 +138,13 @@ for name in $SET; do
       record_result "$name" FAIL "TouchDesigner renderer exited nonzero" - -
       fail=$((fail + 1)); failed="$failed $name"; continue ;;
   esac
-  if { [ "$name" = cellularAutomata ] || [ "$name" = motionBlur ] || [ "$name" = convolutionFeedback ] || [ "$name" = synth3d_cellularAutomata3d ] || [ "$name" = reactionDiffusion ] || [ "$name" = synth3d_reactionDiffusion3d ]; } && [ "$render" = 1 ]; then
+  if { [ "$name" = cellularAutomata ] || [ "$name" = motionBlur ] || [ "$name" = convolutionFeedback ] || [ "$name" = synth3d_cellularAutomata3d ] || [ "$name" = reactionDiffusion ] || [ "$name" = synth3d_reactionDiffusion3d ] || [ "$name" = present_hero ]; } && [ "$render" = 1 ]; then
     TOL=2.001; SSIM=0.98
     if [ "$name" = motionBlur ]; then TOL=3.001; fi
     if [ "$name" = convolutionFeedback ] || [ "$name" = reactionDiffusion ]; then TOL=41.001; fi
     if [ "$name" = synth3d_cellularAutomata3d ]; then TOL=178.001; fi
     if [ "$name" = synth3d_reactionDiffusion3d ]; then TOL=177.001; SSIM=0.9792; fi
+    if [ "$name" = present_hero ]; then TOL=75.001; SSIM=0.9983; fi
     report="$(dirname "$LEDGER_PATH")/$name.json"
     if bash "$REPO/parity/accumulate.sh" --effect "$name" --report "$report"; then
       record_result "$name" ACCUMULATE "$report" "$TOL" "$SSIM"

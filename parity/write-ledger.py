@@ -17,11 +17,27 @@ FIELDS = (
 STRICT_TOLERANCE = 2.001
 STRICT_SSIM_MIN = 0.98
 ALLOWED_PRESERVED_SOURCES = {"3d/mrt/points", "accumulate", "cubemap"}
+PRESENT_HERO_PROTOCOL = {
+    "reference_sha": "6cb1a3c3e21010db956d41e7a6d57a02b0be1e7d",
+    "size": 256, "time": 0.25, "timestep": 0,
+    "reference_backend": "webgl2", "reference_frames": [1, 2, 8],
+    "native_frames": 8, "native_samples": [1, 2, 8], "initial_state": "zeroed",
+    "fixture_sha256": "e0c083445a843a137e76fbba4572c897a6a0b034956253910dd61b9638493e08",
+}
+PRESENT_HERO_VISUAL_LIMIT = "Edge differences are substantial. This policy covers saved RGBA PNGs only."
 
 
 def candidate_sources(root, name="cellularAutomata"):
-    if name not in ("cellularAutomata", "motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d"):
+    if name not in ("cellularAutomata", "motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"):
         raise ValueError("unsupported accumulation case")
+    if name == "present_hero":
+        override = root / "parity" / "corpus" / "present_hero.dsl"
+        if override.exists() or override.is_symlink():
+            raise ValueError("The hero protocol does not permit a corpus override.")
+        pin = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
+                        (root / "scripts" / "test").read_text(), re.M)
+        if not pin or pin.group(1) != PRESENT_HERO_PROTOCOL["reference_sha"]:
+            raise ValueError("The hero authority does not match the visual policy.")
     runtime = root / "td" / "noisemaker"
     entries = list(runtime.rglob("*"))
     if runtime.is_symlink() or any(path.is_symlink() for path in entries):
@@ -35,10 +51,15 @@ def candidate_sources(root, name="cellularAutomata"):
         "parity/accumulate.sh", "parity/compare.py", "parity/write-ledger.py",
         f"parity/programs/{name}.dsl",
     ))
+    if name == "present_hero":
+        paths.append(root / "parity" / "batch-golden.mjs")
     if any(path.is_symlink() for path in paths):
         raise ValueError("candidate sources contain a symbolic link")
-    return {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in sorted(paths)}
+    sources = {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+               for path in sorted(paths)}
+    if name == "present_hero" and sources["parity/programs/present_hero.dsl"] != PRESENT_HERO_PROTOCOL["fixture_sha256"]:
+        raise ValueError("The hero fixture does not match the visual policy.")
+    return sources
 
 
 def frame_pixel_counts(golden, candidate, details=False):
@@ -134,14 +155,20 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
         frames = evidence["frames"]
         expected_tolerance = {"motionBlur": 3.001, "convolutionFeedback": 41.001,
                               "synth3d_cellularAutomata3d": 178.001, "reactionDiffusion": 41.001,
-                              "synth3d_reactionDiffusion3d": 177.001}.get(name, STRICT_TOLERANCE)
-        if (name not in ("cellularAutomata", "motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d")
+                              "synth3d_reactionDiffusion3d": 177.001, "present_hero": 75.001}.get(name, STRICT_TOLERANCE)
+        if (name not in ("cellularAutomata", "motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero")
                 or evidence["case"] != name
                 or evidence["reference_sha"] != pin
                 or evidence["candidate_sources"] != candidate_sources(root, name)
                 or [item["frame"] for item in frames] != [1, 2, 8]
                 or tolerance != expected_tolerance
-                or ssim_min != (0.9792 if name == "synth3d_reactionDiffusion3d" else STRICT_SSIM_MIN)):
+                or ssim_min != (0.9792 if name == "synth3d_reactionDiffusion3d" else
+                                0.9983 if name == "present_hero" else STRICT_SSIM_MIN)):
+            return row
+        if name == "present_hero" and (
+                evidence.get("protocol") != PRESENT_HERO_PROTOCOL
+                or evidence.get("visual_limit") != PRESENT_HERO_VISUAL_LIMIT
+                or evidence["candidate_sources"]["parity/programs/present_hero.dsl"] != PRESENT_HERO_PROTOCOL["fixture_sha256"]):
             return row
         for item in frames:
             report = item["report"]
@@ -155,6 +182,8 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
                 frame_tolerance, frame_ssim = 41.001, 0.9879
             if name == "synth3d_reactionDiffusion3d" and item["frame"] == 8:
                 frame_tolerance, frame_ssim = 177.001, 0.9792
+            if name == "present_hero" and item["frame"] == 8:
+                frame_tolerance, frame_ssim = 75.001, 0.9983
             if (report["name"] != f'{name}.f{item["frame"]:04d}'
                     or report["passed"] is not True
                     or report["tolerance"] != frame_tolerance
@@ -171,9 +200,9 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
             for kind in ("golden", "candidate"):
                 if hashlib.sha256(captures[kind]).hexdigest() != item[f"{kind}_sha256"]:
                     return row
-            if name in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d"):
+            if name in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero"):
                 counts = item["pixel_counts"]
-                detailed = name in ("convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d")
+                detailed = name in ("convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion", "synth3d_reactionDiffusion3d", "present_hero")
                 expected_counts = frame_pixel_counts(**captures, details=detailed)
                 if json.dumps(counts, sort_keys=True) != json.dumps(expected_counts, sort_keys=True):
                     return row
@@ -185,7 +214,7 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
                             or abs(report["mean_abs_diff"] - mean) > 0.001
                             or (item["frame"] == 8 and mean > {"convolutionFeedback": 3.8,
                                 "synth3d_cellularAutomata3d": 0.41, "reactionDiffusion": 3.92,
-                                "synth3d_reactionDiffusion3d": 0.811}[name])):
+                                "synth3d_reactionDiffusion3d": 0.811, "present_hero": 1.188}[name])):
                         return row
         max_diff = max(item["report"]["max_abs_diff"] for item in frames)
         row.update(verdict="PASS" if max_diff <= STRICT_TOLERANCE else "NEAR", max_abs_diff=str(max_diff),

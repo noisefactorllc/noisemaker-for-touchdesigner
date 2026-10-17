@@ -47,10 +47,10 @@ BATCH = os.path.join(REPO, 'parity', 'batch-golden.mjs')
 # (max-abs-diff=1), then cellularAutomata3d ssim-gated (0.996 @ f8) and reactionDiffusion3d chaos-
 # reported (continuous Gray-Scott, 0.977 @ f8), mirroring their 2D counterparts.
 ACCUM_EFFECTS = {'cellularAutomata', 'reactionDiffusion', 'motionBlur', 'convolutionFeedback',
-                 'synth3d_cellularAutomata3d', 'synth3d_reactionDiffusion3d'}
+                 'synth3d_cellularAutomata3d', 'synth3d_reactionDiffusion3d', 'present_hero'}
 DEFERRED_EFFECTS = {
     '_vs32probe', 'buddhabrot', 'filter3d_flow3d', 'filter3d_palette3d', 'physical',
-    'present_hero', 'synth3d_cell3d', 'synth3d_flythrough3d', 'synth3d_fractal3d',
+    'synth3d_cell3d', 'synth3d_flythrough3d', 'synth3d_fractal3d',
     'synth3d_noise', 'synth3d_renderCubemap3d', 'synth3d_renderCubemapSurface',
     'synth3d_renderLit3d', 'synth3d_shape3d',
     # 2026-09-15 agent/3D additions (same MRT/points/3D class as above): the heightGrid
