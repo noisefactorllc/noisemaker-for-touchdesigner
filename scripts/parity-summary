@@ -103,6 +103,7 @@ def reference_head(ref_root):
 
 
 def main(argv):
+    sweep_status = 0
     if argv[:1] == ["--ledger"] and len(argv) == 2:
         ledger = Path(argv[1])
     elif not argv:
@@ -120,7 +121,8 @@ def main(argv):
         if ledger.exists():
             ledger.unlink()
         env = dict(os.environ, LEDGER_PATH=str(ledger))
-        subprocess.run(["bash", str(ROOT / "parity" / "sweep.sh")], cwd=str(ROOT), env=env)
+        sweep_status = subprocess.run(
+            ["bash", str(ROOT / "parity" / "sweep.sh")], cwd=str(ROOT), env=env).returncode
     else:
         raise SystemExit(__doc__)
     expected = RENDER_SET.read_text().split() if RENDER_SET.exists() else []
@@ -129,7 +131,8 @@ def main(argv):
     for line in lines:
         print(line)
     print("PARITY-SUMMARY " + json.dumps(counts, separators=(",", ":")))
-    return 0 if counts["expected"] and counts["fail"] == 0 and counts["missing"] == 0 else 1
+    return 0 if (sweep_status == 0 and counts["expected"]
+                 and counts["fail"] == 0 and counts["missing"] == 0) else 1
 
 
 if __name__ == "__main__":

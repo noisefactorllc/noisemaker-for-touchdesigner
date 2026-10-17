@@ -3,10 +3,14 @@
 
 import importlib.machinery
 import importlib.util
+import contextlib
+import io
+import os
 import re
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 _loader = importlib.machinery.SourceFileLoader("parity_summary", str(ROOT / "scripts" / "parity-summary"))
@@ -66,6 +70,39 @@ class SummaryTests(unittest.TestCase):
 class PinTests(unittest.TestCase):
     def test_the_pin_comes_from_scripts_test(self):
         self.assertRegex(parity_summary.pinned_revision(), re.compile(r"^[0-9a-f]{40}$"))
+
+
+class SweepStatusTests(unittest.TestCase):
+    def test_sweep_failure_rejects_an_otherwise_passing_ledger(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "parity" / "out").mkdir(parents=True)
+            (root / "scripts").mkdir()
+            pin = "a" * 40
+            (root / "scripts" / "test").write_text(
+                f'NM_REFERENCE_SHA_PINNED="{pin}"\n')
+            render_set = root / "parity" / "out" / "_render_set.txt"
+            render_set.write_text("adjust\n")
+            sweep = root / "parity" / "sweep.sh"
+            ledger = (
+                "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
+                "adjust\tPASS\t0\t1\t2.001\t0.98\tsweep\tadjust.golden.png\n"
+            )
+            for sweep_status, expected_status in ((0, 0), (7, 1)):
+                with self.subTest(sweep_status=sweep_status):
+                    sweep.write_text(
+                        'cat > "$LEDGER_PATH" <<\'LEDGER\'\n'
+                        + ledger + f"LEDGER\nexit {sweep_status}\n")
+                    output = io.StringIO()
+                    with mock.patch.object(parity_summary, "ROOT", root), \
+                            mock.patch.object(parity_summary, "RENDER_SET", render_set), \
+                            mock.patch.object(parity_summary, "reference_head", return_value=pin), \
+                            mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root),
+                                                        "NM_PARITY_WORK": str(root / "work")}), \
+                            contextlib.redirect_stdout(output):
+                        status = parity_summary.main([])
+                    self.assertEqual(status, expected_status)
+                    self.assertIn('"expected":1,"executed":1,"exact":1', output.getvalue())
 
 
 if __name__ == "__main__":
