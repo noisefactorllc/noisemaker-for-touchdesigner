@@ -2,6 +2,7 @@
 """App-free regressions for TouchDesigner runtime helpers."""
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -358,6 +359,40 @@ class VolumeFoldTests(unittest.TestCase):
         source = td_backend._apply_volume_fold(reader, None, fold)
         self.assertIn("#define texelFetch(s, c, l) nm_volumeFetch(s, c, l)", source)
         self.assertTrue(source.endswith(reader))
+
+    @staticmethod
+    def _volume_graph(passes):
+        from noisemaker.runtime.render_graph import TextureSpec
+
+        volume = TextureSpec(width={"param": "volumeSize_node_1", "default": 64},
+                             height={"param": "volumeSize_node_1", "power": 2, "default": 4096})
+        return SimpleNamespace(passes=passes,
+                               spec_for=lambda tex_id: volume if tex_id.startswith("vol") else None)
+
+    def test_reader_built_before_its_writer_still_folds(self):
+        backend = td_backend.TDBackend(SimpleNamespace(), "/unused")
+        backend._graph_uniforms = {"volumeSize_node_1": 64}
+        graph = self._volume_graph([])
+        self.assertEqual(backend._input_fold("vol_cache", graph), td_backend._volume_fold(64))
+        self.assertIsNone(backend._input_fold("screen_tex", graph))
+
+    def test_texture_sampled_volume_reader_keeps_the_unfolded_cap(self):
+        from noisemaker.runtime.render_graph import Pass
+
+        with tempfile.TemporaryDirectory() as root:
+            for func, body in (("sampled", "vec4 v = texture(inputTex3d, uv);"),
+                               ("fetched", "vec4 v = texelFetch(volumeCache, ivec2(0), 0);")):
+                frag = Path(root) / "render" / func / "main.frag"
+                frag.parent.mkdir(parents=True)
+                frag.write_text("void main() { %s }\n" % body)
+            backend = td_backend.TDBackend(SimpleNamespace(), root)
+            for func, expected in (("sampled", 32), ("fetched", 64)):
+                reader = Pass.from_dict({"id": func, "namespace": "render", "func": func,
+                                         "progName": "main", "uniforms": {"volumeSize": 64},
+                                         "inputs": {"inputTex3d": "vol_cache"},
+                                         "outputs": {"fragColor": "screen"}})
+                backend._cap_volume_size(self._volume_graph([reader]))
+                self.assertEqual(reader.uniforms["volumeSize"], expected, func)
 
     def test_flow3d_graph_keeps_the_unfolded_cap(self):
         from noisemaker.runtime.render_graph import Pass

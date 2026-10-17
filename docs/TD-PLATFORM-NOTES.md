@@ -147,9 +147,10 @@ texture); `render3d` / `renderLit3d` then raymarch it. Two TD-specific fixes (bo
    band, four bands side by side, plus one marker column (64 → 257×1024). A writing pass runs its
    `main` on the unfolded `gl_FragCoord`; a reading pass routes `texelFetch` through
    `nm_volumeFetch`, which folds the coordinate for inputs of the folded size. `_cap_volume_size`
-   clamps every `volumeSize*` uniform to **NM_MAX_VOLUME_SIZE (default 64)**; a graph with a flow3d
-   volume deposit stays at 32, because that trail is drawn by a point deposit and read with filtered
-   `texture()` calls the fold does not remap. heightmap3d_landscape (default volumeSize 64) matches
+   clamps every `volumeSize*` uniform to **NM_MAX_VOLUME_SIZE (default 64)**; a graph stays at 32
+   when a pass reads a volume with a call the fold does not remap (`texture()`, `textureSize()`, …:
+   palette3d, the flow3d trail) or draws one with a point deposit (flow3d). A reader's fold comes from
+   its input's texture spec, so a read built before its writer (through a Feedback TOP) still folds. heightmap3d_landscape (default volumeSize 64) matches
    its reference with max-diff 1. Raise `NM_MAX_VOLUME_SIZE` on a Commercial/Educational license.
    - The **orbit-camera** gens (noise3d/fractal3d/cell3d/shape3d/renderLit3d) view the volume from
      *outside* at a distance, so the raymarch averages the 64→32 cap away and their default-`volumeSize:64`

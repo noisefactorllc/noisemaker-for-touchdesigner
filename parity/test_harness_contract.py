@@ -64,22 +64,24 @@ class EvolveFrameDriverTests(unittest.TestCase):
     class _Feedback:
         def __init__(self):
             self.totalCooks = 0
-            self.latched_frame = None
-            self.output = 0
-            self.snapshot = 0
+            self.cookAbsFrame = None
+            self.output = (0, None)
+            self.snapshot = (0, None)
 
     class _Out:
         def __init__(self, clock, feedback, saved):
             self.clock, self.feedback, self.saved = clock, feedback, saved
-            self.state = 0
+            self.state = (0, None)
+            self.time = None
             self.width = self.height = 1
 
         def cook(self, force=False):
-            if self.feedback.latched_frame != self.clock.frame:
-                self.feedback.latched_frame = self.clock.frame
+            # Each cook computes (steps, time of the cook) from the feedback latched this frame.
+            if self.feedback.cookAbsFrame != self.clock.frame:
+                self.feedback.cookAbsFrame = self.clock.frame
                 self.feedback.totalCooks += 1
                 self.feedback.output = self.feedback.snapshot
-            self.state = self.feedback.output + 1
+            self.state = (self.feedback.output[0] + 1, self.time)
 
         def save(self, path):
             self.saved[Path(path).name] = self.state
@@ -88,7 +90,7 @@ class EvolveFrameDriverTests(unittest.TestCase):
         def numpyArray(self):
             raise RuntimeError('not needed')
 
-    def _run(self, frames, samples):
+    def _run(self, frames, samples, timestep="0.01"):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / "td").mkdir()
@@ -99,12 +101,12 @@ class EvolveFrameDriverTests(unittest.TestCase):
             project = SimpleNamespace(realTime=False, quit=lambda force=False: None)
             namespace = {"__file__": str(root / "td" / "parity_evolve.py"),
                          "__name__": "parity_evolve_test", "absTime": clock, "project": project}
-            env = {"NM_PROGRAM": "probe", "NM_FRAMES": str(frames),
-                   "NM_SAMPLES": ",".join(str(s) for s in samples)}
+            env = {"NM_PROGRAM": "probe", "NM_FRAMES": str(frames), "NM_TIME": "0.25",
+                   "NM_TIMESTEP": timestep, "NM_SAMPLES": ",".join(str(s) for s in samples)}
             with mock.patch.dict(os.environ, env):
                 exec(compile(source, "parity_evolve.py", "exec"), namespace)
             nm = SimpleNamespace(pipeline=SimpleNamespace(
-                set_time=lambda _t: None,
+                set_time=lambda t: setattr(out, "time", round(t, 6)),
                 backend=SimpleNamespace(_feedback={"state": feedback})))
             namespace["_state"].update(nm=nm, out=out, done=False)
             for frame in range(1, frames + 3):
@@ -119,10 +121,11 @@ class EvolveFrameDriverTests(unittest.TestCase):
                 clock.frame += 1 if frame == 1 else 0   # an absolute frame without callbacks
             return saved
 
-    def test_each_sample_holds_exactly_its_step_count(self):
+    def test_each_sample_holds_exactly_its_step_and_time(self):
+        # Step k computes at the reference's frame time: base + (k - 1) * timestep.
         saved = self._run(8, (1, 2, 3, 8))
-        self.assertEqual(saved, {"probe.f0001.candidate.png": 1, "probe.f0002.candidate.png": 2,
-                                 "probe.f0003.candidate.png": 3, "probe.f0008.candidate.png": 8})
+        self.assertEqual(saved, {"probe.f0001.candidate.png": (1, 0.25), "probe.f0002.candidate.png": (2, 0.26),
+                                 "probe.f0003.candidate.png": (3, 0.27), "probe.f0008.candidate.png": (8, 0.32)})
 
 
 class HarnessContractTests(unittest.TestCase):

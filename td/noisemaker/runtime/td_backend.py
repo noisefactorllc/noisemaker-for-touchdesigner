@@ -175,6 +175,9 @@ class TDBackend:
             raise RuntimeError('TDBackend.build() must run inside TouchDesigner (no op API found).')
         self._detect_feedback(graph)
         self._cap_volume_size(graph)
+        self._graph_uniforms = {}                   # every pass's uniforms (volume specs resolve here)
+        for p in graph.passes:
+            self._graph_uniforms.update(p.uniforms)
         for p in graph.passes:
             if self._should_skip_pass(p):
                 continue
@@ -435,16 +438,40 @@ class TDBackend:
                     return True
         return False
 
+    def _input_fold(self, tex_id, graph):
+        """The fold of an input texture, from its graph spec (so a read built before its writer,
+        e.g. through a Feedback TOP, still folds) or from the blit that copied a folded texture."""
+        if not tex_id or tex_id == 'none':
+            return None
+        if tex_id in self._folded_tex:
+            return self._folded_tex[tex_id]
+        return self._volume_fold_for(graph.spec_for(tex_id), {})
+
     def _volume_fold_for(self, spec, uniforms):
         """The fold for a pass output that is a 3D volume atlas (`volumeSize x volumeSize^2`) taller
         than TD's cook-resolution cap, else None."""
-        if spec is None or not isinstance(spec.width, dict) or not isinstance(spec.height, dict):
+        if not _is_volume_spec(spec):
             return None
-        param = spec.width.get('param')
-        if not param or spec.height.get('param') != param or spec.height.get('power') != 2:
-            return None
-        vs = int(_dim.resolve_dimension(spec.width, self.width, uniforms))
+        merged = dict(getattr(self, '_graph_uniforms', {}))
+        merged.update(uniforms or {})
+        vs = int(_dim.resolve_dimension(spec.width, self.width, merged))
         return _volume_fold(vs)
+
+    def _reads_volume_unfoldably(self, p, graph):
+        """True when an effect pass reads a volume-atlas input with a call the fold cannot remap."""
+        if p.is_blit or p.is_scatter or not p.namespace or not p.func or not p.prog_name:
+            return False
+        volume_samplers = [name for name, tex_id in p.inputs.items()
+                           if _is_volume_spec(graph.spec_for(tex_id))]
+        if not volume_samplers:
+            return False
+        frag_path = os.path.join(self.shaders_root, p.namespace, p.func, '%s.frag' % p.prog_name)
+        try:
+            with open(frag_path) as f:
+                frag = f.read()
+        except OSError:
+            return False
+        return bool(_UNFOLDABLE_READ_RE.search(frag))
 
     def _cap_volume_size(self, graph):
         """Clamp the 3D-volume atlas size to fit TD's cook-resolution limit.
@@ -453,11 +480,13 @@ class TDBackend:
         Non-Commercial license caps cook resolution at 1280, which silently downscales a 64x4096 TOP
         to 20x1280 and breaks `atlasTexel` indexing. Effect passes store such an atlas folded into
         bands under the cap (see _volume_fold), which reaches volumeSize 64. Every `volumeSize*`
-        uniform is clamped to NM_MAX_VOLUME_SIZE (default 64). The flow3d trail is written by a
-        point deposit and read with filtered `texture()` calls that the fold does not remap, so a
-        graph with a volume deposit stays clamped to 32 (a 32x1024 atlas, under the cap)."""
+        uniform is clamped to NM_MAX_VOLUME_SIZE (default 64). The fold remaps only `texelFetch` and
+        `gl_FragCoord`, so a graph stays clamped to 32 (a 32x1024 atlas, under the cap) when a pass
+        reads a volume another way: the flow3d trail is drawn by a point deposit, and e.g.
+        palette3d samples its volume with `texture()` / `textureSize()`."""
         cap = _MAX_VOLUME_SIZE
-        if any(p.is_scatter and 'stateTex1' in p.inputs for p in graph.passes):
+        if any(p.is_scatter and 'stateTex1' in p.inputs for p in graph.passes) or any(
+                self._reads_volume_unfoldably(p, graph) for p in graph.passes):
             cap = min(cap, _UNFOLDED_VOLUME_SIZE)
         capped = False
         for p in graph.passes:
@@ -486,10 +515,8 @@ class TDBackend:
         tag = self._unique_name(p.id)
         spec = self._primary_output_spec(p, graph)
         fold_out = self._volume_fold_for(spec, p.uniforms)
-        fold_in = next((self._folded_tex[t] for t in p.inputs.values() if t in self._folded_tex),
-                       None)
-        if fold_in is None and fold_out is not None and set(p.inputs.values()) & set(p.outputs.values()):
-            fold_in = fold_out                      # reads its own previous state via feedback
+        fold_in = next((fold for fold in (self._input_fold(t, graph) for t in p.inputs.values())
+                        if fold is not None), None)
         dat = self.parent.create(_td('textDAT'), tag + '_src')
         dat.text = _apply_volume_fold(_assemble_effect_source(frag, _defines_for_pass(p)),
                                       fold_out, fold_in)
@@ -975,6 +1002,20 @@ def _glsl_lit(v):
 _MAX_VOLUME_SIZE = int(os.environ.get('NM_MAX_VOLUME_SIZE', '64'))
 _UNFOLDED_VOLUME_SIZE = 32          # largest volumeSize whose unfolded atlas (32x1024) fits the cap
 _COOK_RESOLUTION_CAP = 1280         # TD Non-Commercial maximum TOP width and height
+
+
+# Sampling calls the volume fold does not remap (texelFetch is remapped; gl_FragCoord is unfolded
+# only in writers). Matched anywhere in a volume reader, since a sampler may arrive as a parameter.
+_UNFOLDABLE_READ_RE = re.compile(r'\b(?:texture|textureLod|textureGrad|textureOffset|textureGather|'
+                                 r'textureProj|textureSize|texelFetchOffset)\s*\(')
+
+
+def _is_volume_spec(spec):
+    """A `volumeSize x volumeSize^2` atlas texture spec."""
+    if spec is None or not isinstance(spec.width, dict) or not isinstance(spec.height, dict):
+        return False
+    param = spec.width.get('param')
+    return bool(param) and spec.height.get('param') == param and spec.height.get('power') == 2
 
 
 def _volume_fold(vs):

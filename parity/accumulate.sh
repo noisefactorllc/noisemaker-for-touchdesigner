@@ -119,7 +119,8 @@ bound() { "$PY" "$REPO/parity/write-ledger.py" --accumulation-bound "$1" "$2"; }
 
 if [ -n "$selected" ]; then
   for n in $GRADE_FRAMES; do
-    read -r tol ssim <<< "$(bound "$selected" "$n")" || exit 2
+    b="$(bound "$selected" "$n")" || exit 2
+    read -r tol ssim <<< "$b"; [ -n "${ssim:-}" ] || exit 2
     grade "$selected" "$n" "$tol" "$ssim" || exit 1
   done
   "$PY" - "$result_report" "$reference_sha" "$frame_reports" "$REPO" "$selected" <<'PY'
@@ -158,7 +159,8 @@ pass=0; fail=0
 for e in $EFFECTS; do
   echo "=== $e ==="
   for n in $GRADE_FRAMES; do
-    read -r tol ssim <<< "$(bound "$e" "$n")" || exit 2
+    b="$(bound "$e" "$n")" || exit 2
+    read -r tol ssim <<< "$b"; [ -n "${ssim:-}" ] || exit 2
     if grade "$e" "$n" "$tol" "$ssim"; then pass=$((pass+1)); else fail=$((fail+1)); fi
   done
 done

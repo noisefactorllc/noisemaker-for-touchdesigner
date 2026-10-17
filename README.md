@@ -132,7 +132,7 @@ Integration constraints:
 
 - **3D-volume effects** are clamped by `NM_MAX_VOLUME_SIZE` (default **64**). A volume atlas taller
   than the free tier's 1280×1280 cook limit is stored folded into bands, which reaches 64. Graphs
-  with a flow3d volume deposit stay clamped to 32. The clamp is applied when the network is built.
+  that read a volume with `texture()` or `textureSize()` (flow3d, palette3d) stay clamped to 32. The clamp is applied when the network is built.
   Raise it on a Commercial/Educational license.
 - **`.toe` / `.tox` files are binary** and can't be authored offline. Run `td/make_bootstrap.py` once
   inside an activated TouchDesigner to materialize and save a reusable host `td/noisemaker.toe`.

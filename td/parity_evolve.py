@@ -12,7 +12,7 @@ fresh network's Feedback TOPs are black) then exactly N-frames-from-zero with ti
 
 Driven by an Execute DAT authored by build_evolve_toe.py:
     onStart      -> evolve_setup()          build network, start non-real-time playback
-    onFrameStart -> evolve_frame_start(f)    capture due samples, advance `time`, cook one step
+    onFrameStart -> evolve_frame_start(f)    advance `time`, cook one step, capture due samples
     onFrameEnd   -> evolve_frame_end(f)      capture due samples; quit at the end
 
 TouchDesigner snapshots each Feedback TOP's target at its own end of frame, BEFORE onFrameEnd
@@ -235,15 +235,20 @@ def _capture_due():
 
 
 def evolve_frame_start(frame):
-    """Capture due samples, then advance `time` and cook the next step (called from onFrameStart)."""
+    """Advance `time`, cook the next step, then capture due samples (called from onFrameStart)."""
     nm = _state.get('nm')
     out = _state.get('out')
     if nm is None or out is None or _state.get('done'):
         return
-    _capture_due()
-    if _state.get('done'):
+    # TouchDesigner may already have cooked (and latched) this frame before onFrameStart. The step
+    # being computed is then the one just latched, so it takes the previous step's time index.
+    latched = any(t is not None and t.cookAbsFrame == absTime.frame  # noqa: F821
+                  for t in getattr(nm.pipeline.backend, '_feedback', {}).values())
+    if _steps() >= FRAMES and not latched:
+        _capture_due()
         return
-    tt = (BASE_TIME + _steps() * TIMESTEP) % 1.0
+    i = _steps() - (1 if latched else 0)
+    tt = (BASE_TIME + i * TIMESTEP) % 1.0
     try:
         nm.pipeline.set_time(tt)
     except Exception:
@@ -253,6 +258,7 @@ def evolve_frame_start(frame):
     except Exception:
         pass
     _state['cooked'] = _state.get('cooked', 0) + 1
+    _capture_due()
 
 
 def evolve_frame_end(frame):
