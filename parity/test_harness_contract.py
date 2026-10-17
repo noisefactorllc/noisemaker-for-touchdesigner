@@ -107,6 +107,9 @@ class HarnessContractTests(unittest.TestCase):
     def test_selected_cellular_3d_accumulation_enters_the_canonical_summary(self):
         self.check_selected_accumulation("synth3d_cellularAutomata3d")
 
+    def test_selected_reaction_accumulation_enters_the_canonical_summary(self):
+        self.check_selected_accumulation("reactionDiffusion")
+
     def check_selected_accumulation(self, name):
         with tempfile.TemporaryDirectory(prefix="nm-td-accumulate-") as temp:
             root = Path(temp)
@@ -132,7 +135,9 @@ class HarnessContractTests(unittest.TestCase):
             (fixtures / "golden.png").write_bytes(fixture_png((255, 255, 255, 255)))
             for frame in (1, 2, 8):
                 rgba = (252, 252, 252, 253) if name == "motionBlur" and frame == 8 else (254, 254, 254, 255)
-                first_pixel = (214, 214, 214, 255) if name == "convolutionFeedback" and frame == 8 else None
+                first_pixel = (214, 214, 214, 255) if name in ("convolutionFeedback", "reactionDiffusion") and frame == 8 else None
+                if name == "reactionDiffusion" and frame == 8:
+                    rgba = (250, 250, 250, 255)
                 if name == "synth3d_cellularAutomata3d" and frame == 8:
                     rgba, first_pixel = (255, 255, 255, 255), (255, 77, 255, 255)
                 (fixtures / f"{name}.f{frame:04d}.png").write_bytes(fixture_png(
@@ -198,7 +203,7 @@ class HarnessContractTests(unittest.TestCase):
                 "'max_abs_diff':diff,'mean_abs_diff':0.125,'ssim':0.99992,'tolerance':a.tolerance,"
                 "'ssim_min':a.ssim_min,'passed':True},open(a.report,'w'))\n"
             )
-            if name in ("convolutionFeedback", "synth3d_cellularAutomata3d"):
+            if name in ("convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion"):
                 shutil.copy2(REPO / "parity" / "compare.py", parity / "compare.py")
             report = root / f"{name}.json"
             environment = dict(os.environ, PATH=os.pathsep.join((str(root / "bin"),
@@ -217,13 +222,15 @@ class HarnessContractTests(unittest.TestCase):
             self.assertEqual(evidence["reference_sha"], "a" * 40)
             self.assertEqual([frame["frame"] for frame in evidence["frames"]], [1, 2, 8])
             means = [frame["report"]["mean_abs_diff"] for frame in evidence["frames"]]
-            if name == "convolutionFeedback":
-                for actual, expected in zip(means, (0.75, 0.75, 0.750457763671875)):
+            if name in ("convolutionFeedback", "reactionDiffusion"):
+                final_mean = 0.750457763671875 if name == "convolutionFeedback" else 3.7504119873046875
+                for actual, expected in zip(means, (0.75, 0.75, final_mean)):
                     self.assertAlmostEqual(actual, expected, delta=0.0001)
                 final = evidence["frames"][-1]
                 self.assertEqual(final["report"]["tolerance"], 41.001)
-                self.assertEqual(final["report"]["ssim_min"], 0.9948)
-                self.assertEqual(final["pixel_counts"]["channel_abs_histogram"], {"0": 65536, "1": 196605, "41": 3})
+                self.assertEqual(final["report"]["ssim_min"], 0.9948 if name == "convolutionFeedback" else 0.9879)
+                self.assertEqual(final["pixel_counts"]["channel_abs_histogram"],
+                                 {"0": 65536, "1" if name == "convolutionFeedback" else "5": 196605, "41": 3})
                 self.assertEqual(final["pixel_counts"]["peak"], {
                     "origin": "top-left", "x": 0, "y": 0, "channel": 0, "golden_rgba": [255, 255, 255, 255],
                     "candidate_rgba": [214, 214, 214, 255],
@@ -270,7 +277,7 @@ class HarnessContractTests(unittest.TestCase):
             report.write_text(json.dumps(evidence))
             results = root / "results.tsv"
             tolerance = {"motionBlur": 3.001, "convolutionFeedback": 41.001,
-                         "synth3d_cellularAutomata3d": 178.001}.get(name, 2.001)
+                         "synth3d_cellularAutomata3d": 178.001, "reactionDiffusion": 41.001}.get(name, 2.001)
             results.write_text(f"{name}\tACCUMULATE\t{report}\t{tolerance}\t0.98\n")
             written = subprocess.run(
                 [sys.executable, str(parity / "write-ledger.py"), "--root", str(root),
@@ -303,13 +310,13 @@ class HarnessContractTests(unittest.TestCase):
             self.assertTrue((sweep_output / f"{name}.json").exists())
             defects = ["missing_frame", "wrong_pin", "wide_frame", "failed_frame", "invalid_mean",
                        "wrong_frame_bound", "wrong_capture", "early_wide"]
-            if name in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d"):
+            if name in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion"):
                 defects.append("low_f8_ssim")
-            if name in ("convolutionFeedback", "synth3d_cellularAutomata3d"):
+            if name in ("convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion"):
                 defects.extend(("missing_histogram", "wrong_mean"))
-            if name == "synth3d_cellularAutomata3d":
+            if name in ("synth3d_cellularAutomata3d", "reactionDiffusion"):
                 defects.append("plausible_wrong_histogram")
-            if name in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d"):
+            if name in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion"):
                 defects.extend(("missing_counts", "invalid_counts", "plausible_wrong_counts"))
             for defect in defects:
                 with self.subTest(defect=defect):
@@ -332,7 +339,7 @@ class HarnessContractTests(unittest.TestCase):
                         invalid["frames"][0]["report"]["max_abs_diff"] = 3.0
                     elif defect == "low_f8_ssim":
                         invalid["frames"][-1]["report"]["ssim"] = {
-                            "convolutionFeedback": 0.9947, "synth3d_cellularAutomata3d": 0.9967,
+                            "convolutionFeedback": 0.9947, "synth3d_cellularAutomata3d": 0.9967, "reactionDiffusion": 0.9878,
                         }.get(name, 0.9998)
                     elif defect == "missing_counts":
                         del invalid["frames"][-1]["pixel_counts"]
@@ -344,7 +351,7 @@ class HarnessContractTests(unittest.TestCase):
                         invalid["frames"][-1]["report"]["mean_abs_diff"] = 0.5
                     elif defect == "plausible_wrong_histogram":
                         histogram = invalid["frames"][-1]["pixel_counts"]["pixel_max_histogram"]
-                        histogram["0"] -= 1
+                        histogram["0" if name == "synth3d_cellularAutomata3d" else "5"] -= 1
                         histogram["1"] = 1
                     else:
                         invalid["frames"][0]["pixel_counts"]["different_channels"] -= 1
@@ -363,15 +370,16 @@ class HarnessContractTests(unittest.TestCase):
             self.assertNotEqual(changed_fixture.returncode, 0, changed_fixture.stdout + changed_fixture.stderr)
             self.assertIn(f"{name}\tFAIL\t", (out / "ledger.tsv").read_text())
 
-            if name in ("convolutionFeedback", "synth3d_cellularAutomata3d"):
-                rgba = (249, 249, 249, 255) if name == "convolutionFeedback" else (254, 254, 254, 255)
+            if name in ("convolutionFeedback", "synth3d_cellularAutomata3d", "reactionDiffusion"):
+                rgba = (254, 254, 254, 255) if name == "synth3d_cellularAutomata3d" else (249, 249, 249, 255)
                 (fixtures / f"{name}.f0008.png").write_bytes(fixture_png(rgba))
                 high_mean = subprocess.run(result.args, cwd=root, capture_output=True, text=True, env=environment)
                 self.assertNotEqual(high_mean.returncode, 0, high_mean.stdout + high_mean.stderr)
                 measured = json.loads(Path(str(report) + ".frames/8.json").read_text())
                 self.assertLessEqual(measured["max_abs_diff"], tolerance)
-                self.assertGreaterEqual(measured["ssim"], 0.9948 if name == "convolutionFeedback" else 0.9968)
-                self.assertAlmostEqual(measured["mean_abs_diff"], 4.5 if name == "convolutionFeedback" else 0.75,
+                self.assertGreaterEqual(measured["ssim"], {"convolutionFeedback": 0.9948,
+                                        "synth3d_cellularAutomata3d": 0.9968, "reactionDiffusion": 0.9879}[name])
+                self.assertAlmostEqual(measured["mean_abs_diff"], 0.75 if name == "synth3d_cellularAutomata3d" else 4.5,
                                        delta=0.0001)
 
     def test_single_and_batch_exporters_use_the_full_clean_start_protocol(self):
