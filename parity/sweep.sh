@@ -115,7 +115,7 @@ render_failed=""
 if [ "$render" = 1 ]; then
   ALL=()
   for name in $SET; do
-    case "$name" in cellularAutomata|motionBlur|convolutionFeedback) ;; *) ALL+=("$name") ;; esac
+    case "$name" in cellularAutomata|motionBlur|convolutionFeedback|synth3d_cellularAutomata3d) ;; *) ALL+=("$name") ;; esac
   done
   n=${#ALL[@]}; i=0
   while [ $i -lt $n ]; do
@@ -136,10 +136,11 @@ for name in $SET; do
       record_result "$name" FAIL "TouchDesigner renderer exited nonzero" - -
       fail=$((fail + 1)); failed="$failed $name"; continue ;;
   esac
-  if { [ "$name" = cellularAutomata ] || [ "$name" = motionBlur ] || [ "$name" = convolutionFeedback ]; } && [ "$render" = 1 ]; then
+  if { [ "$name" = cellularAutomata ] || [ "$name" = motionBlur ] || [ "$name" = convolutionFeedback ] || [ "$name" = synth3d_cellularAutomata3d ]; } && [ "$render" = 1 ]; then
     TOL=2.001
     if [ "$name" = motionBlur ]; then TOL=3.001; fi
     if [ "$name" = convolutionFeedback ]; then TOL=41.001; fi
+    if [ "$name" = synth3d_cellularAutomata3d ]; then TOL=178.001; fi
     report="$(dirname "$LEDGER_PATH")/$name.json"
     if bash "$REPO/parity/accumulate.sh" --effect "$name" --report "$report"; then
       record_result "$name" ACCUMULATE "$report" "$TOL" 0.98

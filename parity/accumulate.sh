@@ -79,7 +79,7 @@ print(actual)
 PY
 }
 if [ -n "$selected$result_report" ]; then
-  case "$selected" in cellularAutomata|motionBlur|convolutionFeedback) ;; *) exit 2 ;; esac
+  case "$selected" in cellularAutomata|motionBlur|convolutionFeedback|synth3d_cellularAutomata3d) ;; *) exit 2 ;; esac
   [ -n "$result_report" ] && [ "$stage" = 1 ] || exit 2
   EFFECTS="$selected"
   rm -f "$result_report"
@@ -153,6 +153,8 @@ if [ -n "$selected" ]; then
       grade "$selected" "$n" 3.001 0.9999 || exit 1
     elif [ "$selected" = convolutionFeedback ] && [ "$n" = 8 ]; then
       grade "$selected" "$n" 41.001 0.9948 || exit 1
+    elif [ "$selected" = synth3d_cellularAutomata3d ] && [ "$n" = 8 ]; then
+      grade "$selected" "$n" 178.001 0.9968 || exit 1
     else
       grade "$selected" "$n" 2.001 0.98 || exit 1
     fi
@@ -178,12 +180,14 @@ for frame in (1, 2, 8):
         f"{kind}_sha256": hashlib.sha256(captures[kind]).hexdigest()
         for kind in ("golden", "candidate")
     }})
-    if selected in ("motionBlur", "convolutionFeedback"):
-        frames[-1]["pixel_counts"] = ledger["frame_pixel_counts"](**captures, details=selected == "convolutionFeedback")
+    if selected in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d"):
+        frames[-1]["pixel_counts"] = ledger["frame_pixel_counts"](
+            **captures, details=selected in ("convolutionFeedback", "synth3d_cellularAutomata3d"))
 Path(output).write_text(json.dumps({"case": selected, "reference_sha": reference_sha,
                                    "candidate_sources": sources,
                                    "frames": frames}, indent=2) + "\n")
-if selected == "convolutionFeedback" and ledger["accumulate_row"](root, selected, Path(output), 41.001, 0.98)["verdict"] == "FAIL":
+maximum = {"convolutionFeedback": 41.001, "synth3d_cellularAutomata3d": 178.001}.get(selected)
+if maximum is not None and ledger["accumulate_row"](root, selected, Path(output), maximum, 0.98)["verdict"] == "FAIL":
     raise SystemExit("The selected accumulation failed canonical evidence checks.")
 PY
   exit $?

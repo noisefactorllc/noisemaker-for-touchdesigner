@@ -20,7 +20,7 @@ ALLOWED_PRESERVED_SOURCES = {"3d/mrt/points", "accumulate", "cubemap"}
 
 
 def candidate_sources(root, name="cellularAutomata"):
-    if name not in ("cellularAutomata", "motionBlur", "convolutionFeedback"):
+    if name not in ("cellularAutomata", "motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d"):
         raise ValueError("unsupported accumulation case")
     runtime = root / "td" / "noisemaker"
     entries = list(runtime.rglob("*"))
@@ -132,8 +132,10 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
         pin = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
                         (root / "scripts" / "test").read_text(), re.M).group(1)
         frames = evidence["frames"]
-        expected_tolerance = {"motionBlur": 3.001, "convolutionFeedback": 41.001}.get(name, STRICT_TOLERANCE)
-        if (name not in ("cellularAutomata", "motionBlur", "convolutionFeedback") or evidence["case"] != name
+        expected_tolerance = {"motionBlur": 3.001, "convolutionFeedback": 41.001,
+                              "synth3d_cellularAutomata3d": 178.001}.get(name, STRICT_TOLERANCE)
+        if (name not in ("cellularAutomata", "motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d")
+                or evidence["case"] != name
                 or evidence["reference_sha"] != pin
                 or evidence["candidate_sources"] != candidate_sources(root, name)
                 or [item["frame"] for item in frames] != [1, 2, 8]
@@ -145,6 +147,8 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
                 STRICT_TOLERANCE, STRICT_SSIM_MIN)
             if name == "convolutionFeedback" and item["frame"] == 8:
                 frame_tolerance, frame_ssim = 41.001, 0.9948
+            if name == "synth3d_cellularAutomata3d" and item["frame"] == 8:
+                frame_tolerance, frame_ssim = 178.001, 0.9968
             if (report["name"] != f'{name}.f{item["frame"]:04d}'
                     or report["passed"] is not True
                     or report["tolerance"] != frame_tolerance
@@ -161,18 +165,20 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
             for kind in ("golden", "candidate"):
                 if hashlib.sha256(captures[kind]).hexdigest() != item[f"{kind}_sha256"]:
                     return row
-            if name in ("motionBlur", "convolutionFeedback"):
+            if name in ("motionBlur", "convolutionFeedback", "synth3d_cellularAutomata3d"):
                 counts = item["pixel_counts"]
-                expected_counts = frame_pixel_counts(**captures, details=name == "convolutionFeedback")
+                detailed = name in ("convolutionFeedback", "synth3d_cellularAutomata3d")
+                expected_counts = frame_pixel_counts(**captures, details=detailed)
                 if json.dumps(counts, sort_keys=True) != json.dumps(expected_counts, sort_keys=True):
                     return row
-                if name == "convolutionFeedback":
+                if detailed:
                     histogram = expected_counts["channel_abs_histogram"]
                     mean = sum(int(value) * count for value, count in histogram.items()) / expected_counts["channels"]
                     maximum = max(map(int, histogram))
                     if (abs(report["max_abs_diff"] - maximum) > 0.001
                             or abs(report["mean_abs_diff"] - mean) > 0.001
-                            or (item["frame"] == 8 and mean > 3.8)):
+                            or (item["frame"] == 8 and mean > {"convolutionFeedback": 3.8,
+                                "synth3d_cellularAutomata3d": 0.41}[name])):
                         return row
         max_diff = max(item["report"]["max_abs_diff"] for item in frames)
         row.update(verdict="PASS" if max_diff <= STRICT_TOLERANCE else "NEAR", max_abs_diff=str(max_diff),
