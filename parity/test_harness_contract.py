@@ -5,15 +5,27 @@ import importlib.util
 import json
 import os
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
 import unittest
+import zlib
 from pathlib import Path
 from unittest import mock
 
 
 REPO = Path(__file__).resolve().parents[1]
+
+
+def solid_fixture_png(rgba):
+    def chunk(kind, data):
+        return (struct.pack(">I", len(data)) + kind + data
+                + struct.pack(">I", zlib.crc32(kind + data)))
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", 256, 256, 8, 6, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress((b"\0" + bytes(rgba) * 256) * 256))
+            + chunk(b"IEND", b""))
 
 
 def load_stage_coverage():
@@ -107,14 +119,39 @@ class HarnessContractTests(unittest.TestCase):
             (root / "scripts" / "test").write_text('NM_REFERENCE_SHA_PINNED="' + "a" * 40 + '"\n')
             (out / "_render_set.txt").write_text(name + "\n")
             (parity / "programs" / f"{name}.dsl").write_text(f"{name}().write(o0)\n")
+            fixtures = root / "fixtures"
+            fixtures.mkdir()
+            (fixtures / "golden.png").write_bytes(solid_fixture_png((255, 255, 255, 255)))
+            for frame in (1, 2, 8):
+                rgba = (252, 252, 252, 253) if name == "motionBlur" and frame == 8 else (254, 254, 254, 255)
+                (fixtures / f"{name}.f{frame:04d}.png").write_bytes(solid_fixture_png(rgba))
+            image_stub = root / "image-stub" / "PIL"
+            image_stub.mkdir(parents=True)
+            (image_stub / "__init__.py").write_text(
+                "import struct,zlib,types,numpy as np\n"
+                "class Image:\n"
+                "    @staticmethod\n"
+                "    def open(handle):\n"
+                "        data=handle.read(); assert data[:8]==b'\\x89PNG\\r\\n\\x1a\\n'\n"
+                "        width,height,depth,color,compression,filtering,interlace=struct.unpack('>IIBBBBB',data[16:29])\n"
+                "        assert (depth,color,compression,filtering,interlace)==(8,6,0,0,0)\n"
+                "        offset=8; compressed=b''\n"
+                "        while offset<len(data):\n"
+                "            length=struct.unpack('>I',data[offset:offset+4])[0]\n"
+                "            if data[offset+4:offset+8]==b'IDAT': compressed+=data[offset+8:offset+8+length]\n"
+                "            offset+=length+12\n"
+                "        rows=np.frombuffer(zlib.decompress(compressed),dtype=np.uint8).reshape(height,width*4+1)\n"
+                "        assert not np.any(rows[:,0])\n"
+                "        return types.SimpleNamespace(convert=lambda mode: rows[:,1:].reshape(height,width,4))\n"
+            )
             node = root / "bin" / "node"
             node.write_text(
                 "#!" + sys.executable + "\n"
-                "import pathlib,sys\nfrom PIL import Image\n"
+                "import pathlib,shutil,sys\n"
                 "manifest=pathlib.Path(sys.argv[2]).read_text().splitlines()\n"
                 f"assert len(manifest)==1 and manifest[0].split()[0]=={name!r}\n"
                 "out=pathlib.Path(sys.argv[3]); out.mkdir(parents=True)\n"
-                f"Image.new('RGBA',(256,256),(255,255,255,255)).save(out/{name + '.golden.png'!r})\n"
+                f"shutil.copyfile({str(fixtures / 'golden.png')!r},out/{name + '.golden.png'!r})\n"
                 f"(out/{name + '.graph.json'!r}).write_text('{{}}')\n"
                 "import os\n"
                 "if os.environ.get('TEST_DIRTY_AFTER_GOLDENS'):\n"
@@ -135,13 +172,7 @@ class HarnessContractTests(unittest.TestCase):
             (parity / "evolve.sh").write_text(
                 f'test "$1" = {name} || exit 19\n'
                 'touch evolve-called\n'
-                + sys.executable + " - <<'PY'\n"
-                "from pathlib import Path\nfrom PIL import Image\n"
-                f"name={name!r}\n"
-                "for frame in (1,2,8):\n"
-                "    rgba=(252,252,252,253) if name=='motionBlur' and frame==8 else (254,254,254,255)\n"
-                "    Image.new('RGBA',(256,256),rgba).save(Path('parity/out')/f'{name}.f{frame:04d}.candidate.png')\n"
-                "PY\n"
+                'for f in 0001 0002 0008; do cp "fixtures/$1.f$f.png" "parity/out/$1.f$f.candidate.png"; done\n'
             )
             (parity / "compare.py").write_text(
                 "import argparse,json\n"
@@ -157,6 +188,7 @@ class HarnessContractTests(unittest.TestCase):
             report = root / f"{name}.json"
             environment = dict(os.environ, PATH=os.pathsep.join((str(root / "bin"),
                                str(Path(sys.executable).parent), os.environ["PATH"])),
+                               PYTHONPATH=os.pathsep.join((str(image_stub.parent), os.environ.get("PYTHONPATH", ""))),
                                NM_REFERENCE_SHA="a" * 40, NM_REFERENCE_ROOT=str(root / "authority"),
                                TEST_REFERENCE_HEAD="a" * 40,
                                TEST_REFERENCE_DIRTY_MARKER=str(root / "reference-dirty"))
@@ -201,7 +233,7 @@ class HarnessContractTests(unittest.TestCase):
             written = subprocess.run(
                 [sys.executable, str(parity / "write-ledger.py"), "--root", str(root),
                  "--results", str(results), "--expected-set", str(out / "_render_set.txt"),
-                 "--output", str(out / "ledger.tsv")], capture_output=True, text=True,
+                 "--output", str(out / "ledger.tsv")], capture_output=True, text=True, env=environment,
             )
             self.assertEqual(written.returncode, 0, written.stdout + written.stderr)
             summary = subprocess.run(
@@ -259,17 +291,17 @@ class HarnessContractTests(unittest.TestCase):
                     else:
                         invalid["frames"][-1]["pixel_counts"]["pixels_over_2"] -= 1
                     report.write_text(json.dumps(invalid))
-                    rejected = subprocess.run(written.args, capture_output=True, text=True)
+                    rejected = subprocess.run(written.args, capture_output=True, text=True, env=environment)
                     self.assertNotEqual(rejected.returncode, 0, rejected.stdout + rejected.stderr)
                     self.assertIn(f"{name}\tFAIL\t", (out / "ledger.tsv").read_text())
             report.write_text(json.dumps(evidence))
             runtime_source.write_text("version = 2\n")
-            stale = subprocess.run(written.args, capture_output=True, text=True)
+            stale = subprocess.run(written.args, capture_output=True, text=True, env=environment)
             self.assertNotEqual(stale.returncode, 0, stale.stdout + stale.stderr)
             self.assertIn(f"{name}\tFAIL\t", (out / "ledger.tsv").read_text())
             runtime_source.write_text("version = 1\n")
             (parity / "programs" / f"{name}.dsl").write_text(f"{name}().write(o1)\n")
-            changed_fixture = subprocess.run(written.args, capture_output=True, text=True)
+            changed_fixture = subprocess.run(written.args, capture_output=True, text=True, env=environment)
             self.assertNotEqual(changed_fixture.returncode, 0, changed_fixture.stdout + changed_fixture.stderr)
             self.assertIn(f"{name}\tFAIL\t", (out / "ledger.tsv").read_text())
 
