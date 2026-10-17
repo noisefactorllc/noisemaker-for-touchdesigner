@@ -87,7 +87,8 @@ See `docs/TD-PLATFORM-NOTES.md`.
 
 - **Not headless:** TouchDesigner needs a logged-in GPU desktop session.
 - **Licensing:** the free Non-Commercial tier renders without a watermark but caps resolution at
-  1280×1280, so 3D volumes are clamped by `NM_MAX_VOLUME_SIZE` (default 32). A fresh install stops
+  1280×1280. Volume atlases taller than that are stored folded into bands, so 3D volumes reach
+  volumeSize 64 (`NM_MAX_VOLUME_SIZE`, default 64; flow3d stays at 32). A fresh install stops
   at an activation modal until a Derivative account activates it in the GUI.
 - **No offline `.toe`/`.tox` authoring:** the network is built from Python at startup.
 

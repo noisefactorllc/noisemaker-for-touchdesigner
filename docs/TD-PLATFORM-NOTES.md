@@ -136,11 +136,14 @@ texture); `render3d` / `renderLit3d` then raymarch it. Two TD-specific fixes (bo
 2. **Non-Commercial license 1280 cook-resolution cap.** A 64×4096 atlas `glslTOP` (params verified at
    build: custom 64×4096) **cooks at 20×1280** (0.3125× = 1280/4096) under the license cap, breaking
    `atlasTexel`. (Square ≤1280 textures are fine — the agent state cooks at a full 1024×1024.)
-   `_cap_volume_size` clamps every `volumeSize*` uniform to **NM_MAX_VOLUME_SIZE (default 32 → a
-   32×1024 atlas, under the cap)** so the texture size and the shader `volumeSize` stay consistent. The
-   render then differs from the volumeSize-64 reference (lower 3D resolution) but is **correct** —
-   validated apples-to-apples against volumeSize-32 reference goldens (max-diff 1, ssim ~1.0). Raise
-   `NM_MAX_VOLUME_SIZE` on a Commercial/Educational license (which has no 1280 cap).
+   Effect passes therefore store an atlas taller than 1280 FOLDED (`_volume_fold`): 16 slices per
+   band, four bands side by side, plus one marker column (64 → 257×1024). A writing pass runs its
+   `main` on the unfolded `gl_FragCoord`; a reading pass routes `texelFetch` through
+   `nm_volumeFetch`, which folds the coordinate for inputs of the folded size. `_cap_volume_size`
+   clamps every `volumeSize*` uniform to **NM_MAX_VOLUME_SIZE (default 64)**; a graph with a flow3d
+   volume deposit stays at 32, because that trail is drawn by a point deposit and read with filtered
+   `texture()` calls the fold does not remap. heightmap3d_landscape (default volumeSize 64) matches
+   its reference with max-diff 1. Raise `NM_MAX_VOLUME_SIZE` on a Commercial/Educational license.
    - The **orbit-camera** gens (noise3d/fractal3d/cell3d/shape3d/renderLit3d) view the volume from
      *outside* at a distance, so the raymarch averages the 64→32 cap away and their default-`volumeSize:64`
      parity DSLs still hit max-diff 1 against a 64 golden. **flythrough3d is the one exception**: its

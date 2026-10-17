@@ -164,6 +164,7 @@ class TDBackend:
         self._mrt_diag_done = False                 # one-time Render Select param introspection log
         self._mrt_format_warned = set()             # pass ids warned about common-format demotion
         self._tex_res = {}                          # texId -> (w,h) resolved (for feedback sizing)
+        self._folded_tex = {}                       # texId -> volume atlas fold (see _volume_fold)
         self.has_feedback = False                  # graph has a cross-frame cycle (drive N frames)
         self._points_cam = None                    # shared dummy ortho Camera COMP for deposit renders
 
@@ -434,17 +435,30 @@ class TDBackend:
                     return True
         return False
 
+    def _volume_fold_for(self, spec, uniforms):
+        """The fold for a pass output that is a 3D volume atlas (`volumeSize x volumeSize^2`) taller
+        than TD's cook-resolution cap, else None."""
+        if spec is None or not isinstance(spec.width, dict) or not isinstance(spec.height, dict):
+            return None
+        param = spec.width.get('param')
+        if not param or spec.height.get('param') != param or spec.height.get('power') != 2:
+            return None
+        vs = int(_dim.resolve_dimension(spec.width, self.width, uniforms))
+        return _volume_fold(vs)
+
     def _cap_volume_size(self, graph):
         """Clamp the 3D-volume atlas size to fit TD's cook-resolution limit.
 
         synth3d volumes are 2D atlases of `volumeSize x volumeSize^2` (default 64 -> 64x4096). The TD
         Non-Commercial license caps cook resolution at 1280, which silently downscales a 64x4096 TOP
-        to 20x1280 and breaks `atlasTexel` indexing. Clamp every `volumeSize*` uniform to
-        NM_MAX_VOLUME_SIZE (default 32 -> a 32x1024 atlas, under the cap) so the texture size AND the
-        shaders' `volumeSize` stay consistent. Platform adaptation only (NOT a compiler change): the
-        render differs from the volumeSize-64 reference, but the 3D raymarch runs correctly within the
-        license. Raise NM_MAX_VOLUME_SIZE on a Commercial/Educational license (which has no 1280 cap)."""
+        to 20x1280 and breaks `atlasTexel` indexing. Effect passes store such an atlas folded into
+        bands under the cap (see _volume_fold), which reaches volumeSize 64. Every `volumeSize*`
+        uniform is clamped to NM_MAX_VOLUME_SIZE (default 64). The flow3d trail is written by a
+        point deposit and read with filtered `texture()` calls that the fold does not remap, so a
+        graph with a volume deposit stays clamped to 32 (a 32x1024 atlas, under the cap)."""
         cap = _MAX_VOLUME_SIZE
+        if any(p.is_scatter and 'stateTex1' in p.inputs for p in graph.passes):
+            cap = min(cap, _UNFOLDED_VOLUME_SIZE)
         capped = False
         for p in graph.passes:
             for k, v in list(p.uniforms.items()):
@@ -470,8 +484,15 @@ class TDBackend:
         # the reference emits `1`/`0` and leans on WebGL2/ANGLE accepting `if (1)`, but TD's strict
         # #version 460 core rejects a non-bool `if` condition (the curl `if (RIDGES)` compile error).
         tag = self._unique_name(p.id)
+        spec = self._primary_output_spec(p, graph)
+        fold_out = self._volume_fold_for(spec, p.uniforms)
+        fold_in = next((self._folded_tex[t] for t in p.inputs.values() if t in self._folded_tex),
+                       None)
+        if fold_in is None and fold_out is not None and set(p.inputs.values()) & set(p.outputs.values()):
+            fold_in = fold_out                      # reads its own previous state via feedback
         dat = self.parent.create(_td('textDAT'), tag + '_src')
-        dat.text = _assemble_effect_source(frag, _defines_for_pass(p))
+        dat.text = _apply_volume_fold(_assemble_effect_source(frag, _defines_for_pass(p)),
+                                      fold_out, fold_in)
         self.ops.append(dat)
 
         n_inputs = len(input_order)
@@ -485,9 +506,8 @@ class TDBackend:
         # A GLSL TOP's MRT attachments must all share one format. Pick the widest common format
         # that fits Metal's aggregate attachment budget; Render Select TOPs below convert each
         # attachment back to its graph-declared logical format.
-        spec = self._primary_output_spec(p, graph)
         mrt_format = _mrt_storage_format(p, graph) if p.is_mrt else None
-        self._apply_res_format(g, spec, p.uniforms, format_override=mrt_format)
+        self._apply_res_format(g, spec, p.uniforms, format_override=mrt_format, fold=fold_out)
         if p.is_mrt:
             requested_bytes = max(
                 (_FORMAT_BYTES.get(getattr(graph.spec_for(tex_id), 'fmt', None), 8)
@@ -575,6 +595,8 @@ class TDBackend:
             _res = (self.width, self.height)
         for _tid in p.outputs.values():
             self._tex_res[_tid] = _res
+            if fold_out is not None:
+                self._folded_tex[_tid] = fold_out
 
         # register outputs. MRT: each attachment is a distinct color buffer reached through a Render
         # Select TOP — the Select (not the GLSL TOP) is the readable producer for that texId.
@@ -634,6 +656,8 @@ class TDBackend:
             self._warn('blit %s has no resolvable src (%s)' % (p.id, src_id))
         for attach, tex_id in p.outputs.items():
             self.tex_top[tex_id] = n
+            if src_id in self._folded_tex:
+                self._folded_tex[tex_id] = self._folded_tex[src_id]
             if self.surfaces is not None:
                 self.surfaces.note_write(tex_id, n)
         return n
@@ -866,7 +890,7 @@ class TDBackend:
         tex_id = p.outputs.get('color') or next(iter(p.outputs.values()), None)
         return graph.spec_for(tex_id) if tex_id else None
 
-    def _apply_res_format(self, g, spec, uniforms=None, format_override=None):
+    def _apply_res_format(self, g, spec, uniforms=None, format_override=None, fold=None):
         w = self.width
         h = self.height
         fmt = format_override or 'rgba16float'
@@ -878,6 +902,8 @@ class TDBackend:
             h = _dim.resolve_dimension(spec.height, self.height, uniforms)
             if format_override is None:
                 fmt = FORMAT_MAP.get(spec.fmt, 'rgba16float')
+        if fold is not None:
+            w, h = fold['w'], fold['h']
         _try(lambda: setattr(g.par, 'outputresolution', 'custom'))
         _try(lambda: setattr(g.par, 'resolutionw', int(w)))
         _try(lambda: setattr(g.par, 'resolutionh', int(h)))
@@ -910,9 +936,74 @@ def _glsl_lit(v):
     return str(v)
 
 
-# 3D volume atlas size cap (see TDBackend._cap_volume_size). Default 32 (a 32x1024 atlas) fits TD's
-# Non-Commercial 1280 cook-resolution cap; raise on a Commercial/Educational license.
-_MAX_VOLUME_SIZE = int(os.environ.get('NM_MAX_VOLUME_SIZE', '32'))
+# 3D volume atlas size cap (see TDBackend._cap_volume_size). Default 64: a folded 64-voxel atlas fits
+# TD's Non-Commercial 1280 cook-resolution cap; raise on a Commercial/Educational license.
+_MAX_VOLUME_SIZE = int(os.environ.get('NM_MAX_VOLUME_SIZE', '64'))
+_UNFOLDED_VOLUME_SIZE = 32          # largest volumeSize whose unfolded atlas (32x1024) fits the cap
+_COOK_RESOLUTION_CAP = 1280         # TD Non-Commercial maximum TOP width and height
+
+
+def _volume_fold(vs):
+    """Fold a `vs x vs^2` volume atlas into bands that fit the cook-resolution cap, or None when the
+    unfolded atlas already fits (or no fold fits).
+
+    The reference atlas stores voxel (x, y, z) at (x, y + z*vs). The fold keeps `m` slices per band
+    (the largest divisor of vs with vs*m <= cap) and lays the `vs/m` bands side by side:
+    (x + (z / m)*vs, y + (z % m)*vs). One extra marker column makes the folded size distinct, so a
+    reading shader recognises a folded input from its textureSize alone."""
+    if vs * vs <= _COOK_RESOLUTION_CAP:
+        return None
+    slices = max(d for d in range(1, vs + 1) if vs % d == 0 and vs * d <= _COOK_RESOLUTION_CAP)
+    bands = vs // slices
+    if vs * bands + 1 > _COOK_RESOLUTION_CAP:
+        return None
+    return {'vs': vs, 'm': slices, 'bands': bands, 'w': vs * bands + 1, 'h': vs * slices}
+
+
+_FOLD_READ = '''vec4 nm_volumeFetch(sampler2D s, ivec2 c, int l) {
+    if (textureSize(s, 0) == ivec2(NM_FOLD_W, NM_FOLD_H)) {
+        int z = c.y / NM_FOLD_VS;
+        c = ivec2(c.x + (z / NM_FOLD_M) * NM_FOLD_VS, c.y - z * NM_FOLD_VS + (z % NM_FOLD_M) * NM_FOLD_VS);
+    }
+    return texelFetch(s, c, l);
+}
+#define texelFetch(s, c, l) nm_volumeFetch(s, c, l)
+'''
+
+_FOLD_WRITE_MAIN = '''
+void main() {
+    ivec2 nm_p = ivec2(gl_FragCoord.xy);
+    int nm_band = nm_p.x / NM_FOLD_VS;
+    if (nm_band >= NM_FOLD_BANDS) return;
+    int nm_z = nm_band * NM_FOLD_M + nm_p.y / NM_FOLD_VS;
+    nm_FragCoord = vec4(float(nm_p.x - nm_band * NM_FOLD_VS) + 0.5,
+                        float(nm_p.y % NM_FOLD_VS + nm_z * NM_FOLD_VS) + 0.5, gl_FragCoord.zw);
+    nm_volumeMain();
+}
+'''
+
+
+def _apply_volume_fold(source, fold_out, fold_in):
+    """Make an effect pass read and/or write folded volume atlases (see _volume_fold).
+
+    A pass writing a folded atlas runs its original `main` as `nm_volumeMain` with `gl_FragCoord`
+    replaced by the unfolded reference atlas coordinate. A pass reading one routes `texelFetch`
+    through `nm_volumeFetch`, which folds the coordinate for inputs of the folded size."""
+    fold = fold_out or fold_in
+    if fold is None:
+        return source
+    header = ''.join('#define %s %d\n' % (k, fold[v]) for k, v in (
+        ('NM_FOLD_VS', 'vs'), ('NM_FOLD_M', 'm'), ('NM_FOLD_BANDS', 'bands'),
+        ('NM_FOLD_W', 'w'), ('NM_FOLD_H', 'h')))
+    if fold_in is not None:
+        header += _FOLD_READ
+    if fold_out is None:
+        return header + source
+    body = re.sub(r'\bgl_FragCoord\b', 'nm_FragCoord', source)
+    body, renamed = re.subn(r'\bvoid\s+main\s*\(\s*(?:void\s*)?\)', 'void nm_volumeMain()', body)
+    if renamed != 1:
+        raise ValueError('volume fold needs exactly one main(), found %d' % renamed)
+    return header + 'vec4 nm_FragCoord;\n' + body + _FOLD_WRITE_MAIN
 
 # Native macOS Apple-Silicon GPUs support at least 64 aggregate color-attachment bytes per sample.
 # TouchDesigner's GLSL TOP exposes no per-attachment formats, so MRT passes need one common format

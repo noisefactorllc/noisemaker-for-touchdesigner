@@ -283,6 +283,74 @@ class DepositRenderSettingsTests(unittest.TestCase):
         self.assertNotIn(".a)", text)
 
 
+class VolumeFoldTests(unittest.TestCase):
+    """Volume atlases taller than TD's 1280 cook cap are stored folded into bands."""
+
+    PRODUCER = (
+        "uniform int volumeSize;\n"
+        "layout(location = 0) out vec4 fragColor;\n"
+        "void main() {\n"
+        "    ivec2 atlas = ivec2(gl_FragCoord.xy);\n"
+        "    fragColor = vec4(atlas, 0.0, 1.0);\n"
+        "}\n"
+    )
+
+    def test_atlases_under_the_cap_are_not_folded(self):
+        self.assertIsNone(td_backend._volume_fold(32))
+        self.assertEqual(td_backend._apply_volume_fold(self.PRODUCER, None, None), self.PRODUCER)
+
+    def test_volume_size_64_folds_into_four_bands(self):
+        self.assertEqual(td_backend._volume_fold(64),
+                         {"vs": 64, "m": 16, "bands": 4, "w": 257, "h": 1024})
+
+    def test_fold_layout_round_trips_every_voxel(self):
+        fold = td_backend._volume_fold(64)
+        vs, m = fold["vs"], fold["m"]
+        seen = set()
+        for z in range(vs):
+            for y in range(0, vs, 7):
+                for x in range(0, vs, 9):
+                    r = y + z * vs                                  # reference atlas row
+                    zz = r // vs                                    # nm_volumeFetch
+                    px, py = x + (zz // m) * vs, r - zz * vs + (zz % m) * vs
+                    self.assertTrue(px < fold["w"] - 1 and py < fold["h"])
+                    band = px // vs                                 # folded main()
+                    uz = band * m + py // vs
+                    self.assertEqual((px - band * vs, py % vs + uz * vs), (x, r))
+                    seen.add((px, py))
+        self.assertEqual(len(seen), vs * len(range(0, vs, 7)) * len(range(0, vs, 9)))
+
+    def test_writer_runs_original_main_on_unfolded_coordinates(self):
+        fold = td_backend._volume_fold(64)
+        source = td_backend._apply_volume_fold(self.PRODUCER, fold, None)
+        self.assertIn("void nm_volumeMain() {", source)
+        self.assertIn("ivec2 atlas = ivec2(nm_FragCoord.xy);", source)
+        self.assertEqual(source.count("void main()"), 1)
+        self.assertIn("#define NM_FOLD_W 257\n", source)
+        self.assertNotIn("#define texelFetch", source)
+
+    def test_reader_routes_texel_fetch_through_the_fold(self):
+        fold = td_backend._volume_fold(64)
+        reader = "void main() { vec4 v = texelFetch(volumeCache, ivec2(1, 2 + 3 * 64), 0); }\n"
+        source = td_backend._apply_volume_fold(reader, None, fold)
+        self.assertIn("#define texelFetch(s, c, l) nm_volumeFetch(s, c, l)", source)
+        self.assertTrue(source.endswith(reader))
+
+    def test_flow3d_graph_keeps_the_unfolded_cap(self):
+        from noisemaker.runtime.render_graph import Pass
+
+        deposit = Pass.from_dict({"id": "dep", "drawMode": "points", "uniforms": {"volumeSize": 64},
+                                  "inputs": {"stateTex1": "s1", "stateTex2": "s2"},
+                                  "outputs": {"fragColor": "trail"}})
+        effect = Pass.from_dict({"id": "fx", "uniforms": {"volumeSize": 64}, "outputs": {}})
+        backend = td_backend.TDBackend(SimpleNamespace(), "/unused")
+        backend._cap_volume_size(SimpleNamespace(passes=[deposit, effect]))
+        self.assertEqual(effect.uniforms["volumeSize"], 32)
+        effect.uniforms["volumeSize"] = 64
+        backend._cap_volume_size(SimpleNamespace(passes=[effect]))
+        self.assertEqual(effect.uniforms["volumeSize"], 64)
+
+
 class DepositShaderSourceTests(unittest.TestCase):
     """The hand-written deposit shaders keep the reference's expressions."""
 
