@@ -12,8 +12,14 @@ fresh network's Feedback TOPs are black) then exactly N-frames-from-zero with ti
 
 Driven by an Execute DAT authored by build_evolve_toe.py:
     onStart      -> evolve_setup()          build network, start non-real-time playback
-    onFrameStart -> evolve_frame_start(f)    advance the engine `time` uniform
-    onFrameEnd   -> evolve_frame_end(f)      cook + capture at sample frames; quit at the end
+    onFrameStart -> evolve_frame_start(f)    capture due samples, advance `time`, cook one step
+    onFrameEnd   -> evolve_frame_end(f)      capture due samples; quit at the end
+
+TouchDesigner snapshots each Feedback TOP's target at its own end of frame, BEFORE onFrameEnd
+runs. A cook issued from onFrameEnd therefore misses that frame's snapshot, and the next frame
+re-reads the older state (one lost step, first seen at frame 3). The graph is cooked from
+onFrameStart instead, and steps are counted by Feedback TOP latches (one per absolute frame in
+which the graph cooks), not by timeline frame numbers.
 
 Env knobs:
     NM_PROGRAM   program name; dsl at parity/corpus/<name>.dsl (default 'navierStokes')
@@ -178,56 +184,82 @@ def evolve_setup():
     log('playback armed — evolving %d frames' % FRAMES)
 
 
+def _steps():
+    """Simulation steps so far: each Feedback TOP latches once per absolute frame in which the
+    graph cooks. A graph without feedback counts the frames this driver cooked."""
+    counts = [t.totalCooks for t in getattr(_state['nm'].pipeline.backend, '_feedback', {}).values()
+              if t is not None]
+    return max(counts) if counts and max(counts) > 0 else _state.get('cooked', 0)
+
+
+def _save_sample(step, out):
+    path = os.path.join(OUT, '%s.f%04d.candidate.png' % (PROG, step))
+    try:
+        saved = out.save(path)
+        stats = ''
+        try:
+            a = out.numpyArray()           # HxWx4 float (TD: 0..1 for fixed, raw for float)
+            import numpy as _np
+            mag = _np.hypot(a[..., 0], a[..., 1])   # R,G = velocity for sim-state surfaces
+            al = a[..., 3]
+            nan = int(_np.isnan(a).sum())
+            stats = (' R[%.3f,%.3f] G[%.3f,%.3f] B.mean=%.3f A[%.3f,%.3f]mean=%.3f'
+                     ' velMag(max=%.3f mean=%.4f) nan=%d') % (
+                float(a[..., 0].min()), float(a[..., 0].max()),
+                float(a[..., 1].min()), float(a[..., 1].max()),
+                float(a[..., 2].mean()), float(al.min()), float(al.max()), float(al.mean()),
+                float(mag.max()), float(mag.mean()), nan)
+        except Exception:
+            pass
+        log('sample f%04d -> %s  (%dx%d)%s' % (
+            step, os.path.basename(str(saved)), out.width, out.height, stats))
+    except Exception:
+        log('sample f%04d save FAIL: %s' % (step, traceback.format_exc().strip().splitlines()[-1]))
+
+
+def _capture_due():
+    """Save every sample whose step the graph has reached; quit after the last step."""
+    out = _state.get('out')
+    sampled = _state.setdefault('sampled', set())
+    n = _steps()
+    for s in SAMPLES:
+        if s <= n and s not in sampled:
+            sampled.add(s)
+            if s == n:
+                _save_sample(s, out)
+            else:
+                log('sample f%04d MISSED: the graph was already at step %d' % (s, n))
+    if n >= FRAMES:
+        log('=== DONE %d frames, %d samples ===' % (FRAMES, len(SAMPLES)))
+        _quit()
+
+
 def evolve_frame_start(frame):
-    """Advance the engine `time` uniform before this frame cooks (called from onFrameStart)."""
+    """Capture due samples, then advance `time` and cook the next step (called from onFrameStart)."""
     nm = _state.get('nm')
-    if nm is None or _state.get('done'):
+    out = _state.get('out')
+    if nm is None or out is None or _state.get('done'):
         return
-    i = max(0, int(frame) - 1)
-    tt = (BASE_TIME + i * TIMESTEP) % 1.0
+    _capture_due()
+    if _state.get('done'):
+        return
+    tt = (BASE_TIME + _steps() * TIMESTEP) % 1.0
     try:
         nm.pipeline.set_time(tt)
     except Exception:
         pass
+    try:
+        out.cook(force=True)                    # pull the graph before the end-of-frame latch
+    except Exception:
+        pass
+    _state['cooked'] = _state.get('cooked', 0) + 1
 
 
 def evolve_frame_end(frame):
-    """Cook + capture at sample frames; quit after the last frame (called from onFrameEnd)."""
-    if _state.get('done'):
+    """Capture due samples; quit after the last step (called from onFrameEnd)."""
+    if _state.get('nm') is None or _state.get('out') is None or _state.get('done'):
         return
-    out = _state.get('out')
-    f = int(frame)
-    if out is not None:
-        try:
-            out.cook(force=True)                # pull the graph (Feedback TOPs latch this frame)
-        except Exception:
-            pass
-    if f in SAMPLES and out is not None:
-        path = os.path.join(OUT, '%s.f%04d.candidate.png' % (PROG, f))
-        try:
-            saved = out.save(path)
-            stats = ''
-            try:
-                a = out.numpyArray()           # HxWx4 float (TD: 0..1 for fixed, raw for float)
-                import numpy as _np
-                mag = _np.hypot(a[..., 0], a[..., 1])   # R,G = velocity for sim-state surfaces
-                al = a[..., 3]
-                nan = int(_np.isnan(a).sum())
-                stats = (' R[%.3f,%.3f] G[%.3f,%.3f] B.mean=%.3f A[%.3f,%.3f]mean=%.3f'
-                         ' velMag(max=%.3f mean=%.4f) nan=%d') % (
-                    float(a[..., 0].min()), float(a[..., 0].max()),
-                    float(a[..., 1].min()), float(a[..., 1].max()),
-                    float(a[..., 2].mean()), float(al.min()), float(al.max()), float(al.mean()),
-                    float(mag.max()), float(mag.mean()), nan)
-            except Exception:
-                pass
-            log('sample f%04d -> %s  (%dx%d)%s' % (
-                f, os.path.basename(str(saved)), out.width, out.height, stats))
-        except Exception:
-            log('sample f%04d save FAIL: %s' % (f, traceback.format_exc().strip().splitlines()[-1]))
-    if f >= FRAMES:
-        log('=== DONE %d frames, %d samples ===' % (FRAMES, len(SAMPLES)))
-        _quit()
+    _capture_due()
 
 
 def _quit():

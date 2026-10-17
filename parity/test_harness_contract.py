@@ -13,6 +13,7 @@ import tempfile
 import unittest
 import zlib
 from pathlib import Path
+from types import SimpleNamespace
 from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
@@ -39,6 +40,82 @@ def load_stage_coverage():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+class EvolveFrameDriverTests(unittest.TestCase):
+    """td/parity_evolve.py must advance exactly one simulation step per sampled frame.
+
+    The fake clock models the measured TouchDesigner 2025.32820 behaviour: a Feedback TOP latches
+    once per absolute frame in which the graph cooks, and it snapshots its target at the end of
+    the frame BEFORE the Execute DAT's onFrameEnd runs. From the third frame on, TouchDesigner
+    also cooks the graph by itself at the start of each frame.
+    """
+
+    class _Clock:
+        frame = 0
+
+    class _Feedback:
+        def __init__(self):
+            self.totalCooks = 0
+            self.latched_frame = None
+            self.output = 0
+            self.snapshot = 0
+
+    class _Out:
+        def __init__(self, clock, feedback, saved):
+            self.clock, self.feedback, self.saved = clock, feedback, saved
+            self.state = 0
+            self.width = self.height = 1
+
+        def cook(self, force=False):
+            if self.feedback.latched_frame != self.clock.frame:
+                self.feedback.latched_frame = self.clock.frame
+                self.feedback.totalCooks += 1
+                self.feedback.output = self.feedback.snapshot
+            self.state = self.feedback.output + 1
+
+        def save(self, path):
+            self.saved[Path(path).name] = self.state
+            return path
+
+        def numpyArray(self):
+            raise RuntimeError('not needed')
+
+    def _run(self, frames, samples):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "td").mkdir()
+            (root / "parity" / "out").mkdir(parents=True)
+            source = (REPO / "td" / "parity_evolve.py").read_text()
+            clock, feedback, saved = self._Clock(), self._Feedback(), {}
+            out = self._Out(clock, feedback, saved)
+            project = SimpleNamespace(realTime=False, quit=lambda force=False: None)
+            namespace = {"__file__": str(root / "td" / "parity_evolve.py"),
+                         "__name__": "parity_evolve_test", "absTime": clock, "project": project}
+            env = {"NM_PROGRAM": "probe", "NM_FRAMES": str(frames),
+                   "NM_SAMPLES": ",".join(str(s) for s in samples)}
+            with mock.patch.dict(os.environ, env):
+                exec(compile(source, "parity_evolve.py", "exec"), namespace)
+            nm = SimpleNamespace(pipeline=SimpleNamespace(
+                set_time=lambda _t: None,
+                backend=SimpleNamespace(_feedback={"state": feedback})))
+            namespace["_state"].update(nm=nm, out=out, done=False)
+            for frame in range(1, frames + 3):
+                if namespace["_state"].get("done"):
+                    break
+                clock.frame += 1
+                if frame >= 3:
+                    out.cook()                      # TouchDesigner's own start-of-frame cook
+                namespace["evolve_frame_start"](frame)
+                feedback.snapshot = out.state       # end-of-frame snapshot, before onFrameEnd
+                namespace["evolve_frame_end"](frame)
+                clock.frame += 1 if frame == 1 else 0   # an absolute frame without callbacks
+            return saved
+
+    def test_each_sample_holds_exactly_its_step_count(self):
+        saved = self._run(8, (1, 2, 3, 8))
+        self.assertEqual(saved, {"probe.f0001.candidate.png": 1, "probe.f0002.candidate.png": 2,
+                                 "probe.f0003.candidate.png": 3, "probe.f0008.candidate.png": 8})
 
 
 class HarnessContractTests(unittest.TestCase):

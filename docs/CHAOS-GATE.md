@@ -54,10 +54,11 @@ not a defect.
 ### The target is stable, not broken
 No NaN, no white-out, bounded over 1800 frames. Two fixes ported from `noisemaker-for-unity@abb9578` /
 `noisemaker-for-godot@58a1b88` keep the deposit rate faithful (without them Metal blows out):
-- **density-cull precision** — `fract(particleID·GR)` loses float32 precision at ~1 M agents (the raw
-  product ≈ 6.5e5, where float32's step ≈ 0.06 quantizes `fract` into ~16 buckets → Metal
-  over-deposits ~8× vs ANGLE). A hi/lo split keeps the products small so `fract` stays exact
-  (`td/noisemaker/runtime/deposit_shaders.py`, `nm_particleRandom`).
+- **density cull** — `nm_particleRandom` (`td/noisemaker/runtime/deposit_shaders.py`) evaluates the
+  reference's own float32 `fract(particleID·GR)`. Its rounding at large ids is part of the reference
+  result. An earlier hi/lo split computed an exact `fract` instead and dropped agents that the
+  reference deposits (104 of 27,589 at stateSize 256). The flagship (stateSize 1024, density 0.78)
+  matches the reference strictly at frame 8 with the reference expression.
 - **nav input clamp to [0,1]** — bounds the HDR particle-field surface this pipeline hands
   navierStokes (`td/noisemaker/shaders/effects/synth/navierStokes/nsSplat.frag`, `ns.frag`; re-apply
   after re-transpile).

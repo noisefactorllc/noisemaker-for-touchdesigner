@@ -192,6 +192,118 @@ class DepositRefreshEngineUniformsTests(unittest.TestCase):
         self.assertEqual(record["bound"]["resolution"], [256.0, 256.0])
 
 
+class DepositRenderSettingsTests(unittest.TestCase):
+    """The deposit operators must receive values TouchDesigner 2025.32820 accepts.
+
+    The backend sets operator parameters through `_try`, which hides a rejected menu name. The
+    expected values are the installed menu names: GLSL MAT src/destblend use `sa`/`omsa`, and
+    Render TOP `antialias` uses `aa1` (a bare `'1'` selects menu index 1, 2x multisampling).
+    """
+
+    TD_BLEND_MENU = ("zero", "dcol", "omdcol", "sa", "omsa", "da", "omda", "sas", "one",
+                     "constantcol", "omconstantcol", "constanta", "omconstanta")
+
+    def _build(self, pass_dict, prior=False):
+        from noisemaker.runtime.render_graph import Pass
+
+        created = {}
+
+        def fake_op(name):
+            op = DepositRefreshEngineUniformsTests._fake_op(name)
+            created[name] = op
+            return op
+
+        class FakeParent:
+            def create(self, _operator_type, name):
+                return fake_op(name)
+
+        backend = td_backend.TDBackend(FakeParent(), "/unused", width=256, height=256, time=0)
+        backend.tex_top = {"xyz": fake_op("xyz_top"), "rgba": fake_op("rgba_top")}
+        if prior:
+            backend.tex_top["trail"] = fake_op("trail_prior")
+        backend._tex_res["xyz"] = (16, 16)
+        graph = SimpleNamespace(spec_for=lambda tex_id: None)
+        with mock.patch.object(td_backend, "_td", return_value="op"):
+            backend._build_points(Pass.from_dict(pass_dict), graph)
+        return created
+
+    @staticmethod
+    def _billboard(name, blend, blur_layer, blend_mode):
+        return {
+            "id": name, "drawMode": "billboards", "blend": blend,
+            "nodeId": "node_7", "progName": "deposit",
+            "program": "node_7_deposit__BLEND_MODE_%d__BLUR_LAYER_%d__VIEW_MODE_2" % (
+                blend_mode, blur_layer),
+            "inputs": {"xyzTex": "xyz", "rgbaTex": "rgba", "spriteMeanTex": "mean"},
+            "outputs": {"fragColor": "trail"},
+        }
+
+    @staticmethod
+    def _one(created, suffix):
+        matches = [op for name, op in created.items() if name.endswith(suffix)]
+        assert len(matches) == 1, (suffix, sorted(created))
+        return matches[0]
+
+    def test_blend_factor_map_uses_installed_menu_names(self):
+        for value in td_backend._BLEND_FACTOR_MAP.values():
+            self.assertIn(value, self.TD_BLEND_MENU)
+
+    def test_alpha_deposit_sets_premultiplied_over_factors(self):
+        created = self._build(self._billboard("alpha", ["ONE", "ONE_MINUS_SRC_ALPHA"], 0, 1))
+        mat = self._one(created, "_mat")
+        self.assertEqual((mat.par.srcblend, mat.par.destblend), ("one", "omsa"))
+
+    def test_deposit_render_disables_multisampling(self):
+        created = self._build({
+            "id": "points", "drawMode": "points", "blend": True,
+            "inputs": {"xyzTex": "xyz", "rgbaTex": "rgba"}, "outputs": {"fragColor": "trail"},
+        })
+        self.assertEqual(self._one(created, "_render").par.antialias, "aa1")
+
+    def test_billboard_clones_compile_their_blur_layer(self):
+        for layer in (0, 1):
+            created = self._build(self._billboard("bb", True, layer, 0))
+            self.assertTrue(self._one(created, "_vert").text.startswith(
+                "#define BLUR_LAYER %d\n" % layer))
+
+    def test_billboard_binds_sprite_mean_texture(self):
+        created = self._build(self._billboard("bb", True, 1, 0))
+        self.assertEqual(self._one(created, "_mat").par.sampler4name, "spriteMeanTex")
+
+    def test_alpha_deposit_composites_over_prior_trail(self):
+        created = self._build(self._billboard("alpha", ["ONE", "ONE_MINUS_SRC_ALPHA"], 0, 1),
+                              prior=True)
+        self.assertIn("(1.0 - texture(sTD2DInputs[1], vUV.st).a)",
+                      self._one(created, "_acc_src").text)
+
+    def test_additive_deposit_adds_onto_prior_trail(self):
+        created = self._build(self._billboard("bb", True, 0, 0), prior=True)
+        text = self._one(created, "_acc_src").text
+        self.assertIn("texture(sTD2DInputs[0], vUV.st) + texture(sTD2DInputs[1], vUV.st)", text)
+        self.assertNotIn(".a)", text)
+
+
+class DepositShaderSourceTests(unittest.TestCase):
+    """The hand-written deposit shaders keep the reference's expressions."""
+
+    def setUp(self):
+        from noisemaker.runtime import deposit_shaders
+        self.shaders = deposit_shaders
+
+    def test_density_cull_uses_reference_float32_expression(self):
+        self.assertIn("return fract(float(vid) * 0.618033988749895);", self.shaders._VERT_PROLOGUE)
+
+    def test_billboard_maps_point_coord_to_padded_quad_uv(self):
+        self.assertIn("vUVScale = 0.5 + blurPadding + supportRadius;", self.shaders.BILLBOARD_VERT)
+        self.assertIn("(TDPointCoord() * 2.0 - 1.0) * vUVScale + 0.5", self.shaders.BILLBOARD_FRAG)
+
+    def test_billboard_splits_energy_between_blur_layers(self):
+        vert = self.shaders.BILLBOARD_VERT
+        self.assertIn("float layerWeight = BLUR_LAYER == 1 ? lowWeight : 1.0 - lowWeight;", vert)
+        self.assertIn("vColor = col * brightnessFade * layerWeight;", vert)
+        self.assertIn("blurWeight(uv, center, expansion)", self.shaders.BILLBOARD_FRAG)
+
+
 class TexturePolicyFieldsTests(unittest.TestCase):
     """GAP-004: mipmaps/persistent/filter ride through the graph data model."""
 

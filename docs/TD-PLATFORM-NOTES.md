@@ -73,9 +73,11 @@ on their predicted pixels with exact colors + additive sum):
   billboard SDFs use `TDPointCoord()` (auto 0..1 across the sprite, (0,0)=bottom-left) as the sprite UV.
 - **Render TOP:** `geometry`=Geo COMP, `camera`=a (dummy/ortho) Camera COMP — required even when the VS
   writes gl_Position directly; `outputresolution`/`resolutionw`/`resolutionh`/`format`; transparent bg
-  `bgcolora`=0; `antialias`='1' (off). It clears to bg, so to ACCUMULATE onto an existing trail,
-  composite `priorTrail + pointsRender` (additive **Composite TOP**) — associativity == the reference's
-  "draw additively into the trail FBO without clearing".
+  `bgcolora`=0; `antialias`='aa1' (1x, off). A bare `'1'` selects menu index 1, which is `aa2` (2x
+  multisampling) and splits each point's deposit across neighbouring pixels. It clears to bg, so to
+  ACCUMULATE onto an existing trail, composite `priorTrail + pointsRender` (additive GLSL TOP), or
+  `pointsRender + priorTrail·(1−pointsRender.a)` for the premultiplied OVER blend — associativity ==
+  the reference's "draw into the trail FBO without clearing".
 - `count:"input"` → stateSize² where stateSize = the xyz state-texture width. **`numpyArray`/`save` row
   0 = BOTTOM** (GL origin; verify-anchored by a GLSL-TOP `gl_FragCoord.y` ramp) — consistent with the
   rest of the port, so the deposit needs no Y-flip vs the WebGL2 reference.

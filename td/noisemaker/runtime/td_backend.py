@@ -91,8 +91,8 @@ def _mrt_storage_format(pass_, graph, max_color_bytes_per_sample=None):
 _BLEND_FACTOR_MAP = {
     'ONE': 'one',
     'ZERO': 'zero',
-    'SRC_ALPHA': 'srcalpha',
-    'ONE_MINUS_SRC_ALPHA': 'oneminussrcalpha',
+    'SRC_ALPHA': 'sa',
+    'ONE_MINUS_SRC_ALPHA': 'omsa',
 }
 
 _NM_INPUTS_RE = re.compile(r'^//\s*NM_INPUTS:\s*(.*)$', re.M)
@@ -708,6 +708,9 @@ class TDBackend:
 
         # -- material: the deposit vertex/pixel shader (flow3d -> 3D volume-atlas variant) --
         vsrc, fsrc = deposit_shaders.shaders_for('points3d' if is_volume else p.draw_mode)
+        if p.draw_mode == 'billboards':
+            # depositDefocus clones compile with BLUR_LAYER 1, every other deposit with 0.
+            vsrc = '#define BLUR_LAYER %d\n' % int(_defines_for_pass(p).get('BLUR_LAYER', 0)) + vsrc
         mat = self.parent.create(_td('glslMAT'), tag + '_mat')
         self.ops.append(mat)
         vdat = self.parent.create(_td('textDAT'), tag + '_vert')
@@ -732,6 +735,11 @@ class TDBackend:
             order = self._resolve_read(p.inputs.get('orderTex')) or self._default_input_top()
             _try(lambda: setattr(mat.par, 'sampler3name', 'orderTex'))
             _try(lambda s=order: setattr(mat.par, 'sampler3top', s))
+            # spriteMeanTex: the aperture-defocus kernel's mean sprite coverage (5x5 rgba32f).
+            sprite_mean = (self._resolve_read(p.inputs.get('spriteMeanTex'))
+                           or self._default_input_top())
+            _try(lambda: setattr(mat.par, 'sampler4name', 'spriteMeanTex'))
+            _try(lambda s=sprite_mean: setattr(mat.par, 'sampler4top', s))
         # Deposit blend from the pass spec: True -> additive ONE/ONE (default), or an explicit
         # factor pair like ['ONE','ONE_MINUS_SRC_ALPHA'] (premultiplied OVER, pointsBillboardRender
         # alpha mode). Map reference GL factor names -> TD MAT blend enum values. blendop stays 'add'
@@ -750,14 +758,6 @@ class TDBackend:
         merged = dict(engine_uniforms(self.width, self.height, self.time))
         merged.update(resolved_uniforms)
         bound = {k: v for k, v in merged.items() if k in declared}
-        if 'outputAreaScale' in declared:
-            # See deposit_shaders.py's comment on this uniform: 1.0 for the ordinary deposit (its
-            # target matches the main canvas), smaller for a pass whose resolved output (tw, th) is
-            # a downscaled sub-buffer (e.g. pointsBillboardRender's `defocus` precompute at 25%
-            # linear resolution) — compensates for the un-ported gaussian defocus kernel's missing
-            # energy normalization so a dense scatter doesn't clip to white once diffuse.frag adds
-            # it back onto the main trail.
-            bound['outputAreaScale'] = (tw * th) / float(self.width * self.height)
         uniform_binder.bind_uniforms(mat, bound)
         self._effect_uniforms.append((mat, bound))
         # 'engine': True — this record's build-time source is the SAME engine ∪
@@ -783,9 +783,10 @@ class TDBackend:
         rnd.par.format = fmt
         for _p, _v in (('bgcolorr', 0), ('bgcolorg', 0), ('bgcolorb', 0), ('bgcolora', 0)):
             _try(lambda _p=_p, _v=_v: setattr(rnd.par, _p, _v))
-        _try(lambda: setattr(rnd.par, 'antialias', '1'))   # 1 = no AA
+        _try(lambda: setattr(rnd.par, 'antialias', 'aa1'))   # aa1 = 1x (off); '1' selects index 1 = aa2
 
-        out = rnd if prior is None else self._add_top(prior, rnd, tag + '_acc', tw, th, fmt)
+        over = tuple(factors) == ('ONE', 'ONE_MINUS_SRC_ALPHA')
+        out = rnd if prior is None else self._add_top(prior, rnd, tag + '_acc', tw, th, fmt, over=over)
         self._prog_tops.setdefault(p.prog_name, []).append(rnd)
         self._tex_res[trail_id] = (tw, th)
         self.tex_top[trail_id] = out
@@ -807,10 +808,15 @@ class TDBackend:
             self._points_cam = cam
         return self._points_cam
 
-    def _add_top(self, a, b, name, w, h, fmt):
+    def _add_top(self, a, b, name, w, h, fmt, over=False):
         """A 2-input GLSL TOP that outputs a+b — the additive accumulation of the scattered points
         onto the trail's prior content (== the reference deposit drawing onto the trail FBO without
-        clearing; addition is associative)."""
+        clearing; addition is associative). With `over`, it outputs b + a*(1-b.a) instead: the
+        premultiplied OVER deposit (ONE, ONE_MINUS_SRC_ALPHA) is associative too, so compositing
+        the separately rendered scatter over the prior equals drawing it onto the prior."""
+        combine = ('texture(sTD2DInputs[1], vUV.st) + texture(sTD2DInputs[0], vUV.st) * '
+                   '(1.0 - texture(sTD2DInputs[1], vUV.st).a)' if over else
+                   'texture(sTD2DInputs[0], vUV.st) + texture(sTD2DInputs[1], vUV.st)')
         dat = self.parent.create(_td('textDAT'), name + '_src')
         # Saturate the accumulator to the float16 range. The reference's WebGL2/ANGLE float16 trail
         # FBO SATURATES additive overflow to 65504; TD's Metal float16 yields +Inf instead, which the
@@ -819,8 +825,7 @@ class TDBackend:
         # bounding the deposit/diffuse/blend feedback loop exactly as the reference is bounded.
         dat.text = ('layout(location = 0) out vec4 fragColor;\n'
                     'void main(){ fragColor = TDOutputSwizzle(clamp('
-                    'texture(sTD2DInputs[0], vUV.st) + texture(sTD2DInputs[1], vUV.st),'
-                    ' 0.0, 65504.0)); }\n')
+                    + combine + ', 0.0, 65504.0)); }\n')
         g = self.parent.create(_td('glslTOP'), name)
         self.ops.extend([dat, g])
         g.par.pixeldat = dat
