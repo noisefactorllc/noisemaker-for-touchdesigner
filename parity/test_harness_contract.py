@@ -18,13 +18,15 @@ from unittest import mock
 REPO = Path(__file__).resolve().parents[1]
 
 
-def solid_fixture_png(rgba):
+def fixture_png(rgba, first_pixel=None):
     def chunk(kind, data):
         return (struct.pack(">I", len(data)) + kind + data
                 + struct.pack(">I", zlib.crc32(kind + data)))
+    row = b"\0" + bytes(rgba) * 256
+    first_row = row if first_pixel is None else b"\0" + bytes(first_pixel) + bytes(rgba) * 255
     return (b"\x89PNG\r\n\x1a\n"
             + chunk(b"IHDR", struct.pack(">IIBBBBB", 256, 256, 8, 6, 0, 0, 0))
-            + chunk(b"IDAT", zlib.compress((b"\0" + bytes(rgba) * 256) * 256))
+            + chunk(b"IDAT", zlib.compress(first_row + row * 255))
             + chunk(b"IEND", b""))
 
 
@@ -99,6 +101,9 @@ class HarnessContractTests(unittest.TestCase):
     def test_selected_motion_accumulation_enters_the_canonical_summary(self):
         self.check_selected_accumulation("motionBlur")
 
+    def test_selected_convolution_accumulation_enters_the_canonical_summary(self):
+        self.check_selected_accumulation("convolutionFeedback")
+
     def check_selected_accumulation(self, name):
         with tempfile.TemporaryDirectory(prefix="nm-td-accumulate-") as temp:
             root = Path(temp)
@@ -121,18 +126,20 @@ class HarnessContractTests(unittest.TestCase):
             (parity / "programs" / f"{name}.dsl").write_text(f"{name}().write(o0)\n")
             fixtures = root / "fixtures"
             fixtures.mkdir()
-            (fixtures / "golden.png").write_bytes(solid_fixture_png((255, 255, 255, 255)))
+            (fixtures / "golden.png").write_bytes(fixture_png((255, 255, 255, 255)))
             for frame in (1, 2, 8):
                 rgba = (252, 252, 252, 253) if name == "motionBlur" and frame == 8 else (254, 254, 254, 255)
-                (fixtures / f"{name}.f{frame:04d}.png").write_bytes(solid_fixture_png(rgba))
+                (fixtures / f"{name}.f{frame:04d}.png").write_bytes(fixture_png(
+                    rgba, (214, 214, 214, 255) if name == "convolutionFeedback" and frame == 8 else None))
             image_stub = root / "image-stub" / "PIL"
             image_stub.mkdir(parents=True)
             (image_stub / "__init__.py").write_text(
-                "import struct,zlib,types,numpy as np\n"
+                "import struct,zlib,types,pathlib,numpy as np\n"
                 "class Image:\n"
                 "    @staticmethod\n"
                 "    def open(handle):\n"
-                "        data=handle.read(); assert data[:8]==b'\\x89PNG\\r\\n\\x1a\\n'\n"
+                "        data=handle.read() if hasattr(handle,'read') else pathlib.Path(handle).read_bytes()\n"
+                "        assert data[:8]==b'\\x89PNG\\r\\n\\x1a\\n'\n"
                 "        width,height,depth,color,compression,filtering,interlace=struct.unpack('>IIBBBBB',data[16:29])\n"
                 "        assert (depth,color,compression,filtering,interlace)==(8,6,0,0,0)\n"
                 "        offset=8; compressed=b''\n"
@@ -185,6 +192,8 @@ class HarnessContractTests(unittest.TestCase):
                 "'max_abs_diff':diff,'mean_abs_diff':0.125,'ssim':0.99992,'tolerance':a.tolerance,"
                 "'ssim_min':a.ssim_min,'passed':True},open(a.report,'w'))\n"
             )
+            if name == "convolutionFeedback":
+                shutil.copy2(REPO / "parity" / "compare.py", parity / "compare.py")
             report = root / f"{name}.json"
             environment = dict(os.environ, PATH=os.pathsep.join((str(root / "bin"),
                                str(Path(sys.executable).parent), os.environ["PATH"])),
@@ -201,7 +210,20 @@ class HarnessContractTests(unittest.TestCase):
             evidence = json.loads(report.read_text())
             self.assertEqual(evidence["reference_sha"], "a" * 40)
             self.assertEqual([frame["frame"] for frame in evidence["frames"]], [1, 2, 8])
-            self.assertEqual([frame["report"]["mean_abs_diff"] for frame in evidence["frames"]], [0.125] * 3)
+            means = [frame["report"]["mean_abs_diff"] for frame in evidence["frames"]]
+            if name == "convolutionFeedback":
+                for actual, expected in zip(means, (0.75, 0.75, 0.750457763671875)):
+                    self.assertAlmostEqual(actual, expected, delta=0.0001)
+                final = evidence["frames"][-1]
+                self.assertEqual(final["report"]["tolerance"], 41.001)
+                self.assertEqual(final["report"]["ssim_min"], 0.9948)
+                self.assertEqual(final["pixel_counts"]["channel_abs_histogram"], {"0": 65536, "1": 196605, "41": 3})
+                self.assertEqual(final["pixel_counts"]["peak"], {
+                    "origin": "top-left", "x": 0, "y": 0, "channel": 0, "golden_rgba": [255, 255, 255, 255],
+                    "candidate_rgba": [214, 214, 214, 255],
+                })
+            else:
+                self.assertEqual(means, [0.125] * 3)
             self.assertIn("candidate_sources", evidence)
             if name == "motionBlur":
                 self.assertEqual(evidence["frames"][-1]["report"]["tolerance"], 3.001)
@@ -228,7 +250,7 @@ class HarnessContractTests(unittest.TestCase):
                     self.assertFalse((root / "evolve-called").exists())
             report.write_text(json.dumps(evidence))
             results = root / "results.tsv"
-            tolerance = 3.001 if name == "motionBlur" else 2.001
+            tolerance = {"motionBlur": 3.001, "convolutionFeedback": 41.001}.get(name, 2.001)
             results.write_text(f"{name}\tACCUMULATE\t{report}\t{tolerance}\t0.98\n")
             written = subprocess.run(
                 [sys.executable, str(parity / "write-ledger.py"), "--root", str(root),
@@ -243,8 +265,8 @@ class HarnessContractTests(unittest.TestCase):
             self.assertEqual(summary.returncode, 0, summary.stdout + summary.stderr)
             counts = json.loads(summary.stdout.split("PARITY-SUMMARY ", 1)[1])
             self.assertEqual(counts, {"expected": 1, "executed": 1, "exact": 0,
-                                      "strict": 0 if name == "motionBlur" else 1,
-                                      "near": 1 if name == "motionBlur" else 0,
+                                      "strict": 1 if name == "cellularAutomata" else 0,
+                                      "near": 0 if name == "cellularAutomata" else 1,
                                       "defer": 0, "skip": 0, "fail": 0, "missing": 0})
             (root / "reference-dirty").unlink(missing_ok=True)
             (parity / "run.sh").write_text("exit 29\n")
@@ -256,13 +278,17 @@ class HarnessContractTests(unittest.TestCase):
                 env=dict(environment, LEDGER_PATH=str(sweep_output / "ledger.tsv")),
             )
             self.assertEqual(swept.returncode, 0, swept.stdout + swept.stderr)
-            verdict = "NEAR" if name == "motionBlur" else "PASS"
+            verdict = "PASS" if name == "cellularAutomata" else "NEAR"
             self.assertIn(f"{name}\t{verdict}\t", (sweep_output / "ledger.tsv").read_text())
             self.assertTrue((sweep_output / f"{name}.json").exists())
             defects = ["missing_frame", "wrong_pin", "wide_frame", "failed_frame", "invalid_mean",
                        "wrong_frame_bound", "wrong_capture", "early_wide"]
-            if name == "motionBlur":
-                defects.extend(("low_f8_ssim", "missing_counts", "invalid_counts", "plausible_wrong_counts"))
+            if name in ("motionBlur", "convolutionFeedback"):
+                defects.append("low_f8_ssim")
+            if name == "convolutionFeedback":
+                defects.extend(("missing_histogram", "wrong_mean"))
+            if name in ("motionBlur", "convolutionFeedback"):
+                defects.extend(("missing_counts", "invalid_counts", "plausible_wrong_counts"))
             for defect in defects:
                 with self.subTest(defect=defect):
                     invalid = json.loads(json.dumps(evidence))
@@ -271,7 +297,7 @@ class HarnessContractTests(unittest.TestCase):
                     elif defect == "wrong_pin":
                         invalid["reference_sha"] = "b" * 40
                     elif defect == "wide_frame":
-                        invalid["frames"][-1]["report"]["max_abs_diff"] = 4.0
+                        invalid["frames"][-1]["report"]["max_abs_diff"] = 42.0 if name == "convolutionFeedback" else 4.0
                     elif defect == "failed_frame":
                         invalid["frames"][-1]["report"]["passed"] = False
                     elif defect == "invalid_mean":
@@ -283,13 +309,17 @@ class HarnessContractTests(unittest.TestCase):
                     elif defect == "early_wide":
                         invalid["frames"][0]["report"]["max_abs_diff"] = 3.0
                     elif defect == "low_f8_ssim":
-                        invalid["frames"][-1]["report"]["ssim"] = 0.9998
+                        invalid["frames"][-1]["report"]["ssim"] = 0.9947 if name == "convolutionFeedback" else 0.9998
                     elif defect == "missing_counts":
                         del invalid["frames"][-1]["pixel_counts"]
                     elif defect == "invalid_counts":
                         invalid["frames"][-1]["pixel_counts"]["different_channels"] = 262145
+                    elif defect == "missing_histogram":
+                        del invalid["frames"][-1]["pixel_counts"]["channel_abs_histogram"]
+                    elif defect == "wrong_mean":
+                        invalid["frames"][-1]["report"]["mean_abs_diff"] = 0.5
                     else:
-                        invalid["frames"][-1]["pixel_counts"]["pixels_over_2"] -= 1
+                        invalid["frames"][0]["pixel_counts"]["different_channels"] -= 1
                     report.write_text(json.dumps(invalid))
                     rejected = subprocess.run(written.args, capture_output=True, text=True, env=environment)
                     self.assertNotEqual(rejected.returncode, 0, rejected.stdout + rejected.stderr)
@@ -304,6 +334,15 @@ class HarnessContractTests(unittest.TestCase):
             changed_fixture = subprocess.run(written.args, capture_output=True, text=True, env=environment)
             self.assertNotEqual(changed_fixture.returncode, 0, changed_fixture.stdout + changed_fixture.stderr)
             self.assertIn(f"{name}\tFAIL\t", (out / "ledger.tsv").read_text())
+
+            if name == "convolutionFeedback":
+                (fixtures / f"{name}.f0008.png").write_bytes(fixture_png((249, 249, 249, 255)))
+                high_mean = subprocess.run(result.args, cwd=root, capture_output=True, text=True, env=environment)
+                self.assertNotEqual(high_mean.returncode, 0, high_mean.stdout + high_mean.stderr)
+                measured = json.loads(Path(str(report) + ".frames/8.json").read_text())
+                self.assertLessEqual(measured["max_abs_diff"], 41.001)
+                self.assertGreaterEqual(measured["ssim"], 0.9948)
+                self.assertAlmostEqual(measured["mean_abs_diff"], 4.5, delta=0.0001)
 
     def test_single_and_batch_exporters_use_the_full_clean_start_protocol(self):
         single = (REPO / "parity" / "export-and-render.mjs").read_text()

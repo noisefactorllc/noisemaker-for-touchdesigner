@@ -79,7 +79,7 @@ print(actual)
 PY
 }
 if [ -n "$selected$result_report" ]; then
-  case "$selected" in cellularAutomata|motionBlur) ;; *) exit 2 ;; esac
+  case "$selected" in cellularAutomata|motionBlur|convolutionFeedback) ;; *) exit 2 ;; esac
   [ -n "$result_report" ] && [ "$stage" = 1 ] || exit 2
   EFFECTS="$selected"
   rm -f "$result_report"
@@ -151,6 +151,8 @@ if [ -n "$selected" ]; then
   for n in $GRADE_FRAMES; do
     if [ "$selected" = motionBlur ] && [ "$n" = 8 ]; then
       grade "$selected" "$n" 3.001 0.9999 || exit 1
+    elif [ "$selected" = convolutionFeedback ] && [ "$n" = 8 ]; then
+      grade "$selected" "$n" 41.001 0.9948 || exit 1
     else
       grade "$selected" "$n" 2.001 0.98 || exit 1
     fi
@@ -176,11 +178,13 @@ for frame in (1, 2, 8):
         f"{kind}_sha256": hashlib.sha256(captures[kind]).hexdigest()
         for kind in ("golden", "candidate")
     }})
-    if selected == "motionBlur":
-        frames[-1]["pixel_counts"] = ledger["frame_pixel_counts"](**captures)
+    if selected in ("motionBlur", "convolutionFeedback"):
+        frames[-1]["pixel_counts"] = ledger["frame_pixel_counts"](**captures, details=selected == "convolutionFeedback")
 Path(output).write_text(json.dumps({"case": selected, "reference_sha": reference_sha,
                                    "candidate_sources": sources,
                                    "frames": frames}, indent=2) + "\n")
+if selected == "convolutionFeedback" and ledger["accumulate_row"](root, selected, Path(output), 41.001, 0.98)["verdict"] == "FAIL":
+    raise SystemExit("The selected accumulation failed canonical evidence checks.")
 PY
   exit $?
 fi

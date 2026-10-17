@@ -20,7 +20,7 @@ ALLOWED_PRESERVED_SOURCES = {"3d/mrt/points", "accumulate", "cubemap"}
 
 
 def candidate_sources(root, name="cellularAutomata"):
-    if name not in ("cellularAutomata", "motionBlur"):
+    if name not in ("cellularAutomata", "motionBlur", "convolutionFeedback"):
         raise ValueError("unsupported accumulation case")
     runtime = root / "td" / "noisemaker"
     entries = list(runtime.rglob("*"))
@@ -41,7 +41,7 @@ def candidate_sources(root, name="cellularAutomata"):
             for path in sorted(paths)}
 
 
-def frame_pixel_counts(golden, candidate):
+def frame_pixel_counts(golden, candidate, details=False):
     from io import BytesIO
     import numpy as np
     from PIL import Image
@@ -51,7 +51,7 @@ def frame_pixel_counts(golden, candidate):
     if any(array.shape != (256, 256, 4) for array in arrays):
         raise ValueError("unexpected accumulation capture shape")
     difference = np.abs(arrays[0] - arrays[1])
-    return {
+    counts = {
         "pixels": int(difference.shape[0] * difference.shape[1]),
         "channels": int(difference.size),
         "different_pixels": int(np.any(difference != 0, axis=2).sum()),
@@ -60,6 +60,18 @@ def frame_pixel_counts(golden, candidate):
             if kind == "pixels" else difference > limit).sum())
            for limit in (1, 2) for kind in ("pixels", "channels")},
     }
+    if details:
+        maximum = difference.max(axis=2)
+        y, x, channel = np.argwhere(difference == difference.max())[0]
+        counts.update(
+            pixels_over_16=int((maximum > 16).sum()),
+            channels_over_16=int((difference > 16).sum()),
+            pixel_max_histogram={str(value): int((maximum == value).sum()) for value in np.unique(maximum)},
+            channel_abs_histogram={str(value): int((difference == value).sum()) for value in np.unique(difference)},
+            peak={"origin": "top-left", "x": int(x), "y": int(y), "channel": int(channel),
+                  "golden_rgba": arrays[0][y, x].tolist(), "candidate_rgba": arrays[1][y, x].tolist()},
+        )
+    return counts
 
 
 def load_existing(path):
@@ -120,8 +132,8 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
         pin = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
                         (root / "scripts" / "test").read_text(), re.M).group(1)
         frames = evidence["frames"]
-        expected_tolerance = 3.001 if name == "motionBlur" else STRICT_TOLERANCE
-        if (name not in ("cellularAutomata", "motionBlur") or evidence["case"] != name
+        expected_tolerance = {"motionBlur": 3.001, "convolutionFeedback": 41.001}.get(name, STRICT_TOLERANCE)
+        if (name not in ("cellularAutomata", "motionBlur", "convolutionFeedback") or evidence["case"] != name
                 or evidence["reference_sha"] != pin
                 or evidence["candidate_sources"] != candidate_sources(root, name)
                 or [item["frame"] for item in frames] != [1, 2, 8]
@@ -131,6 +143,8 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
             report = item["report"]
             frame_tolerance, frame_ssim = (3.001, 0.9999) if name == "motionBlur" and item["frame"] == 8 else (
                 STRICT_TOLERANCE, STRICT_SSIM_MIN)
+            if name == "convolutionFeedback" and item["frame"] == 8:
+                frame_tolerance, frame_ssim = 41.001, 0.9948
             if (report["name"] != f'{name}.f{item["frame"]:04d}'
                     or report["passed"] is not True
                     or report["tolerance"] != frame_tolerance
@@ -147,11 +161,19 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
             for kind in ("golden", "candidate"):
                 if hashlib.sha256(captures[kind]).hexdigest() != item[f"{kind}_sha256"]:
                     return row
-            if name == "motionBlur":
+            if name in ("motionBlur", "convolutionFeedback"):
                 counts = item["pixel_counts"]
-                if (any(type(value) is not int for value in counts.values())
-                        or counts != frame_pixel_counts(**captures)):
+                expected_counts = frame_pixel_counts(**captures, details=name == "convolutionFeedback")
+                if json.dumps(counts, sort_keys=True) != json.dumps(expected_counts, sort_keys=True):
                     return row
+                if name == "convolutionFeedback":
+                    histogram = expected_counts["channel_abs_histogram"]
+                    mean = sum(int(value) * count for value, count in histogram.items()) / expected_counts["channels"]
+                    maximum = max(map(int, histogram))
+                    if (abs(report["max_abs_diff"] - maximum) > 0.001
+                            or abs(report["mean_abs_diff"] - mean) > 0.001
+                            or (item["frame"] == 8 and mean > 3.8)):
+                        return row
         max_diff = max(item["report"]["max_abs_diff"] for item in frames)
         row.update(verdict="PASS" if max_diff <= STRICT_TOLERANCE else "NEAR", max_abs_diff=str(max_diff),
                    ssim=str(min(item["report"]["ssim"] for item in frames)),
