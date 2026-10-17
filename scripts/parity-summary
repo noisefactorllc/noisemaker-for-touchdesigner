@@ -120,7 +120,7 @@ def main(argv):
         ledger = work / "ledger.tsv"
         if ledger.exists():
             ledger.unlink()
-        env = dict(os.environ, LEDGER_PATH=str(ledger))
+        env = dict(os.environ, LEDGER_PATH=str(ledger), NM_REFERENCE_SHA=pin)
         sweep_status = subprocess.run(
             ["bash", str(ROOT / "parity" / "sweep.sh")], cwd=str(ROOT), env=env).returncode
     else:

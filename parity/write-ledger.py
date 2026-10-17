@@ -3,7 +3,10 @@
 
 import argparse
 import csv
+import hashlib
 import json
+import math
+import re
 from pathlib import Path
 
 
@@ -14,6 +17,26 @@ FIELDS = (
 STRICT_TOLERANCE = 2.001
 STRICT_SSIM_MIN = 0.98
 ALLOWED_PRESERVED_SOURCES = {"3d/mrt/points", "accumulate", "cubemap"}
+
+
+def candidate_sources(root):
+    runtime = root / "td" / "noisemaker"
+    entries = list(runtime.rglob("*"))
+    if runtime.is_symlink() or any(path.is_symlink() for path in entries):
+        raise ValueError("candidate runtime contains a symbolic link")
+    paths = [path for path in entries if path.is_file()
+             and "__pycache__" not in path.parts and path.suffix != ".pyc"]
+    if not paths:
+        raise ValueError("candidate runtime sources are missing")
+    paths.extend(root / name for name in (
+        "td/parity_evolve.py", "td/build_evolve_toe.py", "parity/evolve.sh",
+        "parity/accumulate.sh", "parity/compare.py", "parity/write-ledger.py",
+        "parity/programs/cellularAutomata.dsl",
+    ))
+    if any(path.is_symlink() for path in paths):
+        raise ValueError("candidate sources contain a symbolic link")
+    return {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(paths)}
 
 
 def load_existing(path):
@@ -65,6 +88,46 @@ def report_row(name, report_path, tolerance, ssim_min):
     }
 
 
+def accumulate_row(root, name, report_path, tolerance, ssim_min):
+    row = {"case": name, "verdict": "FAIL", "max_abs_diff": "-", "ssim": "-",
+           "tol_max": str(tolerance), "tol_ssim": str(ssim_min),
+           "source": "accumulate", "golden": str(report_path)}
+    try:
+        evidence = json.loads(report_path.read_text())
+        pin = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
+                        (root / "scripts" / "test").read_text(), re.M).group(1)
+        frames = evidence["frames"]
+        if (name != "cellularAutomata" or evidence["case"] != name
+                or evidence["reference_sha"] != pin
+                or evidence["candidate_sources"] != candidate_sources(root)
+                or [item["frame"] for item in frames] != [1, 2, 8]
+                or tolerance != STRICT_TOLERANCE or ssim_min != STRICT_SSIM_MIN):
+            return row
+        for item in frames:
+            report = item["report"]
+            if (report["name"] != f'{name}.f{item["frame"]:04d}'
+                    or report["passed"] is not True
+                    or report["tolerance"] != STRICT_TOLERANCE
+                    or report["ssim_min"] != STRICT_SSIM_MIN
+                    or report["shape"] != [256, 256, 4]
+                    or not math.isfinite(report["max_abs_diff"])
+                    or not math.isfinite(report["mean_abs_diff"])
+                    or not math.isfinite(report["ssim"])
+                    or not 0 <= report["max_abs_diff"] <= STRICT_TOLERANCE
+                    or not 0 <= report["mean_abs_diff"] <= report["max_abs_diff"]
+                    or not STRICT_SSIM_MIN <= report["ssim"] <= 1):
+                return row
+            for kind in ("golden", "candidate"):
+                if hashlib.sha256(Path(report[kind]).read_bytes()).hexdigest() != item[f"{kind}_sha256"]:
+                    return row
+        row.update(verdict="PASS", max_abs_diff=str(max(item["report"]["max_abs_diff"] for item in frames)),
+                   ssim=str(min(item["report"]["ssim"] for item in frames)),
+                   golden=frames[-1]["report"]["golden"])
+    except (OSError, AttributeError, KeyError, TypeError, ValueError):
+        pass
+    return row
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", type=Path, required=True)
@@ -105,6 +168,10 @@ def main():
             if kind == "REPORT":
                 rows[name] = report_row(
                     name, Path(detail), float(tolerance_text), float(ssim_text)
+                )
+            elif kind == "ACCUMULATE":
+                rows[name] = accumulate_row(
+                    args.root, name, Path(detail), float(tolerance_text), float(ssim_text)
                 )
             elif kind == "DEFER":
                 rows[name] = {

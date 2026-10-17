@@ -3,8 +3,10 @@
 
 import importlib.util
 import json
+import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -24,6 +26,170 @@ def load_stage_coverage():
 
 
 class HarnessContractTests(unittest.TestCase):
+    def test_candidate_binding_rejects_a_symlinked_runtime_file(self):
+        spec = importlib.util.spec_from_file_location("nm_td_ledger", REPO / "parity" / "write-ledger.py")
+        ledger = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ledger)
+        target = REPO / "td" / "noisemaker" / "runtime" / "nm_renderer.py"
+        original = Path.is_symlink
+        with mock.patch.object(Path, "is_symlink", autospec=True,
+                               side_effect=lambda path: path == target or original(path)):
+            with self.assertRaisesRegex(ValueError, "symbolic link"):
+                ledger.candidate_sources(REPO)
+
+    def test_sweep_rejects_failed_cellular_accumulation_instead_of_deferring(self):
+        with tempfile.TemporaryDirectory(prefix="nm-td-accumulate-status-") as temp:
+            root = Path(temp)
+            parity = root / "parity"
+            out = parity / "out"
+            out.mkdir(parents=True)
+            (parity / "programs").mkdir()
+            (parity / "programs" / "cellularAutomata.dsl").write_text("cellularAutomata().write(o0)\n")
+            (out / "_render_set.txt").write_text("cellularAutomata\n")
+            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py"):
+                shutil.copy2(REPO / "parity" / helper, parity / helper)
+            (parity / "run.sh").write_text("touch single-render-called\nexit 0\n")
+            (parity / "accumulate.sh").write_text("touch accumulation-called\nexit 7\n")
+            result = subprocess.run(
+                ["bash", str(parity / "sweep.sh"), "--no-stage"],
+                cwd=root, capture_output=True, text=True,
+            )
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertTrue((root / "accumulation-called").exists())
+            self.assertFalse((root / "single-render-called").exists())
+            self.assertIn("cellularAutomata\tFAIL\t", (out / "ledger.tsv").read_text())
+
+    def test_selected_cellular_accumulation_enters_the_canonical_summary(self):
+        with tempfile.TemporaryDirectory(prefix="nm-td-accumulate-") as temp:
+            root = Path(temp)
+            parity = root / "parity"
+            out = parity / "out"
+            out.mkdir(parents=True)
+            (parity / "programs").mkdir()
+            (root / "scripts").mkdir()
+            (root / "bin").mkdir()
+            for helper in ("accumulate.sh", "write-ledger.py"):
+                shutil.copy2(REPO / "parity" / helper, parity / helper)
+            (root / "td" / "noisemaker" / "runtime").mkdir(parents=True)
+            runtime_source = root / "td" / "noisemaker" / "runtime" / "probe.py"
+            runtime_source.write_text("version = 1\n")
+            for helper in ("parity_evolve.py", "build_evolve_toe.py"):
+                shutil.copy2(REPO / "td" / helper, root / "td" / helper)
+            shutil.copy2(REPO / "scripts" / "parity-summary", root / "scripts" / "parity-summary")
+            (root / "scripts" / "test").write_text('NM_REFERENCE_SHA_PINNED="' + "a" * 40 + '"\n')
+            (out / "_render_set.txt").write_text("cellularAutomata\n")
+            (parity / "programs" / "cellularAutomata.dsl").write_text("cellularAutomata().write(o0)\n")
+            node = root / "bin" / "node"
+            node.write_text(
+                "#!" + sys.executable + "\n"
+                "import pathlib,sys\n"
+                "manifest=pathlib.Path(sys.argv[2]).read_text().splitlines()\n"
+                "assert len(manifest)==1 and manifest[0].split()[0]=='cellularAutomata'\n"
+                "out=pathlib.Path(sys.argv[3]); out.mkdir(parents=True)\n"
+                "(out/'cellularAutomata.golden.png').write_bytes(b'fresh golden')\n"
+                "(out/'cellularAutomata.graph.json').write_text('{}')\n"
+                "import os\n"
+                "if os.environ.get('TEST_DIRTY_AFTER_GOLDENS'):\n"
+                "    pathlib.Path(os.environ['TEST_REFERENCE_DIRTY_MARKER']).touch()\n"
+            )
+            node.chmod(0o755)
+            git = root / "bin" / "git"
+            git.write_text(
+                "#!" + sys.executable + "\nimport os,pathlib,sys\n"
+                "if sys.argv[-1]=='HEAD': print(os.environ['TEST_REFERENCE_HEAD'])\n"
+                "elif sys.argv[-2:]==['status','--porcelain']:\n"
+                "    dirty=os.environ.get('TEST_REFERENCE_STATUS','')\n"
+                "    if pathlib.Path(os.environ['TEST_REFERENCE_DIRTY_MARKER']).exists(): dirty=' M shader.js'\n"
+                "    print(dirty,end='')\n"
+                "else: sys.exit(29)\n"
+            )
+            git.chmod(0o755)
+            (parity / "evolve.sh").write_text(
+                'test "$1" = cellularAutomata || exit 19\n'
+                'touch evolve-called\n'
+                'for f in 0001 0002 0008; do printf fresh > "parity/out/$1.f$f.candidate.png"; done\n'
+            )
+            (parity / "compare.py").write_text(
+                "import argparse,json\n"
+                "p=argparse.ArgumentParser(); p.add_argument('golden'); p.add_argument('candidate'); "
+                "p.add_argument('--name'); p.add_argument('--tolerance',type=float); "
+                "p.add_argument('--ssim-min',type=float); p.add_argument('--report'); a=p.parse_args()\n"
+                "assert a.report\n"
+                "json.dump({'name':a.name,'golden':a.golden,'candidate':a.candidate,'shape':[256,256,4],"
+                "'max_abs_diff':1.0,'mean_abs_diff':0.125,'ssim':0.9999,'tolerance':a.tolerance,"
+                "'ssim_min':a.ssim_min,'passed':True},open(a.report,'w'))\n"
+            )
+            report = root / "cellular.json"
+            environment = dict(os.environ, PATH=str(root / "bin") + os.pathsep + os.environ["PATH"],
+                               NM_REFERENCE_SHA="a" * 40, NM_REFERENCE_ROOT=str(root / "authority"),
+                               TEST_REFERENCE_HEAD="a" * 40,
+                               TEST_REFERENCE_DIRTY_MARKER=str(root / "reference-dirty"))
+            result = subprocess.run(
+                ["bash", str(parity / "accumulate.sh"), "--effect", "cellularAutomata", "--report", str(report)],
+                cwd=root, capture_output=True, text=True,
+                env=environment,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            evidence = json.loads(report.read_text())
+            self.assertEqual(evidence["reference_sha"], "a" * 40)
+            self.assertEqual([frame["frame"] for frame in evidence["frames"]], [1, 2, 8])
+            self.assertEqual([frame["report"]["mean_abs_diff"] for frame in evidence["frames"]], [0.125] * 3)
+            self.assertIn("candidate_sources", evidence)
+            mismatch = subprocess.run(result.args, cwd=root, capture_output=True, text=True,
+                                      env=dict(environment, TEST_REFERENCE_HEAD="b" * 40))
+            self.assertNotEqual(mismatch.returncode, 0, mismatch.stdout + mismatch.stderr)
+            for dirty_at in ("before", "after"):
+                with self.subTest(dirty_at=dirty_at):
+                    (root / "evolve-called").unlink(missing_ok=True)
+                    dirty_environment = dict(environment)
+                    if dirty_at == "before":
+                        dirty_environment["TEST_REFERENCE_STATUS"] = " M shader.js"
+                    else:
+                        dirty_environment["TEST_DIRTY_AFTER_GOLDENS"] = "1"
+                    dirty = subprocess.run(result.args, cwd=root, capture_output=True, text=True,
+                                           env=dirty_environment)
+                    self.assertNotEqual(dirty.returncode, 0, dirty.stdout + dirty.stderr)
+                    self.assertFalse((root / "evolve-called").exists())
+            report.write_text(json.dumps(evidence))
+            results = root / "results.tsv"
+            results.write_text(f"cellularAutomata\tACCUMULATE\t{report}\t2.001\t0.98\n")
+            written = subprocess.run(
+                [sys.executable, str(parity / "write-ledger.py"), "--root", str(root),
+                 "--results", str(results), "--expected-set", str(out / "_render_set.txt"),
+                 "--output", str(out / "ledger.tsv")], capture_output=True, text=True,
+            )
+            self.assertEqual(written.returncode, 0, written.stdout + written.stderr)
+            summary = subprocess.run(
+                [sys.executable, str(root / "scripts" / "parity-summary"), "--ledger", str(out / "ledger.tsv")],
+                capture_output=True, text=True,
+            )
+            self.assertEqual(summary.returncode, 0, summary.stdout + summary.stderr)
+            counts = json.loads(summary.stdout.split("PARITY-SUMMARY ", 1)[1])
+            self.assertEqual(counts, {"expected": 1, "executed": 1, "exact": 0, "strict": 1,
+                                      "near": 0, "defer": 0, "skip": 0, "fail": 0, "missing": 0})
+            for defect in ("missing_frame", "wrong_pin", "wide_frame", "failed_frame", "invalid_mean"):
+                with self.subTest(defect=defect):
+                    invalid = json.loads(json.dumps(evidence))
+                    if defect == "missing_frame":
+                        invalid["frames"].pop()
+                    elif defect == "wrong_pin":
+                        invalid["reference_sha"] = "b" * 40
+                    elif defect == "wide_frame":
+                        invalid["frames"][-1]["report"]["max_abs_diff"] = 3.0
+                    elif defect == "failed_frame":
+                        invalid["frames"][-1]["report"]["passed"] = False
+                    else:
+                        invalid["frames"][-1]["report"]["mean_abs_diff"] = float("nan")
+                    report.write_text(json.dumps(invalid))
+                    rejected = subprocess.run(written.args, capture_output=True, text=True)
+                    self.assertNotEqual(rejected.returncode, 0, rejected.stdout + rejected.stderr)
+                    self.assertIn("cellularAutomata\tFAIL\t", (out / "ledger.tsv").read_text())
+            report.write_text(json.dumps(evidence))
+            runtime_source.write_text("version = 2\n")
+            stale = subprocess.run(written.args, capture_output=True, text=True)
+            self.assertNotEqual(stale.returncode, 0, stale.stdout + stale.stderr)
+            self.assertIn("cellularAutomata\tFAIL\t", (out / "ledger.tsv").read_text())
+
     def test_single_and_batch_exporters_use_the_full_clean_start_protocol(self):
         single = (REPO / "parity" / "export-and-render.mjs").read_text()
         batch = (REPO / "parity" / "batch-golden.mjs").read_text()

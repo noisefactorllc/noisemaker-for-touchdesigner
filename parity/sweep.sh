@@ -113,7 +113,9 @@ fi
 #    candidate; the authoritative verdict is the per-effect compare in step 2.
 render_failed=""
 if [ "$render" = 1 ]; then
-  read -ra ALL <<< "$SET"; n=${#ALL[@]}; i=0
+  ALL=()
+  for name in $SET; do [ "$name" = cellularAutomata ] || ALL+=("$name"); done
+  n=${#ALL[@]}; i=0
   while [ $i -lt $n ]; do
     chunk="${ALL[*]:i:CHUNK}"
     if ! TOL=255 SSIM=0 bash "$REPO/parity/run.sh" "$chunk" >/dev/null 2>&1; then
@@ -132,6 +134,17 @@ for name in $SET; do
       record_result "$name" FAIL "TouchDesigner renderer exited nonzero" - -
       fail=$((fail + 1)); failed="$failed $name"; continue ;;
   esac
+  if [ "$name" = cellularAutomata ] && [ "$render" = 1 ]; then
+    report="$(dirname "$LEDGER_PATH")/cellularAutomata.json"
+    if bash "$REPO/parity/accumulate.sh" --effect cellularAutomata --report "$report"; then
+      record_result "$name" ACCUMULATE "$report" 2.001 0.98
+      pass=$((pass + 1))
+    else
+      record_result "$name" FAIL "cellularAutomata accumulation exited nonzero" 2.001 0.98
+      fail=$((fail + 1)); failed="$failed $name"
+    fi
+    continue
+  fi
   d="$(defer_reason "$name")"
   if [ -n "$d" ]; then
     echo "[ACCUM] $name — $d"; record_result "$name" DEFER "$d" - -

@@ -49,8 +49,54 @@ OUT="$REPO/parity/out"; mkdir -p "$OUT"
 EFFECTS="cellularAutomata motionBlur convolutionFeedback reactionDiffusion synth3d_cellularAutomata3d synth3d_reactionDiffusion3d"
 GRADE_FRAMES="1 2 8"          # frames captured + graded (per-effect verdict below)
 
-stage=1
-for a in "$@"; do [ "$a" = "--no-stage" ] && stage=0; done
+stage=1; selected=""; result_report=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --no-stage) stage=0; shift ;;
+    --effect|--report)
+      [ "$#" -ge 2 ] || exit 2
+      if [ "$1" = --effect ]; then selected="$2"; else result_report="$2"; fi
+      shift 2 ;;
+    *) exit 2 ;;
+  esac
+done
+check_reference() {
+  "$PY" - "$REPO" "${NM_REFERENCE_ROOT:-}" <<'PY'
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+root, reference = sys.argv[1:]
+pin = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
+                (Path(root) / "scripts" / "test").read_text(), re.M).group(1)
+actual = subprocess.check_output(["git", "-C", reference, "rev-parse", "HEAD"], text=True).strip()
+dirty = subprocess.check_output(["git", "-C", reference, "status", "--porcelain"], text=True)
+if dirty or actual != pin or os.environ.get("NM_REFERENCE_SHA", actual) != actual:
+    raise SystemExit("The reference checkout must be clean and match the current authority pin.")
+print(actual)
+PY
+}
+if [ -n "$selected$result_report" ]; then
+  [ "$selected" = cellularAutomata ] && [ -n "$result_report" ] && [ "$stage" = 1 ] || exit 2
+  EFFECTS="$selected"
+  rm -f "$result_report"
+  reference_sha="$(check_reference)" || exit 2
+  frame_reports="$result_report.frames"
+  mkdir -p "$frame_reports"
+  for n in $GRADE_FRAMES; do rm -f "$frame_reports/$n.json"; done
+  "$PY" - "$REPO" "$frame_reports/candidate-sources.json" <<'PY' || exit 2
+import json
+import runpy
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+sources = runpy.run_path(str(root / "parity" / "write-ledger.py"))["candidate_sources"](root)
+Path(sys.argv[2]).write_text(json.dumps(sources))
+PY
+fi
 
 # 1. Reference goldens — batch-golden.mjs renders frame N from a clean zeroed start (timestep 0,
 #    time 0.25). One run per frame count over the 3-effect manifest; rename to <name>.f<NNNN>.golden.
@@ -61,17 +107,23 @@ if [ "$stage" = 1 ]; then
     f="$(printf '%04d' "$N")"; gdir="$OUT/_acc_g$N"; rm -rf "$gdir"
     ( cd "$REPO" && node parity/batch-golden.mjs "$MAN" "$gdir" --size 256 --frames "$N" --timestep 0 --time 0.25 ) \
       >/dev/null 2>&1 || { echo "golden gen failed at frames=$N (set NM_REFERENCE_ROOT to the upstream engine)"; exit 2; }
-    for e in $EFFECTS; do cp "$gdir/$e.golden.png" "$OUT/$e.f$f.golden.png"; done
+    for e in $EFFECTS; do
+      cp "$gdir/$e.golden.png" "$OUT/$e.f$f.golden.png" || exit 2
+      if [ -n "$result_report" ]; then cp "$gdir/$e.graph.json" "$OUT/$e.graph.json" || exit 2; fi
+    done
   done
   rm -f "$MAN"
 fi
+if [ -n "$result_report" ]; then [ "$(check_reference)" = "$reference_sha" ] || exit 2; fi
 
 # 2. Drive each effect 8 frames through the evolve harness (permissive internal grade — the
 #    authoritative per-effect verdict is step 3). Candidates land in parity/out/<e>.f<NNNN>.candidate.
 SMPL="$(echo $GRADE_FRAMES | tr ' ' ',')"
 for e in $EFFECTS; do
-  NM_FRAMES=8 NM_TIMESTEP=0 NM_TIME=0.25 NM_SAMPLES="$SMPL" NM_WAIT="${NM_WAIT:-280}" \
-    TOL=255 SSIM=0 bash "$REPO/parity/evolve.sh" "$e" >/dev/null 2>&1 || true
+  if ! NM_FRAMES=8 NM_TIMESTEP=0 NM_TIME=0.25 NM_SAMPLES="$SMPL" NM_WAIT="${NM_WAIT:-280}" \
+    TOL=255 SSIM=0 bash "$REPO/parity/evolve.sh" "$e" >/dev/null 2>&1; then
+    [ -z "$result_report" ] || exit 1
+  fi
 done
 
 # 3. Per-effect, per-frame verdict.
@@ -79,7 +131,10 @@ grade() { # <effect> <frame> <tol> <ssim> ; prints PASS/FAIL line, returns nonze
   local e="$1" n="$2" tol="$3" ssim="$4" f; f="$(printf '%04d' "$n")"
   local g="$OUT/$e.f$f.golden.png" c="$OUT/$e.f$f.candidate.png"
   [ -f "$c" ] || { echo "  [FAIL] $e f$f — no candidate (evolve did not run)"; return 1; }
+  set --
+  if [ -n "$result_report" ]; then set -- --report "$frame_reports/$n.json"; fi
   "$PY" "$REPO/parity/compare.py" "$g" "$c" --name "$e.f$f" --tolerance "$tol" --ssim-min "$ssim" 2>&1 \
+    "$@" \
     | sed 's/^/  /'
 }
 report() { # informational only — never fails the sweep (chaos-gated frame)
@@ -91,6 +146,33 @@ report() { # informational only — never fails the sweep (chaos-gated frame)
 }
 
 pass=0; fail=0
+if [ "$selected" = cellularAutomata ]; then
+  for n in $GRADE_FRAMES; do grade cellularAutomata "$n" 2.001 0.98 || exit 1; done
+  "$PY" - "$result_report" "$reference_sha" "$frame_reports" "$REPO" <<'PY'
+import hashlib
+import json
+import runpy
+import sys
+from pathlib import Path
+
+output, reference_sha, directory, repository = sys.argv[1:]
+root = Path(repository)
+sources = json.loads((Path(directory) / "candidate-sources.json").read_text())
+if sources != runpy.run_path(str(root / "parity" / "write-ledger.py"))["candidate_sources"](root):
+    raise ValueError("candidate sources changed during accumulation")
+frames = []
+for frame in (1, 2, 8):
+    report = json.loads((Path(directory) / f"{frame}.json").read_text())
+    frames.append({"frame": frame, "report": report, **{
+        f"{kind}_sha256": hashlib.sha256(Path(report[kind]).read_bytes()).hexdigest()
+        for kind in ("golden", "candidate")
+    }})
+Path(output).write_text(json.dumps({"case": "cellularAutomata", "reference_sha": reference_sha,
+                                   "candidate_sources": sources,
+                                   "frames": frames}, indent=2) + "\n")
+PY
+  exit $?
+fi
 echo "=== cellularAutomata (discrete CA — strict at every frame) ==="
 for n in 1 2 8; do if grade cellularAutomata "$n" 2.001 0.98; then pass=$((pass+1)); else fail=$((fail+1)); fi; done
 
