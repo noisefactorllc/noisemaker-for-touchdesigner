@@ -7,7 +7,7 @@ name: Export kit
 #
 # Publication is manual or weekly, never on push, and the release dispatch
 # needs a full rendered TouchDesigner parity run at the same SHA (GAP-013).
-# The parity job runs on the self-hosted spare-noisemaker-gpu runner, which
+# The parity job runs on the self-hosted macOS GPU runner, which
 # runs one job at a time. TouchDesigner has no headless mode: the runner's
 # logged-in macOS session must be unlocked, and a locked or logged-out
 # session blocks the render. Every TouchDesigner process the harness starts

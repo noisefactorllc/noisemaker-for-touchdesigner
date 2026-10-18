@@ -7,7 +7,7 @@ consumer, records a machine-readable report and PNG artifacts under parity/out/w
 and quits (project.quit(force=True) from the exec DAT's finally block, so the host run
 always terminates itself).
 
-Phases (NM_WORKFLOW_PHASE, passed through the host broker env):
+Phases (NM_WORKFLOW_PHASE, passed through the GPU host env):
   build   — fresh isolated consumer Base COMP in a fresh project; documented NMRenderer
             example (1280x1280, README DSL); connect its Output to an `out` TOP; cook and
             verify meaningful output; resize(320, 240) and re-cook; feed invalid DSL and

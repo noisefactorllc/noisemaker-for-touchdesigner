@@ -7,7 +7,7 @@ its Start toggle enabled); this probe verifies the result, records a
 machine-readable report and PNG artifacts under parity/out/kit-qual/, and quits
 (project.quit(force=True) from the exec DAT's finally block).
 
-Phases (NM_KIT_PHASE, passed through the host broker env):
+Phases (NM_KIT_PHASE, passed through the GPU host env):
   build     -- wait for the kit's onStart build, add the documented `out` Null
                TOP beside the Base COMP, call the documented rebuild()
                (which wires the output), cook, verify meaningful TOP output,
