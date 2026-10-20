@@ -25,6 +25,12 @@ from .token import TokenType as T, Token
 from .dsl_syntax_error import DslSyntaxError, coord_str
 from . import diagnostics as _diag
 
+class _Block(list):
+    """Block body (list) with a trailingComments attribute, mirroring the
+    reference's non-enumerable `trailingComments` property on block arrays."""
+    pass
+
+
 _EXPR_START = frozenset([
     T.PLUS, T.MINUS, T.NUMBER, T.HEX, T.FUNC, T.STRING, T.IDENT, T.OUTPUT_REF, T.SOURCE_REF,
     T.VOL_REF, T.GEO_REF, T.MESH_REF, T.XYZ_REF, T.VEL_REF, T.RGBA_REF, T.LPAREN, T.LBRACKET,
@@ -288,9 +294,20 @@ class _Parser:
 
     def _parse_block(self):
         self._expect(T.LBRACE, "Expect '{'")
-        body = []
-        while self._peek().type != T.RBRACE:
-            body.append(self._parse_statement())
+        body = _Block()
+        while True:
+            # Comments attach to the next statement, as at top level
+            leading_comments = self._collect_comments()
+            if self._peek().type == T.RBRACE:
+                # Comments before '}' have no statement. Keep them on the block.
+                if leading_comments:
+                    body.trailingComments = leading_comments
+                break
+            stmt = self._parse_statement()
+            if leading_comments and stmt is not None:
+                stmt['leadingComments'] = leading_comments
+            if stmt is not None:
+                body.append(stmt)
             while self._peek().type == T.SEMICOLON:
                 self._advance()
         self._expect(T.RBRACE, "Expect '}'")

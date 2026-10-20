@@ -652,6 +652,27 @@ class _Validator:
                 i += 1
                 continue
 
+            # vec2(x, y) on a vec2 parameter, and vec4(x, y, z, w) on a color
+            # parameter. The loader registers vec4 parameters as `color`; their
+            # default keeps its four components. Any other form, including a
+            # wrong component count, takes the per-type branches below.
+            if (node is not None and node.get('type') == K.Call
+                    and len(node.get('args') or []) == (2 if node.get('name') == 'vec2' else 4)
+                    and ((d.type == "vec2" and node.get('name') == 'vec2')
+                         or (d.type == "color" and node.get('name') == 'vec4'
+                             and isinstance(d.default, list) and len(d.default) == 4))):
+                value = []
+                for arg in node['args']:
+                    if arg.get('type') == K.Number:
+                        value.append(arg['value'])
+                    else:
+                        self._push_diag("S002", arg, "Argument out of range for '" + d.name
+                                        + "' in " + call['name'] + "()")
+                        value.append(0)
+                args[arg_key] = value
+                i += 1
+                continue
+
             ty = d.type
             if ty == "surface":
                 self._resolve_surface_arg(chain, d, node, call, args, arg_key, write_name)
