@@ -96,6 +96,14 @@ class _Validator:
         self._search_order = None
         self._temp_index = 0
         self._reported_automation_cycles = set()
+        # Identifier nodes that already have their S003 for a read before the
+        # let (reference keeps a WeakSet; node identity via id() is stable
+        # because the AST outlives this run).
+        self._reads_before_let = set()
+        # Statement-order declaration state (reference/02 §3).
+        self._top_level_vars = []
+        self._next_var = 0
+        self._pending_lets = set()
 
     def _run(self, ast):
         render = ast['render']['name'] if ast.get('render') else None
@@ -105,13 +113,20 @@ class _Validator:
             raise Exception("Missing required 'search' directive. Every program must start with "
                             "'search <namespace>, ...' to specify namespace search order.")
 
-        self._process_vars(ast.get('vars'))
-
         plans = []
-        for stmt in (ast.get('plans') or []):
-            p = self._compile_stmt(stmt)
+        # Statements compile in order. Each one sees the lets written before
+        # it, and the latest assignment of a name wins. Lets that come after
+        # the last statement are still declared, so their own checks run.
+        self._top_level_vars = ast.get('vars') or []
+        self._next_var = 0
+        self._pending_lets = set()
+        statements = ast.get('plans') or []
+        for index in range(len(statements)):
+            self._declare_vars_before(index)
+            p = self._compile_stmt(statements[index])
             if p is not None:
                 plans.append(p)
+        self._declare_vars_before(float('inf'))
 
         return {
             'plans': plans,
@@ -123,6 +138,8 @@ class _Validator:
     # --- diagnostics ----------------------------------------------------
 
     def _push_diag(self, code, node, message=None):
+        if node is not None and isinstance(node, dict) and id(node) in self._reads_before_let:
+            return
         if message is None:
             message = _diag.default_message(code)
         ident_name = self._extract_identifier_name(node)
@@ -165,34 +182,68 @@ class _Validator:
 
     # --- vars / symbols (reference/02 §3) -------------------------------
 
-    def _process_vars(self, vars_):
-        if not vars_:
+    def _declare_var(self, v):
+        expr = self._substitute(copy.deepcopy(v['expr']), [v['name']])
+        if expr is not None and self._is_starter_chain(expr):
+            head = self._first_chain_call(expr)
+            if head is not None:
+                self._push_diag("S006", head)
+        if expr is None or (expr.get('type') == K.Ident and expr['name'] in ('null', 'undefined')):
+            self._push_diag("S004", v)
             return
-        for v in vars_:
-            expr = self._substitute(copy.deepcopy(v['expr']), [v['name']])
-            if expr is not None and self._is_starter_chain(expr):
-                head = self._first_chain_call(expr)
-                if head is not None:
-                    self._push_diag("S006", head)
-            if expr is None or (expr.get('type') == K.Ident and expr['name'] in ('null', 'undefined')):
-                self._push_diag("S004", v)
-                continue
-            if (expr.get('type') == K.Ident and expr['name'] not in self._symbols
-                    and expr['name'] not in _STATE_VALUES
-                    and self._reg.get_op(expr['name']) is None
-                    and not self._can_resolve_op_name(expr['name'])):
-                self._push_diag("S003", expr)
-                continue
-            if expr.get('type') == K.Chain and len(expr['chain']) == 1:
-                self._symbols[v['name']] = expr['chain'][0]
-            elif expr.get('type') == K.Member:
-                resolved = self._resolve_enum_number(expr['path'])
-                if resolved is not None:
-                    self._symbols[v['name']] = enums.leaf(resolved)  # {type:'Number',value}
-                else:
-                    self._symbols[v['name']] = expr
+        if (expr.get('type') == K.Ident and expr['name'] not in self._symbols
+                and expr['name'] not in _STATE_VALUES
+                and self._reg.get_op(expr['name']) is None
+                and not self._can_resolve_op_name(expr['name'])):
+            self._push_diag("S003", expr)
+            return
+        if expr.get('type') == K.Chain and len(expr['chain']) == 1:
+            self._symbols[v['name']] = expr['chain'][0]
+        elif expr.get('type') == K.Member:
+            resolved = self._resolve_enum_number(expr['path'])
+            if resolved is not None:
+                self._symbols[v['name']] = enums.leaf(resolved)  # {type:'Number',value}
             else:
                 self._symbols[v['name']] = expr
+        else:
+            self._symbols[v['name']] = expr
+
+    def _declare_vars_before(self, plan_index):
+        # Top-level lets are declared in statement order. `pendingLets` holds
+        # the names of the lets that come after the current statement.
+        while (self._next_var < len(self._top_level_vars)
+               and getattr(self._top_level_vars[self._next_var], 'plan_index', 0) <= plan_index):
+            self._declare_var(self._top_level_vars[self._next_var])
+            self._next_var += 1
+        self._pending_lets = {v['name'] for v in self._top_level_vars[self._next_var:]}
+
+    def _report_reads_before_let(self, node):
+        # A statement that reads a variable before any let assigns it gets
+        # S003 "Variable used before assignment" at the identifier. Other
+        # diagnostics for that identifier node are not added.
+        if not self._pending_lets:
+            return
+        if isinstance(node, list):
+            for item in node:
+                self._report_reads_before_let(item)
+            return
+        if not isinstance(node, dict):
+            return
+        if (node.get('type') == K.Ident and node['name'] in self._pending_lets
+                and node['name'] not in self._symbols):
+            if id(node) not in self._reads_before_let:
+                position = getattr(node, 'position', None)
+                if position:
+                    diag_node = {'type': K.Ident, 'name': node['name'],
+                                 'loc': {'line': position.get('line'),
+                                         'column': position.get('column')}}
+                else:
+                    diag_node = {'type': K.Ident, 'name': node['name']}
+                self._push_diag("S003", diag_node)
+                self._reads_before_let.add(id(node))
+            return
+        for value in node.values():
+            self._report_reads_before_let(value)
 
     # --- enum resolution (reference/02 §2.5) ----------------------------
 
@@ -371,6 +422,7 @@ class _Validator:
 
     def _compile_chain_statement(self, stmt):
         chain = []
+        self._report_reads_before_let(stmt['chain'])
         chain_node = {'type': K.Chain, 'chain': stmt['chain']}
         has_write = stmt.get('write') is not None or stmt.get('write3d') is not None
 
@@ -534,7 +586,7 @@ class _Validator:
                 continue
 
             # effect call (reference/02 §5.2)
-            call = self._resolve_call(copy.deepcopy(original))
+            call = self._resolve_call(dict(original))
 
             ns = call.get('namespace')
             search_order = ns['searchOrder'] if (ns is not None and ns.get('searchOrder')) else self._search_order
@@ -652,30 +704,20 @@ class _Validator:
                 i += 1
                 continue
 
-            # vec2(x, y) on a vec2 parameter, and vec4(x, y, z, w) on a color
-            # parameter. The loader registers vec4 parameters as `color`; their
-            # default keeps its four components. Any other form, including a
-            # wrong component count, takes the per-type branches below.
-            if (node is not None and node.get('type') == K.Call
-                    and len(node.get('args') or []) == (2 if node.get('name') == 'vec2' else 4)
-                    and ((d.type == "vec2" and node.get('name') == 'vec2')
-                         or (d.type == "color" and node.get('name') == 'vec4'
-                             and isinstance(d.default, list) and len(d.default) == 4))):
-                value = []
-                for arg in node['args']:
-                    if arg.get('type') == K.Number:
-                        value.append(arg['value'])
-                    else:
-                        self._push_diag("S002", arg, "Argument out of range for '" + d.name
-                                        + "' in " + call['name'] + "()")
-                        value.append(0)
-                args[arg_key] = value
-                i += 1
-                continue
-
             ty = d.type
             if ty == "surface":
                 self._resolve_surface_arg(chain, d, node, call, args, arg_key, write_name)
+            elif (node is not None and node.get('type') == K.Call
+                  and len(node.get('args') or []) == (2 if node.get('name') == 'vec2' else 4)
+                  and ((ty == "vec2" and node.get('name') == 'vec2')
+                       or (ty == "color" and node.get('name') == 'vec4'
+                           and isinstance(d.default, list) and len(d.default) == 4))):
+                # vec2(x, y) on a vec2 parameter, and vec4(x, y, z, w) on a
+                # vec4 parameter. The loader registers vec4 parameters as
+                # `color`; their default keeps its four components. Any
+                # other form, including a wrong component count, takes
+                # the branches below.
+                self._resolve_vec_components_arg(d, node, call, args, arg_key)
             elif ty == "color":
                 self._resolve_color_arg(d, node, call, args, arg_key)
             elif ty == "vec3":
@@ -758,7 +800,18 @@ class _Validator:
                         or {'kind': 'pipeline', 'name': d.default})
         args[arg_key] = surf
 
-    # 6.2 color
+    # 6.2 color (vec2/vec4 component form handled by _resolve_vec_components_arg)
+    def _resolve_vec_components_arg(self, d, node, call, args, arg_key):
+        value = []
+        for a in node['args']:
+            if a.get('type') == K.Number:
+                value.append(a['value'])
+            else:
+                self._push_diag("S002", a, "Argument out of range for '" + d.name + "' in "
+                                + call['name'] + "()")
+                value.append(0)
+        args[arg_key] = value
+
     def _resolve_color_arg(self, d, node, call, args, arg_key):
         if node is not None and node.get('type') == K.String:
             self._push_diag("S001", node, "String literal not allowed for color parameter '" + d.name + "'")

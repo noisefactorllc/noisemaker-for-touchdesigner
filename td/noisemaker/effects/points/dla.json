@@ -8,6 +8,16 @@
   ],
   "description": "Diffusion-limited aggregation",
   "globals": {
+    "diffuseTex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "diffuseActive"
+    },
+    "fieldTex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "fieldActive"
+    },
     "stateSize": {
       "type": "int",
       "default": 256,
@@ -96,9 +106,13 @@
         "velTex": "global_vel",
         "rgbaTex": "global_rgba",
         "gridTex": "global_dla_grid",
-        "inputTex": "inputTex"
+        "inputTex": "inputTex",
+        "fieldTex": "fieldTex",
+        "diffuseTex": "diffuseTex"
       },
       "uniforms": {
+        "diffuseActive": "diffuseActive",
+        "fieldActive": "fieldActive",
         "stride": "stride",
         "inputWeight": "inputWeight",
         "attrition": "attrition",

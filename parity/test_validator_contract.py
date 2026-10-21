@@ -25,6 +25,68 @@ def validate_dsl(source):
 
 
 class ValidatorContractTests(unittest.TestCase):
+    def test_let_assignments_apply_in_statement_order(self):
+        result = validate_dsl(
+            'search synth\nlet scale = 10\n'
+            'noise(scaleX: scale).write(o0)\nlet scale = 20\n'
+            'noise(scaleX: scale).write(o1)\nrender(o1)\n'
+        )
+        self.assertEqual([], result['diagnostics'])
+        self.assertEqual([10, 20], [plan['chain'][0]['args']['scaleX']
+                                  for plan in result['plans']])
+
+    def test_read_before_later_let_has_one_located_diagnostic(self):
+        result = validate_dsl(
+            'search synth\nnoise(scaleX: later).write(o0)\n'
+            'let later = 20\nrender(o0)\n'
+        )
+        self.assertEqual([('S003', 'later', 2, 15)], [
+            (d['code'], d['identifier'], d.get('line'), d.get('column'))
+            for d in result['diagnostics']
+        ])
+
+    def test_particle_explicit_surfaces_preserve_legacy_inputs(self):
+        effects = ('flow', 'hydraulic', 'dla', 'physarum', 'life',
+                   'flock', 'physical', 'attractor', 'buddhabrot', 'lenia')
+        fields = {'flow': 'fieldTex', 'hydraulic': 'heightTex',
+                  'dla': 'fieldTex', 'physarum': 'fieldTex'}
+        for effect in effects:
+            for argument in ('', 'diffuseTex: none', 'diffuseTex: read(o1)'):
+                with self.subTest(effect=effect, argument=argument):
+                    graph = compile_dsl(
+                        'search synth, render, points\n'
+                        'solid(color: #ff0000).write(o1)\n'
+                        'solid(color: #00ff00).pointsEmit().%s(%s).write(o0)\n'
+                        'render(o0)' % (effect, argument)
+                    )
+                    suffix = '_agentField' if effect == 'lenia' else '_agent'
+                    agent = next(p for p in graph['passes']
+                                 if p['effectKey'] == 'points.' + effect
+                                 and p['program'].endswith(suffix))
+                    self.assertEqual(int('read(' in argument),
+                                     agent['uniforms']['diffuseActive'])
+                    if 'read(' in argument:
+                        self.assertEqual('global_o1', agent['inputs']['diffuseTex'])
+            if effect in fields:
+                graph = compile_dsl(
+                    'search synth, render, points\n'
+                    'solid(color: #ff0000).write(o1)\n'
+                    'solid(color: #00ff00).pointsEmit().%s(%s: read(o1)).write(o0)\n'
+                    'render(o0)' % (effect, fields[effect])
+                )
+                agent = next(p for p in graph['passes']
+                             if p['effectKey'] == 'points.' + effect
+                             and p['program'].endswith('_agent'))
+                self.assertEqual(1, agent['uniforms']['fieldActive'])
+                self.assertEqual('global_o1', agent['inputs'][fields[effect]])
+                passthrough = next(p for p in graph['passes']
+                                   if p['effectKey'] == 'points.' + effect
+                                   and p['program'].endswith('_passthrough')
+                                   and any(str(value).startswith('node_')
+                                           for value in p['outputs'].values()))
+                self.assertEqual(agent['inputs']['inputTex'],
+                                 passthrough['inputs']['inputTex'])
+
     def test_statement_block_preserves_leading_and_trailing_comments(self):
         source = (
             "search synth\nif (true) {\n"

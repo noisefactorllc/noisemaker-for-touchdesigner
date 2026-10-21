@@ -17,6 +17,7 @@ AST nodes are plain dicts (ast.NodeKind type strings). Kwargs are plain dicts โ€
 preserve insertion order, matching the reference's order-significant JS kwarg objects.
 """
 
+import copy
 import math
 
 from . import ast
@@ -49,6 +50,22 @@ _NAMESPACE_TOKENS = frozenset([
 ])
 
 _OSC_KWARG_KEYS = frozenset(['type', 'min', 'max', 'speed', 'offset', 'seed'])
+
+
+class _MetaNode(dict):
+    """AST dict carrying non-serialized metadata.
+
+    Mirrors the reference's non-enumerable node fields (parser.js defines
+    `planIndex` on top-level `let` nodes and `position` on Ident nodes with
+    Object.defineProperty(..., {enumerable: false}), so JSON dumps of the
+    reference AST exclude them). Attributes live outside the dict, so
+    structural comparisons against the reference AST JSON see only the dict
+    keys. `__deepcopy__` returns a plain dict, mirroring the reference
+    validator's JSON-round-trip clone(), which drops non-enumerable fields.
+    """
+
+    def __deepcopy__(self, memo):
+        return {key: copy.deepcopy(value, memo) for key, value in self.items()}
 
 
 from .effect_registry import EffectRegistry
@@ -208,7 +225,13 @@ class _Parser:
             if leading_comments and stmt is not None:
                 stmt['leadingComments'] = leading_comments
             if stmt is not None and stmt.get('type') == K.VarAssign:
-                vars_.append(stmt)
+                # Statement order: the number of plans written before this
+                # let. The reference keeps this as a non-enumerable field, so
+                # it rides outside the dict (reference/02 ยง3 declaration
+                # order reads it).
+                meta_stmt = _MetaNode(stmt)
+                meta_stmt.plan_index = len(plans)
+                vars_.append(meta_stmt)
             elif stmt is not None:
                 plans.append(stmt)
             while self._peek().type == T.SEMICOLON:
@@ -1036,7 +1059,11 @@ class _Parser:
                 path.append(nxt.lexeme)
             if len(path) > 1:
                 return {'type': K.Member, 'path': path}
-            return {'type': K.Ident, 'name': path[0]}
+            # Private source position for structured diagnostics; the public
+            # AST shape is unchanged (non-enumerable in the reference).
+            ident = _MetaNode({'type': K.Ident, 'name': path[0]})
+            ident.position = {'line': token.line, 'column': token.col}
+            return ident
         if tt == T.OUTPUT_REF:
             self._advance()
             return {'type': K.OutputRef, 'name': token.lexeme}

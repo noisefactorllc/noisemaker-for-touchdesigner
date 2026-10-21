@@ -9,6 +9,11 @@
   ],
   "description": "Buddhabrot fractal via progressive orbit accumulation",
   "globals": {
+    "diffuseTex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "diffuseActive"
+    },
     "stateSize": {
       "type": "int",
       "default": 512,
@@ -66,9 +71,11 @@
       "inputs": {
         "xyzTex": "global_xyz",
         "velTex": "global_vel",
-        "rgbaTex": "global_rgba"
+        "rgbaTex": "global_rgba",
+        "diffuseTex": "diffuseTex"
       },
       "uniforms": {
+        "diffuseActive": "diffuseActive",
         "maxIter": "maxIter",
         "minIter": "minIter",
         "mode": "mode",

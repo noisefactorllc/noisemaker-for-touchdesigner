@@ -8,6 +8,16 @@
   ],
   "description": "Hydraulic erosion flow simulation (gradient descent)",
   "globals": {
+    "diffuseTex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "diffuseActive"
+    },
+    "heightTex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "fieldActive"
+    },
     "stride": {
       "type": "float",
       "default": 10,
@@ -41,9 +51,13 @@
         "xyzTex": "global_xyz",
         "velTex": "global_vel",
         "rgbaTex": "global_rgba",
-        "inputTex": "inputTex"
+        "inputTex": "inputTex",
+        "heightTex": "heightTex",
+        "diffuseTex": "diffuseTex"
       },
       "uniforms": {
+        "diffuseActive": "diffuseActive",
+        "fieldActive": "fieldActive",
         "stride": "stride",
         "quantize": "quantize",
         "inverse": "inverse",

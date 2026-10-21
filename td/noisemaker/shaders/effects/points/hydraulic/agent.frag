@@ -1,9 +1,11 @@
-// NM_INPUTS: inputTex=0 xyzTex=1 velTex=2 rgbaTex=3
+// NM_INPUTS: heightTex=0 inputTex=1 xyzTex=2 velTex=3 rgbaTex=4 diffuseTex=5
 // NM_OUTPUT: MRT outXYZ,outVel,outRGBA
-#define inputTex sTD2DInputs[0]
-#define xyzTex sTD2DInputs[1]
-#define velTex sTD2DInputs[2]
-#define rgbaTex sTD2DInputs[3]
+#define heightTex sTD2DInputs[0]
+#define inputTex sTD2DInputs[1]
+#define xyzTex sTD2DInputs[2]
+#define velTex sTD2DInputs[3]
+#define rgbaTex sTD2DInputs[4]
+#define diffuseTex sTD2DInputs[5]
 // Standard uniforms
 uniform vec2 resolution;
 uniform float time;
@@ -13,8 +15,10 @@ uniform float stride;
 uniform float quantize;
 uniform float inverse;
 uniform float inputWeight;
+uniform float fieldActive;
 
 // Input state from pipeline (from pointsEmit)
+
 
 
 
@@ -24,6 +28,15 @@ uniform float inputWeight;
 layout(location = 0) out vec4 outXYZ;
 layout(location = 1) out vec4 outVel;
 layout(location = 2) out vec4 outRGBA;
+
+
+uniform float diffuseActive;
+
+vec4 selectedDiffuse(vec2 uv) {
+    ivec2 size = textureSize(diffuseTex, 0);
+    ivec2 pixel = clamp(ivec2(clamp(uv, vec2(0.0), vec2(0.999999)) * vec2(size)), ivec2(0), size - 1);
+    return texelFetch(diffuseTex, pixel, 0);
+}
 
 // === ORIGINAL HFLOW HELPER FUNCTIONS (PRESERVED EXACTLY) ===
 
@@ -76,7 +89,7 @@ float oklab_l(vec3 rgb) {
 vec4 fetch_texel(int x, int y, int width, int height) {
     int wrapped_x = wrap_int(x, width);
     int wrapped_y = wrap_int(y, height);
-    return texelFetch(inputTex, ivec2(wrapped_x, wrapped_y), 0);
+    return fieldActive > 0.5 ? texelFetch(heightTex, ivec2(wrapped_x, wrapped_y), 0) : texelFetch(inputTex, ivec2(wrapped_x, wrapped_y), 0);
 }
 
 float luminance_at(int x, int y, int width, int height) {
@@ -200,5 +213,5 @@ void main() {
     
     outXYZ = vec4(newPx, newPy, xyz.z, alive);
     outVel = vec4(normVx, normVy, vz, seed_f);
-    outRGBA = rgba;
+    outRGBA = diffuseActive > 0.5 ? selectedDiffuse(outXYZ.xy) : rgba;
 }

@@ -1,9 +1,10 @@
-// NM_INPUTS: xyzTex=0 velTex=1 rgbaTex=2 fieldTex=3
+// NM_INPUTS: xyzTex=0 velTex=1 rgbaTex=2 fieldTex=3 diffuseTex=4
 // NM_OUTPUT: MRT outXYZ,outVel,outRGBA
 #define xyzTex sTD2DInputs[0]
 #define velTex sTD2DInputs[1]
 #define rgbaTex sTD2DInputs[2]
 #define fieldTex sTD2DInputs[3]
+#define diffuseTex sTD2DInputs[4]
 // Agent update pass - samples pre-convolved U field
 // Much faster than O(n²) as field is already computed
 
@@ -28,6 +29,15 @@ uniform float dt;        // Time step
 layout(location = 0) out vec4 outXYZ;
 layout(location = 1) out vec4 outVel;
 layout(location = 2) out vec4 outRGBA;
+
+
+uniform float diffuseActive;
+
+vec4 selectedDiffuse(vec2 uv) {
+    ivec2 size = textureSize(diffuseTex, 0);
+    ivec2 pixel = clamp(ivec2(clamp(uv, vec2(0.0), vec2(0.999999)) * vec2(size)), ivec2(0), size - 1);
+    return texelFetch(diffuseTex, pixel, 0);
+}
 
 const float EPSILON = 0.0001;
 
@@ -116,5 +126,5 @@ void main() {
     // Output
     outXYZ = vec4(newPos, xyz.z, 1.0);  // Keep z, stay alive
     outVel = vec4(velocity, age, vel.w);  // Store velocity, age, seed
-    outRGBA = rgba;  // Color unchanged
+    outRGBA = diffuseActive > 0.5 ? selectedDiffuse(outXYZ.xy) : rgba;
 }

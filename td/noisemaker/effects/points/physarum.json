@@ -8,6 +8,16 @@
   ],
   "description": "Physarum slime mold simulation",
   "globals": {
+    "diffuseTex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "diffuseActive"
+    },
+    "fieldTex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "fieldActive"
+    },
     "moveSpeed": {
       "type": "float",
       "default": 1.78,
@@ -86,9 +96,13 @@
         "velTex": "global_vel",
         "rgbaTex": "global_rgba",
         "trailTex": "global_physarum_pheromone",
-        "inputTex": "inputTex"
+        "inputTex": "inputTex",
+        "fieldTex": "fieldTex",
+        "diffuseTex": "diffuseTex"
       },
       "uniforms": {
+        "diffuseActive": "diffuseActive",
+        "fieldActive": "fieldActive",
         "moveSpeed": "moveSpeed",
         "turnSpeed": "turnSpeed",
         "sensorAngle": "sensorAngle",

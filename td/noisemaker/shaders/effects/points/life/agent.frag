@@ -1,4 +1,4 @@
-// NM_INPUTS: xyzTex=0 velTex=1 rgbaTex=2 dataTex=3 forceMatrix=4 inputTex=5
+// NM_INPUTS: xyzTex=0 velTex=1 rgbaTex=2 dataTex=3 forceMatrix=4 inputTex=5 diffuseTex=6
 // NM_OUTPUT: MRT outXYZ,outVel,outRGBA,outData
 #define xyzTex sTD2DInputs[0]
 #define velTex sTD2DInputs[1]
@@ -6,6 +6,7 @@
 #define dataTex sTD2DInputs[3]
 #define forceMatrix sTD2DInputs[4]
 #define inputTex sTD2DInputs[5]
+#define diffuseTex sTD2DInputs[6]
 // Particle Life agent pass - Common Agent Architecture middleware
 // Combined force evaluation + integration in single pass
 // Reads from global_xyz/vel/rgba + internal data, writes back all 4
@@ -27,8 +28,10 @@ uniform int boundaryMode;
 uniform float matrixSeed;
 uniform bool symmetricForces;
 uniform bool useTypeColor;
+uniform float diffuseActive;
 
 // Input state from pipeline (from pointsEmit)
+
 
 
 
@@ -300,7 +303,9 @@ void main() {
     outXYZ = vec4(pos, 0.0, 1.0);
     outVel = vec4(velocity, age, seed);
     
-    if (useTypeColor) {
+    if (diffuseActive > 0.5) {
+        outRGBA = texture(diffuseTex, pos);
+    } else if (useTypeColor) {
         outRGBA = vec4(typeColor(int(typeId), typeCount), 1.0);
     } else {
         outRGBA = texture(inputTex, pos);
