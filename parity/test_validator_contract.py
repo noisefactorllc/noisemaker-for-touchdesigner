@@ -25,6 +25,49 @@ def validate_dsl(source):
 
 
 class ValidatorContractTests(unittest.TestCase):
+    def test_statement_block_preserves_leading_and_trailing_comments(self):
+        source = (
+            "search synth\nif (true) {\n"
+            "// before statement\nnoise().write(o0)\n"
+            "/* after statement */\n}\nrender(o0)\n"
+        )
+        try:
+            ast = parse(lex(source), EffectRegistry())
+        except Exception as error:
+            self.fail("Statement block comments must parse: %s" % error)
+        body = ast["plans"][0]["then"]
+        self.assertEqual(1, len(body))
+        self.assertEqual(["// before statement"], body[0]["leadingComments"])
+        self.assertEqual(["/* after statement */"], body.trailingComments)
+
+    def test_namespace_registration_rejects_surface_reference_names(self):
+        registry = EffectRegistry()
+        original = list(registry.namespaces)
+        for name in ("o1", "o7paint", "s1", "vol0", "geo2", "xyz3", "vel4", "rgba5", "mesh6"):
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, "surface reference"):
+                    registry.register_namespace(name)
+                self.assertFalse(registry.is_valid_namespace(name))
+        self.assertEqual(original, registry.namespaces)
+        for name in ("ocean", "volumeLab", "rgbaPaint", "meshWork", "synth", "render"):
+            with self.subTest(valid_name=name):
+                registry.register_namespace(name)
+                registry.register_namespace(name)
+                self.assertTrue(registry.is_valid_namespace(name))
+                self.assertEqual(1, registry.namespaces.count(name))
+
+    def test_namespace_registration_rejects_lexer_errors_without_mutation(self):
+        registry = EffectRegistry()
+        original = list(registry.namespaces)
+        try:
+            registry.register_namespace("paint!")
+        except Exception as error:
+            self.assertIsInstance(error, ValueError)
+            self.assertIn("surface reference", str(error))
+        else:
+            self.fail("A namespace with a lexer error was accepted")
+        self.assertEqual(original, registry.namespaces)
+
     def test_text_style_accepts_a_quoted_css_string(self):
         graph = compile_dsl(
             'search synth, filter\n'

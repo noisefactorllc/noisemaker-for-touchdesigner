@@ -17,6 +17,9 @@ reference registry's multi-key registration (canvas.js registerEffectWithRuntime
 import os
 
 from . import enums
+from .dsl_syntax_error import DslSyntaxError
+from .lexer import lex
+from .token import TokenType as T
 
 # Builtin namespace IDs, reference order (shaders/src/runtime/tags.js _builtinDescriptors).
 # FIXED bootstrap metadata — NOT derived from loaded effects: `io`/`user` carry no effects but
@@ -129,6 +132,12 @@ class EffectRegistry:
 
     def register_namespace(self, ns):
         if ns not in self._ns_set:
+            try:
+                tokens = lex(ns)
+            except (DslSyntaxError, TypeError):
+                tokens = []
+            if len(tokens) != 2 or tokens[0].type != T.IDENT or tokens[0].lexeme != ns:
+                raise ValueError("Cannot register namespace '%s': the DSL reads it as a surface reference" % ns)
             self._ns_set.add(ns)
             self._namespaces.append(ns)
 
