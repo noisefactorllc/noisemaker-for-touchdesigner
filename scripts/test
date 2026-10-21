@@ -257,7 +257,8 @@ else:
                     src = fh.read()
                 if ('.' + stem + '(') in src or (stem + '(') in src:
                     selected.add(f)
-    print('\n'.join(sorted(selected)))
+    if selected:
+        print('\n'.join(sorted(selected)))
 PY
 )
 EXPECTED="${#GATE_FILES[@]}"
