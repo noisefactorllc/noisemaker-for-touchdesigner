@@ -23,6 +23,12 @@ Phases (NM_KIT_PHASE, passed through the GPU host env):
                restored, and rebuild() again renders the build PNG exactly.
   remove    -- uninstall: destroy the noisemaker Base COMP and the out TOP,
                verify no remaining ops, and quit.
+  parameters-- GAP-017 control accessibility: enumerate the host Base COMP's
+               published parameters live (pages, custom pars, module
+               constants), render a baseline, drive each custom parameter
+               through its value control (set, rebuild, render, restore), and
+               drive the documented rebuild() entry point and a program.dsl
+               change, recording the render result after every change.
 """
 import hashlib
 import json
@@ -47,6 +53,11 @@ OUT = os.environ.get('NM_KIT_OUT') or os.path.join(REPO, 'parity', 'out', 'kit-q
 PHASE = os.environ.get('NM_KIT_PHASE') or 'build'
 HOST_COMP = 'noisemaker'
 OUT_TOP = 'out'
+# GAP-017 parameters phase: the program.dsl content change to apply, as a
+# (from, to) literal pair. Applied with str.replace; when FROM is absent from
+# the program the change is recorded as skipped instead of guessed.
+DSL_FROM = os.environ.get('NM_PARAM_DSL_FROM')
+DSL_TO = os.environ.get('NM_PARAM_DSL_TO')
 
 _lines = []
 
@@ -392,6 +403,206 @@ def remove_phase():
     return steps
 
 
+def enumerate_published_parameters(host, integ):
+    """Record every published control of the kit's host Base COMP, live.
+
+    Enumeration only: reads TouchDesigner's own view of the COMP so nothing is
+    inferred from source. Module constants are read from the kit's integrate
+    module; they are code-level settings, not runtime parameters, and are
+    recorded as such.
+    """
+    enumeration = {'host_comp': host.path}
+    try:
+        pages = host.pages
+        if callable(pages):
+            pages = pages()
+        enumeration['pages'] = [pg.name for pg in (pages or [])]
+    except Exception as e:  # noqa: BLE001
+        enumeration['pages'] = 'error: %s' % e
+    pars = []
+    try:
+        for p in (host.customPars or []):
+            row = {}
+            for attr in ('name', 'label', 'style'):
+                try:
+                    row[attr] = str(getattr(p, attr))
+                except Exception:  # noqa: BLE001
+                    row[attr] = None
+            try:
+                row['page'] = p.page.name if p.page is not None else None
+            except Exception:  # noqa: BLE001
+                row['page'] = None
+            for attr in ('default', 'value'):
+                try:
+                    row[attr] = str(p.eval() if attr == 'value' else p.default)
+                except Exception:  # noqa: BLE001
+                    row[attr] = None
+            pars.append(row)
+    except Exception as e:  # noqa: BLE001
+        pars = 'error: %s' % e
+    enumeration['customPars'] = pars
+    try:
+        pages = host.customPages
+        if callable(pages):
+            pages = pages()
+        enumeration['customPages'] = [pg.name for pg in (pages or [])]
+    except Exception as e:  # noqa: BLE001
+        enumeration['customPages'] = 'error: %s' % e
+    constants = {}
+    if integ is not None:
+        for attr in ('HOST_COMP_NAME', 'OUTPUT_OP_NAME', 'PROGRAM_FILE',
+                     'RENDER_WIDTH', 'RENDER_HEIGHT', 'MAX_VOLUME_SIZE'):
+            try:
+                constants[attr] = getattr(integ.module, attr)
+            except Exception as e:  # noqa: BLE001
+                constants[attr] = 'error: %s' % e
+    enumeration['integrate_module_constants'] = constants
+    enumeration['note'] = ('RENDER_WIDTH/RENDER_HEIGHT/MAX_VOLUME_SIZE are '
+                           'integrate.py code constants, not runtime parameters; '
+                           'MAX_VOLUME_SIZE takes effect only in a fresh session.')
+    return enumeration
+
+
+def render_target(nm, png_name, steps, step_name, baseline_png=None):
+    """Cook the renderer's terminal TOP, save a PNG, record its result."""
+    if nm is None or nm.Output is None:
+        steps.append({'step': step_name, 'error': 'no renderer or no Output TOP'})
+        return None
+    target = nm.Output
+    target.cook(force=True)
+    s = _stats(target)
+    p = os.path.join(OUT, png_name)
+    os.makedirs(OUT, exist_ok=True)
+    target.save(p)
+    errs = (target.errors() or '') if hasattr(target, 'errors') else ''
+    row = {'step': step_name, 'png': os.path.basename(p), 'sha256': _sha256(p),
+           'rendered_top': target.path, 'stats': s, 'top_errors': errs or None,
+           'meaningful': bool(not s['all_black'] and s['unique_bytes'] != 1)}
+    if baseline_png is not None and os.path.exists(baseline_png):
+        row['byte_identical_to_baseline'] = _sha256(p) == _sha256(baseline_png)
+    steps.append(row)
+    return row
+
+
+def perturb_custom_par(p):
+    """A value to set a custom parameter to, by its style."""
+    style = str(getattr(p, 'style', ''))
+    default = p.default
+    if style in ('Float', 'Int'):
+        try:
+            return default + (1.0 if style == 'Float' else 1)
+        except Exception:  # noqa: BLE001
+            return None
+    if style == 'Toggle':
+        try:
+            return 0 if int(default) else 1
+        except Exception:  # noqa: BLE001
+            return None
+    if style in ('Str', 'Menu', 'Menufied'):
+        return 'nm-param-probe'
+    return 'nm-param-probe'
+
+
+def parameters_phase():
+    """GAP-017: enumerate published parameters, drive each documented control."""
+    steps = []
+    try:
+        try:
+            project.realTime = False  # noqa: F821
+        except Exception as e:
+            log('realTime set failed: %s' % e)
+        root = op('/')  # noqa: F821
+        container = root.op('project1')
+        folder = project.folder  # noqa: F821
+        steps.append({'step': 'project-opened', 'project.folder': folder,
+                      'phase': PHASE, 'td': _versions()})
+        host, nm = wait_for_built_host()
+        integ = container.op('integrate1') if container else None
+        steps.append({'step': 'enumeration',
+                      **enumerate_published_parameters(host, integ)})
+        baseline = render_target(nm, 'kit.parameters.baseline.png', steps,
+                                 'baseline-render')
+        baseline_png = os.path.join(OUT, 'kit.parameters.baseline.png') \
+            if baseline else None
+        # Drive every published custom parameter through its value control.
+        driven = []
+        try:
+            custom = list(host.customPars or [])
+        except Exception:  # noqa: BLE001
+            custom = []
+        for p in custom:
+            entry = {'par': p.name, 'style': str(getattr(p, 'style', ''))}
+            try:
+                entry['before'] = str(p.eval())
+                value = perturb_custom_par(p)
+                entry['set_to'] = str(value)
+                p.val = value
+                rebuild_ok = None
+                if integ is not None:
+                    rebuild_ok = integ.module.rebuild() is not None
+                nm2 = host.fetch('nm', None, search=False)
+                row = render_target(nm2, 'kit.parameters.par.%s.png' % p.name,
+                                    steps, 'par-set-render',
+                                    baseline_png=baseline_png)
+                if row is not None:
+                    entry['render'] = {'sha256': row['sha256'],
+                                       'meaningful': row['meaningful'],
+                                       'byte_identical_to_baseline':
+                                           row.get('byte_identical_to_baseline')}
+                entry['rebuild_returned'] = rebuild_ok
+            except Exception as e:  # noqa: BLE001
+                entry['error'] = '%s: %s' % (type(e).__name__, str(e)[:300])
+            try:
+                p.val = p.default
+            except Exception as e:  # noqa: BLE001
+                entry['restore_error'] = str(e)[:200]
+            driven.append(entry)
+        steps.append({'step': 'custom-parameters-driven', 'count': len(custom),
+                      'driven': driven})
+        # Documented control 1: the rebuild() entry point, unchanged program.
+        rebuild_ok = None
+        if integ is not None:
+            rebuild_ok = integ.module.rebuild() is not None
+        nm2 = host.fetch('nm', None, search=False)
+        render_target(nm2, 'kit.parameters.rebuild.png', steps,
+                      'rebuild-control-render', baseline_png=baseline_png)
+        steps.append({'step': 'rebuild-control', 'rebuild_returned': rebuild_ok})
+        # Documented control 2: a program.dsl content change, through rebuild().
+        program = os.path.join(folder, 'program.dsl')
+        with open(program) as f:
+            original = f.read()
+        change = {'applied': False}
+        if DSL_FROM and DSL_TO and DSL_FROM in original:
+            changed = original.replace(DSL_FROM, DSL_TO, 1)
+            with open(program, 'w') as f:
+                f.write(changed)
+            change = {'applied': True, 'from': DSL_FROM, 'to': DSL_TO}
+        else:
+            change = {'applied': False,
+                      'reason': ('program.dsl does not contain the NM_PARAM_DSL_FROM '
+                                 'literal' if DSL_FROM and DSL_TO
+                                 else 'no NM_PARAM_DSL_FROM/NM_PARAM_DSL_TO env pair')}
+        steps.append({'step': 'dsl-change', **change})
+        if change['applied']:
+            if integ is not None:
+                integ.module.rebuild()
+            nm2 = host.fetch('nm', None, search=False)
+            render_target(nm2, 'kit.parameters.dsl-changed.png', steps,
+                          'dsl-changed-render', baseline_png=baseline_png)
+            with open(program, 'w') as f:
+                f.write(original)
+            if integ is not None:
+                integ.module.rebuild()
+            nm2 = host.fetch('nm', None, search=False)
+            render_target(nm2, 'kit.parameters.restored.png', steps,
+                          'restored-render', baseline_png=baseline_png)
+    except Exception:
+        steps.append({'step': 'FATAL-parameters', 'error': traceback.format_exc()[-4000:]})
+    _write_report('report.parameters.json',
+                  {'phase': 'parameters', 'td': _versions(), 'steps': steps})
+    return steps
+
+
 def main():
     if PHASE == 'relocate':
         relocate_phase()
@@ -401,6 +612,8 @@ def main():
         recover_phase()
     elif PHASE == 'remove':
         remove_phase()
+    elif PHASE == 'parameters':
+        parameters_phase()
     else:
         build_phase()
     log('phase %s done' % PHASE)
