@@ -8,6 +8,11 @@
   ],
   "description": "2D \"Boids\" flocking agent simulation",
   "globals": {
+    "diffuseTex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "diffuseActive"
+    },
     "separation": {
       "type": "float",
       "default": 2,
@@ -88,9 +93,13 @@
       "inputs": {
         "xyzTex": "global_xyz",
         "velTex": "global_vel",
-        "rgbaTex": "global_rgba"
+        "rgbaTex": "global_rgba",
+        "diffuseTex": "diffuseTex",
+        "baseColorTex": "global_flock_base_color",
+        "inputTex": "inputTex"
       },
       "uniforms": {
+        "diffuseActive": "diffuseActive",
         "separation": "separation",
         "alignment": "alignment",
         "cohesion": "cohesion",
@@ -105,9 +114,10 @@
       "outputs": {
         "outXYZ": "global_xyz",
         "outVel": "global_vel",
-        "outRGBA": "global_rgba"
+        "outRGBA": "global_rgba",
+        "outBaseColor": "global_flock_base_color"
       },
-      "drawBuffers": 3
+      "drawBuffers": 4
     },
     {
       "name": "passthrough",
@@ -120,5 +130,17 @@
       }
     }
   ],
-  "textures": {}
+  "textures": {
+    "global_flock_base_color": {
+      "width": {
+        "param": "stateSize",
+        "inherit": true
+      },
+      "height": {
+        "param": "stateSize",
+        "inherit": true
+      },
+      "format": "rgba8"
+    }
+  }
 }

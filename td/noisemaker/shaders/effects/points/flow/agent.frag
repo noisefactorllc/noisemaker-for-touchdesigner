@@ -1,9 +1,12 @@
-// NM_INPUTS: inputTex=0 xyzTex=1 velTex=2 rgbaTex=3
-// NM_OUTPUT: MRT outXYZ,outVel,outRGBA
-#define inputTex sTD2DInputs[0]
-#define xyzTex sTD2DInputs[1]
-#define velTex sTD2DInputs[2]
-#define rgbaTex sTD2DInputs[3]
+// NM_INPUTS: heightTex=0 inputTex=1 xyzTex=2 velTex=3 rgbaTex=4 diffuseTex=5 baseColorTex=6
+// NM_OUTPUT: MRT outXYZ,outVel,outRGBA,outBaseColor
+#define heightTex sTD2DInputs[0]
+#define inputTex sTD2DInputs[1]
+#define xyzTex sTD2DInputs[2]
+#define velTex sTD2DInputs[3]
+#define rgbaTex sTD2DInputs[4]
+#define diffuseTex sTD2DInputs[5]
+#define baseColorTex sTD2DInputs[6]
 // Standard uniforms
 uniform vec2 resolution;
 uniform float time;
@@ -14,9 +17,11 @@ uniform float strideDeviation;
 uniform float kink;
 uniform float quantize;
 uniform float inputWeight;
+uniform float fieldActive;
 uniform float behavior;
 
 // Input state from pipeline (from pointsEmit)
+
 
 
 
@@ -26,6 +31,39 @@ uniform float behavior;
 layout(location = 0) out vec4 outXYZ;
 layout(location = 1) out vec4 outVel;
 layout(location = 2) out vec4 outRGBA;
+
+
+uniform float diffuseActive;
+
+vec4 selectedDiffuse(vec2 uv) {
+    ivec2 size = textureSize(diffuseTex, 0);
+    ivec2 pixel = clamp(ivec2(clamp(uv, vec2(0.0), vec2(0.999999)) * vec2(size)), ivec2(0), size - 1);
+    return texelFetch(diffuseTex, pixel, 0);
+}
+
+
+layout(location = 3) out vec4 outBaseColor;
+
+// Color render/pointsEmit gives an agent spawned at pos.
+vec4 spawnColor(vec2 pos) {
+    ivec2 dims = textureSize(inputTex, 0);
+    vec4 sampled = texelFetch(inputTex, ivec2(pos * vec2(dims)), 0);
+    return sampled.a > 0.0 ? sampled : vec4(1.0);
+}
+
+// The agent's color without a diffuse map. baseColorTex keeps it (alpha > 0)
+// while a diffuse map is active and is cleared otherwise, so this is rgba
+// unless the agent still carries a diffuse color and has not respawned.
+vec4 baseColor(ivec2 coord, vec4 rgba, vec2 pos) {
+    vec4 kept = texelFetch(baseColorTex, coord, 0);
+    if (kept.a == 0.0) return rgba;
+    vec4 spawnDelta = abs(round(rgba * 255.0) - round(clamp(spawnColor(pos), 0.0, 1.0) * 255.0));
+    return all(lessThanEqual(spawnDelta, vec4(1.0))) ? rgba : kept;
+}
+
+vec4 keptBaseColor(vec4 base) {
+    return diffuseActive > 0.5 ? vec4(base.rgb, max(base.a, 1.0 / 255.0)) : vec4(0.0);
+}
 
 const float TAU = 6.283185307179586;
 const float RIGHT_ANGLE = 1.5707963267948966;
@@ -104,6 +142,7 @@ void main() {
     vec4 xyz = texelFetch(xyzTex, coord, 0);
     vec4 vel = texelFetch(velTex, coord, 0);
     vec4 rgba = texelFetch(rgbaTex, coord, 0);
+    vec4 base = baseColor(coord, rgba, xyz.xy);
     
     // Extract components (positions in normalized coords [0,1])
     float px = xyz.x;
@@ -121,14 +160,15 @@ void main() {
         outXYZ = xyz;
         outVel = vel;
         outRGBA = rgba;
+        outBaseColor = keptBaseColor(base);
         return;
     }
     
     // Sample input texture at current position for flow direction
-    ivec2 texSize = textureSize(inputTex, 0);
+    ivec2 texSize = fieldActive > 0.5 ? textureSize(heightTex, 0) : textureSize(inputTex, 0);
     ivec2 texCoord = ivec2(px * float(texSize.x), py * float(texSize.y));
     texCoord = clamp(texCoord, ivec2(0), texSize - 1);
-    vec4 texel = texelFetch(inputTex, texCoord, 0);
+    vec4 texel = fieldActive > 0.5 ? texelFetch(heightTex, texCoord, 0) : texelFetch(inputTex, texCoord, 0);
     float inputLuma = oklab_l(texel.rgb);
     
     // inputWeight controls how much the input texture influences flow direction
@@ -166,5 +206,6 @@ void main() {
     // Output updated state - attrition is handled by pointsEmit
     outXYZ = vec4(newX, newY, pz, 1.0);
     outVel = vec4(0.0, 0.0, rotRand, strideRand);
-    outRGBA = rgba;
+    outRGBA = diffuseActive > 0.5 ? selectedDiffuse(outXYZ.xy) : base;
+    outBaseColor = keptBaseColor(base);
 }

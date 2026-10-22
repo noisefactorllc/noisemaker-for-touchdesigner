@@ -112,6 +112,9 @@ def _parse_choices(choices):
     return out
 
 
+ALIAS_EOL_DATE = '2027-06-01'  # reference canvas.js ParamAliasesEOL: aliases stop working after this date
+
+
 class EffectRegistry:
     def __init__(self):
         self._ops = {}
@@ -120,6 +123,7 @@ class EffectRegistry:
         self._namespaces = list(_BUILTIN_NAMESPACES)
         self._ns_set = set(_BUILTIN_NAMESPACES)
         self._effect_aliases = {}        # "<ns>.<func>" -> replacement name
+        self._param_aliases = {}         # "<ns>.<func>" -> { oldParamName: newParamName }
 
     # --- public API -----------------------------------------------------
 
@@ -172,6 +176,25 @@ class EffectRegistry:
             return None
         old_name = op_name[op_name.rfind('.') + 1:] if '.' in op_name else op_name
         return "effect '" + old_name + "' is deprecated, use '" + new_name + "' instead."
+
+    def resolve_param_aliases(self, op_name, kwargs):
+        # reference lang/paramAliases.js resolveParamAliases: rename deprecated
+        # param keys in place, newest name wins on a collision, and every hit
+        # produces the deprecation warning the Validator emits as S007.
+        warnings = []
+        aliases = self._param_aliases.get(op_name)
+        if not aliases:
+            return warnings
+        for old_name in aliases:
+            if old_name not in kwargs:
+                continue
+            new_name = aliases[old_name]
+            if new_name not in kwargs:
+                kwargs[new_name] = kwargs[old_name]
+            del kwargs[old_name]
+            warnings.append("param '" + old_name + "' is deprecated, use '" + new_name
+                            + "' instead. Aliases will be removed on " + ALIAS_EOL_DATE + ".")
+        return warnings
 
     # --- loading --------------------------------------------------------
 
@@ -286,10 +309,16 @@ class EffectRegistry:
             if ns is not None:
                 self._starter_ops.add(ns + '.' + func)
 
-        # paramAliases is retired (reference canvas.js): any definition carrying the
-        # key fails registration.
-        if 'paramAliases' in definition:
-            raise ValueError('paramAliases is no longer supported')
+        # paramAliases registry (reference canvas.js): a built-in effect may declare
+        # deprecated parameter aliases; the Validator resolves them to the current
+        # global name with an S007 warning. Portable (user.*-shaped) definitions do
+        # not flow through this loader, so no separate rejection path is needed.
+        param_aliases = definition.get('paramAliases')
+        if param_aliases is not None:
+            if not isinstance(param_aliases, dict):
+                raise ValueError('paramAliases must be an object mapping aliases to global names')
+            if param_aliases:
+                self._param_aliases[ns + '.' + func] = dict(param_aliases)
 
         # deprecatedBy + hidden -> effect alias (reference/01 §8.4).
         deprecated_by = _str(definition, 'deprecatedBy')

@@ -8,6 +8,11 @@
   ],
   "description": "Strange attractors: chaotic dynamic systems visualization",
   "globals": {
+    "diffuseTex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "diffuseActive"
+    },
     "stateSize": {
       "type": "int",
       "default": 256,
@@ -47,18 +52,22 @@
       "inputs": {
         "xyzTex": "global_xyz",
         "velTex": "global_vel",
-        "rgbaTex": "global_rgba"
+        "rgbaTex": "global_rgba",
+        "diffuseTex": "diffuseTex",
+        "baseColorTex": "global_attractor_base_color"
       },
       "uniforms": {
+        "diffuseActive": "diffuseActive",
         "attractor": "attractor",
         "speed": "speed"
       },
       "outputs": {
         "outXYZ": "global_xyz",
         "outVel": "global_vel",
-        "outRGBA": "global_rgba"
+        "outRGBA": "global_rgba",
+        "outBaseColor": "global_attractor_base_color"
       },
-      "drawBuffers": 3
+      "drawBuffers": 4
     },
     {
       "name": "passthrough",
@@ -71,5 +80,17 @@
       }
     }
   ],
-  "textures": {}
+  "textures": {
+    "global_attractor_base_color": {
+      "width": {
+        "param": "stateSize",
+        "inherit": true
+      },
+      "height": {
+        "param": "stateSize",
+        "inherit": true
+      },
+      "format": "rgba8"
+    }
+  }
 }

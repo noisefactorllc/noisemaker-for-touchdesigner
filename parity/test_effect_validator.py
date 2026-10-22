@@ -176,7 +176,6 @@ class TestEffectValidator(unittest.TestCase):
                                               'v': {'slot': 0, 'components': 'y'},
                                               'w': {'slot': 0, 'components': 'x'}}),
             lambda d: d.update(uniformLayouts={'p': 'layout'}),
-            lambda d: d.update(paramAliases={'amt': 'amount'}),
             lambda d: d.update(paramAliases='aliases'),
             lambda d: d.update(paramAliases={'amt': 'nosuchglobal'}),
             lambda d: d.update(tags='noise'),
@@ -319,6 +318,20 @@ class TestEffectValidator(unittest.TestCase):
         d['globals']['mode']['ui']['resetOnChange'] = 'yes'
         self.assertEqual(
             len([e for e in validate_effect_definition(d) if 'resetOnChange' in e]), 1)
+
+    def test_an_inherited_texture_dimension_is_accepted_as_a_boolean_and_diagnosed_otherwise(self):
+        d = valid_definition()
+        d['textures']['state'] = {'width': {'param': 'amount', 'inherit': True},
+                                  'height': {'param': 'amount', 'inherit': True}}
+        self.assertEqual(validate_effect_definition(d), [])
+        d['textures']['state']['width']['inherit'] = 'yes'
+        self.assertEqual(
+            len([e for e in validate_effect_definition(d) if 'inherit' in e]), 1)
+
+    def test_param_aliases_mapping_to_declared_globals_are_accepted(self):
+        d = valid_definition()
+        d['paramAliases'] = {'amt': 'amount'}
+        self.assertEqual(validate_effect_definition(d), [])
 
     def test_pass_clear_and_sampler_types_consumed_by_the_runtime_are_validated(self):
         d = valid_definition()

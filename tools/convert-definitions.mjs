@@ -187,6 +187,9 @@ function convertEffect (instance, namespace, name) {
   if (instance.outputRgba !== undefined) def.outputRgba = instance.outputRgba
   if (instance.hidden) def.hidden = true
   if (instance.deprecatedBy) def.deprecatedBy = instance.deprecatedBy
+  // Deprecated parameter aliases (reference canvas.js registerParamAliases): carried so the
+  // Python registry can rewrite old param names at validation time (S007 warning).
+  if (instance.paramAliases !== undefined) def.paramAliases = instance.paramAliases
   // External media declarations (reference Effect instance fields consumed by
   // the UI/runtime: filter/text + synth/media declare externalTexture, render/
   // meshLoader declares externalMesh). Carried so the port's definition-validator

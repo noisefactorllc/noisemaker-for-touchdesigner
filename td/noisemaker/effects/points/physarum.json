@@ -8,6 +8,16 @@
   ],
   "description": "Physarum slime mold simulation",
   "globals": {
+    "heightTex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "fieldActive"
+    },
+    "diffuseTex": {
+      "type": "surface",
+      "default": "none",
+      "colorModeUniform": "diffuseActive"
+    },
     "moveSpeed": {
       "type": "float",
       "default": 1.78,
@@ -86,9 +96,14 @@
         "velTex": "global_vel",
         "rgbaTex": "global_rgba",
         "trailTex": "global_physarum_pheromone",
-        "inputTex": "inputTex"
+        "inputTex": "inputTex",
+        "heightTex": "heightTex",
+        "diffuseTex": "diffuseTex",
+        "baseColorTex": "global_physarum_base_color"
       },
       "uniforms": {
+        "diffuseActive": "diffuseActive",
+        "fieldActive": "fieldActive",
         "moveSpeed": "moveSpeed",
         "turnSpeed": "turnSpeed",
         "sensorAngle": "sensorAngle",
@@ -98,9 +113,10 @@
       "outputs": {
         "outXYZ": "global_xyz",
         "outVel": "global_vel",
-        "outRGBA": "global_rgba"
+        "outRGBA": "global_rgba",
+        "outBaseColor": "global_physarum_base_color"
       },
-      "drawBuffers": 3
+      "drawBuffers": 4
     },
     {
       "name": "copy",
@@ -141,10 +157,24 @@
     }
   ],
   "textures": {
+    "global_physarum_base_color": {
+      "width": {
+        "param": "stateSize",
+        "inherit": true
+      },
+      "height": {
+        "param": "stateSize",
+        "inherit": true
+      },
+      "format": "rgba8"
+    },
     "global_physarum_pheromone": {
       "width": "100%",
       "height": "100%",
       "format": "rgba16f"
     }
+  },
+  "paramAliases": {
+    "fieldTex": "heightTex"
   }
 }

@@ -25,6 +25,29 @@ def validate_dsl(source):
 
 
 class ValidatorContractTests(unittest.TestCase):
+    def test_field_tex_accepts_height_tex_alias_until_eol(self):
+        # reference tests/test_param_aliases.js: flow, dla and physarum accept
+        # fieldTex as a deprecated alias for heightTex until 2027-06-01 (S007).
+        for effect in ('flow', 'dla', 'physarum'):
+            program = ('search synth, points\nnoise().write(o1)\n'
+                       'noise().%s(%s: read(o1)).write(o0)' % (effect, '%s'))
+            aliased = validate_dsl(program % 'fieldTex')
+            self.assertEqual(
+                [], [d for d in aliased['diagnostics'] if d['severity'] == 'error'],
+                repr(aliased['diagnostics']))
+            warnings = [d for d in aliased['diagnostics'] if d['code'] == 'S007']
+            self.assertEqual(1, len(warnings), repr(aliased['diagnostics']))
+            self.assertEqual(
+                "param 'fieldTex' is deprecated, use 'heightTex' instead. "
+                "Aliases will be removed on 2027-06-01.", warnings[0]['message'])
+            canonical = validate_dsl(program % 'heightTex')
+            self.assertEqual(
+                [], [d for d in canonical['diagnostics'] if d['code'] == 'S007'],
+                repr(canonical['diagnostics']))
+            aliased_args = aliased['plans'][1]['chain'][1]['args']
+            self.assertEqual(canonical['plans'][1]['chain'][1]['args'], aliased_args)
+            self.assertNotIn('fieldTex', aliased_args)
+
     def test_let_assignments_apply_in_statement_order(self):
         result = validate_dsl(
             'search synth\nlet scale = 10\n'

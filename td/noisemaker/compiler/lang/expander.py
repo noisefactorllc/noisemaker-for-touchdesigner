@@ -28,9 +28,10 @@ from ..graph import dim as dimmod
 
 _SURFACE_REF_PATTERN = re.compile(r"^(?:o|vol|geo|xyz|vel|rgba)[0-7]$")
 
-_PARTICLE_TEXES = frozenset([
-    'global_xyz', 'global_vel', 'global_rgba', 'global_points_trail', 'global_life_data',
-])
+# Particle-pipeline textures scope to the particle pipeline, not the chain; each
+# behavior's `global_<behavior>_base_color` state texture is one too (reference
+# expander.js scopeParticleTex regex).
+_PARTICLE_TEX_RE = re.compile(r'^global_(xyz|vel|rgba|points_trail|life_data|[a-z]+_base_color)$')
 _COLORMODE_SURFACE_KINDS = frozenset([
     'temp', 'output', 'source', 'feedback', 'vol', 'geo', 'xyz', 'vel', 'rgba', 'pipeline',
 ])
@@ -141,7 +142,7 @@ def _resolve_enum_static(path):
 
 
 def _is_particle_tex(name):
-    return name in _PARTICLE_TEXES
+    return isinstance(name, str) and _PARTICLE_TEX_RE.match(name) is not None
 
 
 def _is_colormode_surface_kind(kind):

@@ -1,10 +1,13 @@
-// NM_INPUTS: xyzTex=0 velTex=1 rgbaTex=2 gridTex=3 inputTex=4
-// NM_OUTPUT: MRT outXYZ,outVel,outRGBA
+// NM_INPUTS: xyzTex=0 velTex=1 rgbaTex=2 gridTex=3 heightTex=4 inputTex=5 diffuseTex=6 baseColorTex=7
+// NM_OUTPUT: MRT outXYZ,outVel,outRGBA,outBaseColor
 #define xyzTex sTD2DInputs[0]
 #define velTex sTD2DInputs[1]
 #define rgbaTex sTD2DInputs[2]
 #define gridTex sTD2DInputs[3]
-#define inputTex sTD2DInputs[4]
+#define heightTex sTD2DInputs[4]
+#define inputTex sTD2DInputs[5]
+#define diffuseTex sTD2DInputs[6]
+#define baseColorTex sTD2DInputs[7]
 // Standard uniforms
 uniform vec2 resolution;
 uniform float time;
@@ -13,6 +16,7 @@ uniform int frame;
 // DLA parameters
 uniform float stride;
 uniform float inputWeight;
+uniform float fieldActive;
 uniform float attrition;
 uniform int stateSize;
 uniform bool resetState;
@@ -26,10 +30,44 @@ uniform bool resetState;
 
 
 
+
 // Output state (MRT)
 layout(location = 0) out vec4 outXYZ;
 layout(location = 1) out vec4 outVel;
 layout(location = 2) out vec4 outRGBA;
+
+
+uniform float diffuseActive;
+
+vec4 selectedDiffuse(vec2 uv) {
+    ivec2 size = textureSize(diffuseTex, 0);
+    ivec2 pixel = clamp(ivec2(clamp(uv, vec2(0.0), vec2(0.999999)) * vec2(size)), ivec2(0), size - 1);
+    return texelFetch(diffuseTex, pixel, 0);
+}
+
+
+layout(location = 3) out vec4 outBaseColor;
+
+// Color render/pointsEmit gives an agent spawned at pos.
+vec4 spawnColor(vec2 pos) {
+    ivec2 dims = textureSize(inputTex, 0);
+    vec4 sampled = texelFetch(inputTex, ivec2(pos * vec2(dims)), 0);
+    return sampled.a > 0.0 ? sampled : vec4(1.0);
+}
+
+// The agent's color without a diffuse map. baseColorTex keeps it (alpha > 0)
+// while a diffuse map is active and is cleared otherwise, so this is rgba
+// unless the agent still carries a diffuse color and has not respawned.
+vec4 baseColor(ivec2 coord, vec4 rgba, vec2 pos) {
+    vec4 kept = texelFetch(baseColorTex, coord, 0);
+    if (kept.a == 0.0) return rgba;
+    vec4 spawnDelta = abs(round(rgba * 255.0) - round(clamp(spawnColor(pos), 0.0, 1.0) * 255.0));
+    return all(lessThanEqual(spawnDelta, vec4(1.0))) ? rgba : kept;
+}
+
+vec4 keptBaseColor(vec4 base) {
+    return diffuseActive > 0.5 ? vec4(base.rgb, max(base.a, 1.0 / 255.0)) : vec4(0.0);
+}
 
 // Integer-based hash for deterministic randomness
 uint hash_uint(uint seed) {
@@ -88,6 +126,7 @@ void main() {
     vec4 xyz = texelFetch(xyzTex, coord, 0);
     vec4 vel = texelFetch(velTex, coord, 0);
     vec4 rgba = texelFetch(rgbaTex, coord, 0);
+    vec4 base = baseColor(coord, rgba, xyz.xy);
     
     // Extract state
     vec2 pos = xyz.xy;
@@ -112,6 +151,7 @@ void main() {
         outXYZ = xyz;
         outVel = vec4(seed, 0.0, 0.0, agentRand);
         outRGBA = rgba;
+        outBaseColor = keptBaseColor(base);
         return;
     }
     
@@ -130,9 +170,9 @@ void main() {
     float inputW = inputWeight / 100.0;
     vec2 stepDir = randomDir;
     if (inputW > 0.0) {
-        ivec2 inputDims = textureSize(inputTex, 0);
+        ivec2 inputDims = fieldActive > 0.5 ? textureSize(heightTex, 0) : textureSize(inputTex, 0);
         ivec2 inputCoord = ivec2(wrap01(pos) * vec2(inputDims));
-        vec4 inputVal = texelFetch(inputTex, inputCoord, 0);
+        vec4 inputVal = fieldActive > 0.5 ? texelFetch(heightTex, inputCoord, 0) : texelFetch(inputTex, inputCoord, 0);
         vec2 inputDir = inputVal.xy * 2.0 - 1.0;
         if (length(inputDir) > 0.01) {
             inputDir = normalize(inputDir);
@@ -170,16 +210,19 @@ void main() {
         // Agent stuck: mark as dead for respawn, flag justStuck for deposit
         outXYZ = vec4(candidate, 0.0, 0.0);  // w=0 signals death to pointsEmit
         outVel = vec4(seed, 1.0, 0.0, agentRand);  // y=1 signals "just stuck" for depositGrid
-        outRGBA = rgba;
+        outRGBA = diffuseActive > 0.5 ? selectedDiffuse(candidate) : base;
+        outBaseColor = keptBaseColor(base);
     } else if (needsRespawn) {
         // Attrition death: mark for respawn
         outXYZ = vec4(candidate, 0.0, 0.0);  // w=0 signals death
         outVel = vec4(seed, 0.0, 0.0, agentRand);  // y=0, not stuck
-        outRGBA = rgba;
+        outRGBA = diffuseActive > 0.5 ? selectedDiffuse(candidate) : base;
+        outBaseColor = keptBaseColor(base);
     } else {
         // Continue walking
         outXYZ = vec4(candidate, 0.0, 1.0);  // w=1 alive
         outVel = vec4(seed, 0.0, 0.0, agentRand);
-        outRGBA = rgba;
+        outRGBA = diffuseActive > 0.5 ? selectedDiffuse(candidate) : base;
+        outBaseColor = keptBaseColor(base);
     }
 }

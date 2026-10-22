@@ -27,7 +27,10 @@ def scope_dim(d, scope_suffix, scoped_map):
         return d
     if 'param' in d:
         scoped = d['param'] + '_' + scope_suffix
-        scoped_map[d['param']] = scoped
+        # An inherited dim ({param, inherit: true}) reads the scope's value; it never
+        # writes this effect's own value over it (reference expander.js ScopeDimSpec).
+        if not d.get('inherit'):
+            scoped_map[d['param']] = scoped
         nd = dict(d)
         nd['param'] = scoped
         return nd

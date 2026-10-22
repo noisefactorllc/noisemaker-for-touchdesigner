@@ -88,12 +88,12 @@ LAYOUT_ENTRY_KEYS = {'name', 'slot', 'components'}
 BYTE_LAYOUT_KEYS = {'name', 'offset', 'size', 'type'}
 
 DIM_SPEC_KEYS = {'param', 'power', 'multiply', 'default', 'paramDefault',
-                 'screenDivide', 'scale', 'clamp', 'inputOverride'}
+                 'screenDivide', 'scale', 'clamp', 'inputOverride', 'inherit'}
 
 TOP_LEVEL_KEYS = {
     'name', 'namespace', 'func', 'description', 'tags', 'globals', 'passes',
     'textures', 'textures3d', 'shaders', 'uniformLayout', 'uniformLayouts',
-    'openCategories', 'defaultProgram', 'hidden', 'deprecatedBy',
+    'paramAliases', 'openCategories', 'defaultProgram', 'hidden', 'deprecatedBy',
     'externalTexture', 'externalMesh', 'builtinMeshes', 'outputTex3d', 'outputGeo',
     'state', 'uniforms', 'onInit', 'onUpdate', 'onDestroy', 'asyncInit',
     # Port deviation: see module docstring (converter-stamped starter flag).
@@ -208,6 +208,8 @@ def _validate_dim_spec(spec, errors, label):
             if 'inputOverride' in spec and \
                     (not isinstance(spec['inputOverride'], str) or not spec['inputOverride']):
                 errors.append(f"{label}: \"inputOverride\" must be a non-empty string")
+            if spec.get('inherit') is not None and not isinstance(spec['inherit'], bool):
+                errors.append(f"{label}: \"inherit\" must be a boolean")
             return
         if 'screenDivide' in spec:
             if not isinstance(spec['screenDivide'], str) or not spec['screenDivide']:
@@ -944,6 +946,18 @@ def validate_effect_definition(defn):
         else:
             for prog, layout in uniform_layouts.items():
                 _validate_uniform_layout(layout, errors, f"uniformLayouts['{prog}']")
+
+    # --- param aliases ---
+    if source.get('paramAliases') is not None:
+        param_aliases = source['paramAliases']
+        if not _is_obj(param_aliases):
+            errors.append('"paramAliases" must be an object mapping aliases to global names')
+        else:
+            for alias, target in param_aliases.items():
+                if not isinstance(target, str) or not target:
+                    errors.append(f"paramAliases['{alias}'] must be a non-empty string")
+                elif target not in context['globalKeys']:
+                    errors.append(f"paramAliases['{alias}'] references unknown global '{target}'")
 
     # --- top-level unknown-field diagnosis (plain definition objects only) ---
     if diagnose_top_level_unknowns:

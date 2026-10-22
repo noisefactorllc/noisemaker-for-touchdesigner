@@ -632,6 +632,12 @@ class _Validator:
                 self._push_diag("S005", original)
 
             args = {}
+            # Resolve deprecated param aliases (reference validator.js: S007) before
+            # arg processing so an aliased kwarg validates against its current name.
+            kw = call.get('kwargs')
+            if kw:
+                for alias_warning in self._reg.resolve_param_aliases(op_name, kw):
+                    self._push_diag("S007", call, alias_warning)
             arg_sources = self._resolve_args(chain, spec, call, op_name, original, args, write_name)
 
             idx = self._temp_index
