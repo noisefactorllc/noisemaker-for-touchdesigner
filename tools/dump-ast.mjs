@@ -16,8 +16,22 @@ const REF = referenceRoot()
 const lang = await import(pathToFileURL(join(REF, 'shaders', 'src', 'lang', 'index.js')).href)
 const { lex, parse } = lang
 
-const file = process.argv[2]
-if (!file) { process.stderr.write('usage: node dump-ast.mjs <file.dsl>\n'); process.exit(2) }
-const src = readFileSync(file, 'utf8')
-const astNode = parse(lex(src))
-process.stdout.write(JSON.stringify(astNode))
+// Single file: dump its AST as canonical JSON. Multiple files: dump a batch envelope
+// {results:[{path,ok:true,data}|{path,ok:false,error}]} in one node process — the parity
+// gates walk hundreds of programs and a per-file spawn would dominate the runtime.
+// Per-file failures are captured, not fatal to the batch.
+const files = process.argv.slice(2)
+if (files.length === 0) { process.stderr.write('usage: node dump-ast.mjs <file.dsl> [file.dsl ...]\n'); process.exit(2) }
+if (files.length === 1) {
+  process.stdout.write(JSON.stringify(parse(lex(readFileSync(files[0], 'utf8')))))
+} else {
+  const results = []
+  for (const file of files) {
+    try {
+      results.push({ path: file, ok: true, data: parse(lex(readFileSync(file, 'utf8'))) })
+    } catch (e) {
+      results.push({ path: file, ok: false, error: String(e && e.message || e) })
+    }
+  }
+  process.stdout.write(JSON.stringify({ results }))
+}

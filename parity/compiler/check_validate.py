@@ -54,6 +54,18 @@ def ref_compile(path):
     return json.loads(r.stdout), None
 
 
+def ref_batch(files):
+    """Dump every file in ONE node process; None for a single file (per-file spawn).
+    dump-validated.mjs multi-file mode returns {results:[{path,ok,data}|{path,ok:false,error}]}."""
+    if len(files) < 2:
+        return None
+    r = subprocess.run(['node', DUMP, *files], capture_output=True, text=True)
+    if r.returncode != 0:
+        err = (r.stderr or r.stdout or 'node failed').strip().splitlines()[-1]
+        return {f: {'ok': False, 'error': err} for f in files}
+    return {e['path']: e for e in json.loads(r.stdout)['results']}
+
+
 def my_compile(path):
     with open(path) as f:
         src = f.read()
@@ -86,16 +98,19 @@ def diff(a, b, path='$'):
     return path, 'ref=%r mine=%r' % (a, b)
 
 
-def compare(path):
-    rref, err = ref_compile(path)
-    if rref is None:
+def compare(path, entry=None):
+    if entry is not None:
+        ref, err = (entry['data'], None) if entry['ok'] else (None, entry['error'])
+    else:
+        ref, err = ref_compile(path)
+    if ref is None:
         return 'REFERR', err
     try:
         got = my_compile(path)
     except Exception:
         return 'MYERR', traceback.format_exc().strip().splitlines()[-1]
-    exp = {'plans': strip_raw(rref['plans']), 'render': rref.get('render'),
-           'searchNamespaces': rref.get('searchNamespaces')}
+    exp = {'plans': strip_raw(ref['plans']), 'render': ref.get('render'),
+           'searchNamespaces': ref.get('searchNamespaces')}
     act = {'plans': got['plans'], 'render': got.get('render'),
            'searchNamespaces': got.get('searchNamespaces')}
     d = diff(exp, act)
@@ -111,8 +126,9 @@ def main():
                  + sorted(glob.glob(os.path.join(REPO, 'parity', 'programs', '*.dsl'))))
     npass = 0
     fails = []
+    entries = ref_batch(files)
     for f in files:
-        status, info = compare(f)
+        status, info = compare(f, entries.get(f) if entries is not None else None)
         name = os.path.relpath(f, REPO)
         if status == 'PASS':
             npass += 1

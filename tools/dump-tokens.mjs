@@ -15,8 +15,24 @@ const REF = referenceRoot()
 
 const { lex } = await import(pathToFileURL(join(REF, 'shaders', 'src', 'lang', 'lexer.js')).href)
 
-const file = process.argv[2]
-if (!file) { process.stderr.write('usage: node dump-tokens.mjs <file.dsl>\n'); process.exit(2) }
-const src = readFileSync(file, 'utf8')
-const toks = lex(src).map(t => ({ type: t.type, lexeme: t.lexeme, line: t.line, col: t.col }))
-process.stdout.write(JSON.stringify(toks))
+// Single file: dump its token array as canonical JSON. Multiple files: dump a batch
+// envelope {results:[{path,ok:true,data}|{path,ok:false,error}]} in one node process —
+// the parity gates walk hundreds of programs and a per-file spawn would dominate the
+// runtime. Per-file failures are captured, not fatal to the batch.
+const files = process.argv.slice(2)
+if (files.length === 0) { process.stderr.write('usage: node dump-tokens.mjs <file.dsl> [file.dsl ...]\n'); process.exit(2) }
+if (files.length === 1) {
+  const toks = lex(readFileSync(files[0], 'utf8')).map(t => ({ type: t.type, lexeme: t.lexeme, line: t.line, col: t.col }))
+  process.stdout.write(JSON.stringify(toks))
+} else {
+  const results = []
+  for (const file of files) {
+    try {
+      const toks = lex(readFileSync(file, 'utf8')).map(t => ({ type: t.type, lexeme: t.lexeme, line: t.line, col: t.col }))
+      results.push({ path: file, ok: true, data: toks })
+    } catch (e) {
+      results.push({ path: file, ok: false, error: String(e && e.message || e) })
+    }
+  }
+  process.stdout.write(JSON.stringify({ results }))
+}

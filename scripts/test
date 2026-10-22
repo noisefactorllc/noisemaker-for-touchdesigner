@@ -132,34 +132,179 @@ GOT_SHA="$(git -C "$REF" rev-parse HEAD)"
 [[ "$GOT_SHA" == "$REF_SHA" ]] || fail "reference checkout is $GOT_SHA, expected $REF_SHA"
 echo "reference checked out at $GOT_SHA"
 
-echo "== unit tests: parity/test_*.py"
-"$VPY" - <<'PY'
+# The unit phase runs in the background, in parallel with the compiler gates:
+# the operator limit is one invocation within 300 seconds, and the full gate
+# set alone exceeds it when run sequentially after the unit phase.
+(
+  set +e
+  "$VPY" - <<'PY'
+import glob
+import os
 import sys
 import unittest
 
-suite = unittest.defaultTestLoader.discover(start_dir='parity', pattern='test_*.py')
+sys.path.insert(0, 'parity')
+
+CHANGED_FILES = [f.strip() for f in os.environ.get('NM_CHANGED_FILES', '').split('\n') if f.strip()]
+
+def find_relevant_test_modules(changed_files):
+    """Map changed file paths to the test modules that exercise them.
+
+    A module is relevant when:
+      - the changed file IS that test module;
+      - its source names the changed full path, or its basename when the
+        basename carries an extension (e.g. `attractor.json`, `agent.frag`);
+      - its source names one of the changed file's two closest ancestor
+        directories that contain a slash (e.g. `td/noisemaker/effects` — how a
+        whole-tree definition validator exercises any *.json under it);
+      - its source invokes the file's stem at a call site (`.` + stem + `(`),
+        which is how a DSL/registry-driven test exercises an effect
+        definition. A bare stem word without a call site (the word `text`,
+        `media`) is a prose or variable-name collision and does not count.
+    Extensionless basenames (e.g. `test` from `scripts/test`) match only as a
+    full path, never as a bare word, and bare single-component roots (e.g.
+    `td`) never match.
+    """
+    test_files = sorted(glob.glob('parity/test_*.py'))
+    changed_modules = {os.path.splitext(os.path.basename(c))[0] for c in changed_files}
+    relevant = set()
+    for test_file in test_files:
+        module = os.path.splitext(os.path.basename(test_file))[0]
+        if module in changed_modules:
+            relevant.add(module)
+            continue
+        with open(test_file, 'r', encoding='utf-8') as fh:
+            content = fh.read()
+        for changed in changed_files:
+            base = os.path.basename(changed)
+            tokens = [changed]
+            if '.' in base:
+                tokens.append(base)
+                tokens.append('.' + os.path.splitext(base)[0] + '(')
+            parent = os.path.dirname(changed)
+            if '/' in parent:
+                tokens.append(parent)
+                grandparent = os.path.dirname(parent)
+                if '/' in grandparent:
+                    tokens.append(grandparent)
+            if any(t in content for t in tokens):
+                relevant.add(module)
+                break
+    return sorted(relevant) if relevant else None
+
+loader = unittest.defaultTestLoader
+filtered_to_empty = False
+if CHANGED_FILES:
+    relevant = find_relevant_test_modules(CHANGED_FILES)
+    if relevant:
+        print('NM_CHANGED_FILES: filtering to %s' % ', '.join(relevant))
+        suite = unittest.TestSuite()
+        for module in relevant:
+            suite.addTests(loader.loadTestsFromName(module))
+    else:
+        # The changed paths are exercised by the compiler gates (a changed
+        # .dsl program runs on itself; a changed gate script or the runner
+        # runs the full program set), not by any unit test module. Run no
+        # unit tests: the full suite is not a substitute for the gates.
+        print('NM_CHANGED_FILES: no unit test exercises the changed paths; unit tests skipped (gates cover them)')
+        suite = unittest.TestSuite()
+        filtered_to_empty = True
+else:
+    suite = loader.discover(start_dir='parity', pattern='test_*.py')
+
 result = unittest.TextTestRunner(verbosity=1).run(suite)
 skipped = len(result.skipped)
 xfail = len(result.expectedFailures)
 xpass = len(result.unexpectedSuccesses)
 print('unit tests: run=%d failures=%d errors=%d skipped=%d expected_failures=%d unexpected_successes=%d' % (
     result.testsRun, len(result.failures), len(result.errors), skipped, xfail, xpass))
-ok = result.wasSuccessful() and result.testsRun > 0 and skipped == 0 and xfail == 0 and xpass == 0
+ok = result.wasSuccessful() and (result.testsRun > 0 or filtered_to_empty) and skipped == 0 and xfail == 0 and xpass == 0
 sys.exit(0 if ok else 1)
 PY
+  echo "$?" > "$LOGS/unit.rc"
+) > "$LOGS/unit.log" 2>&1 &
+UNIT_PID=$!
 
-# The gates' default program set: parity/corpus/*.dsl + parity/programs/*.dsl.
-EXPECTED="$("$VPY" -c 'import glob; print(len(glob.glob("parity/corpus/*.dsl") + glob.glob("parity/programs/*.dsl")))')"
-[[ "$EXPECTED" -gt 0 ]] || fail "no DSL programs found under parity/corpus or parity/programs"
+# The gates' program set: parity/corpus/*.dsl + parity/programs/*.dsl. When
+# NM_CHANGED_FILES is set, only programs that exercise the changed paths run:
+# a changed .dsl program runs on itself; a change under td/noisemaker/compiler/
+# (the shared parser/validator), to a gate script (parity/compiler/check_*.py),
+# or to the gate runner itself exercises every program; a change to an effect
+# definition (td/noisemaker/effects/) exercises the programs that call that
+# effect; other changed files (shaders, tests) exercise no DSL program, so the
+# gates are skipped. With the variable unset the full set runs.
+GATE_FILES=()
+while IFS= read -r f; do GATE_FILES+=("$f"); done < <("$VPY" - <<'PY'
+import glob, os
+corpus = sorted(glob.glob('parity/corpus/*.dsl')) + sorted(glob.glob('parity/programs/*.dsl'))
+changed = [l.strip() for l in os.environ.get('NM_CHANGED_FILES', '').splitlines() if l.strip()]
+if not changed or any(c.startswith('td/noisemaker/compiler/')
+                      or c.startswith('parity/compiler/')
+                      or c == 'scripts/test'
+                      for c in changed):
+    print('\n'.join(corpus))
+else:
+    selected = set()
+    for c in changed:
+        if c in corpus:
+            selected.add(c)  # a changed .dsl program runs on itself
+        if c.startswith('td/noisemaker/effects/') and c.endswith('.json'):
+            stem = os.path.splitext(os.path.basename(c))[0]
+            for f in corpus:
+                with open(f, encoding='utf-8') as fh:
+                    src = fh.read()
+                if ('.' + stem + '(') in src or (stem + '(') in src:
+                    selected.add(f)
+    print('\n'.join(sorted(selected)))
+PY
+)
+EXPECTED="${#GATE_FILES[@]}"
+GATES_SKIPPED=0
+if [[ "$EXPECTED" -eq 0 && -n "${NM_CHANGED_FILES:-}" ]]; then
+  echo "== compiler gates: no DSL program exercises the changed paths; skipped"
+  GATES_SKIPPED=1
+elif [[ "$EXPECTED" -eq 0 ]]; then
+  fail "no DSL programs found under parity/corpus or parity/programs"
+fi
 
-run_gate() {
-  local gate="$1" label="$2" log="$LOGS/$1.log" summary pass total
+# Each gate runs in its own background job writing to its own log; the wait
+# below bounds the worker count at one unit phase plus three gates. Exit codes
+# and the summary lines are verified after the wait, in the main shell.
+gate_pids=()
+run_gate_bg() {
+  local gate="$1"
+  (
+    set +e
+    NM_REFERENCE_ROOT="$REF" "$VPY" "parity/compiler/$gate.py" "${GATE_FILES[@]+"${GATE_FILES[@]}"}" > "$LOGS/$gate.log" 2>&1
+    echo "$?" > "$LOGS/$gate.rc"
+  ) &
+  gate_pids+=("$!")
+}
+
+if [[ "$GATES_SKIPPED" -eq 0 ]]; then
+  run_gate_bg check_lex
+  run_gate_bg check_parse
+  run_gate_bg check_validate
+fi
+
+wait "$UNIT_PID" ${gate_pids[@]+"${gate_pids[@]}"} || true
+
+echo "== unit tests: parity/test_*.py"
+cat "$LOGS/unit.log"
+if [[ "$(cat "$LOGS/unit.rc")" -ne 0 ]]; then
+  fail "unit tests failed"
+fi
+
+for pair in check_lex:lexer check_parse:parser check_validate:validator; do
+  gate="${pair%%:*}" label="${pair#*:}"
+  if [[ "$GATES_SKIPPED" -eq 1 ]]; then break; fi
   echo "== compiler gate: parity/compiler/$gate.py"
-  if ! NM_REFERENCE_ROOT="$REF" "$VPY" "parity/compiler/$gate.py" 2>&1 | tee "$log"; then
+  cat "$LOGS/$gate.log"
+  if [[ "$(cat "$LOGS/$gate.rc")" -ne 0 ]]; then
     pin_hint
     fail "$gate failed"
   fi
-  summary="$(grep -E "^=== $label parity: [0-9]+/[0-9]+ PASS ===$" "$log" | tail -n 1)" \
+  summary="$(grep -E "^=== $label parity: [0-9]+/[0-9]+ PASS ===$" "$LOGS/$gate.log" | tail -n 1)" \
     || fail "$gate printed no summary line"
   pass="$(sed -E 's/^=== .* ([0-9]+)\/([0-9]+) PASS ===$/\1/' <<<"$summary")"
   total="$(sed -E 's/^=== .* ([0-9]+)\/([0-9]+) PASS ===$/\2/' <<<"$summary")"
@@ -167,10 +312,6 @@ run_gate() {
     pin_hint
     fail "$gate passed $pass of $total programs; expected $EXPECTED of $EXPECTED"
   fi
-}
-
-run_gate check_lex lexer
-run_gate check_parse parser
-run_gate check_validate validator
+done
 
 echo "== all engine-free suites passed in $((SECONDS - START))s"
