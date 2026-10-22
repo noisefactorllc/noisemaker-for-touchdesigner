@@ -8,11 +8,6 @@
   ],
   "description": "Strange attractors: chaotic dynamic systems visualization",
   "globals": {
-    "diffuseTex": {
-      "type": "surface",
-      "default": "none",
-      "colorModeUniform": "diffuseActive"
-    },
     "stateSize": {
       "type": "int",
       "default": 256,
@@ -52,11 +47,9 @@
       "inputs": {
         "xyzTex": "global_xyz",
         "velTex": "global_vel",
-        "rgbaTex": "global_rgba",
-        "diffuseTex": "diffuseTex"
+        "rgbaTex": "global_rgba"
       },
       "uniforms": {
-        "diffuseActive": "diffuseActive",
         "attractor": "attractor",
         "speed": "speed"
       },

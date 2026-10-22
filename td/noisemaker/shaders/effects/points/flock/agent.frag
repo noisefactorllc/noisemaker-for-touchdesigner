@@ -1,9 +1,8 @@
-// NM_INPUTS: xyzTex=0 velTex=1 rgbaTex=2 diffuseTex=3
+// NM_INPUTS: xyzTex=0 velTex=1 rgbaTex=2
 // NM_OUTPUT: MRT outXYZ,outVel,outRGBA
 #define xyzTex sTD2DInputs[0]
 #define velTex sTD2DInputs[1]
 #define rgbaTex sTD2DInputs[2]
-#define diffuseTex sTD2DInputs[3]
 // Standard uniforms
 uniform vec2 resolution;
 uniform float time;
@@ -29,15 +28,6 @@ uniform float noiseWeight;
 layout(location = 0) out vec4 outXYZ;
 layout(location = 1) out vec4 outVel;
 layout(location = 2) out vec4 outRGBA;
-
-
-uniform float diffuseActive;
-
-vec4 selectedDiffuse(vec2 uv) {
-    ivec2 size = textureSize(diffuseTex, 0);
-    ivec2 pixel = clamp(ivec2(clamp(uv, vec2(0.0), vec2(0.999999)) * vec2(size)), ivec2(0), size - 1);
-    return texelFetch(diffuseTex, pixel, 0);
-}
 
 // === ORIGINAL BOIDS HELPER FUNCTIONS (PRESERVED EXACTLY) ===
 
@@ -315,5 +305,5 @@ void main() {
     
     outXYZ = vec4(newPx, newPy, xyz.z, 1.0);
     outVel = vec4(velocity, age, seed);
-    outRGBA = diffuseActive > 0.5 ? selectedDiffuse(outXYZ.xy) : rgba;
+    outRGBA = rgba;
 }

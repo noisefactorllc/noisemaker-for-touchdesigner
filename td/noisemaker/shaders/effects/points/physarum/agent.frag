@@ -1,14 +1,11 @@
-// NM_INPUTS: xyzTex=0 velTex=1 rgbaTex=2 trailTex=3 fieldTex=4 inputTex=5 diffuseTex=6
+// NM_INPUTS: xyzTex=0 velTex=1 rgbaTex=2 trailTex=3 inputTex=4
 // NM_OUTPUT: MRT outXYZ,outVel,outRGBA
 #define xyzTex sTD2DInputs[0]
 #define velTex sTD2DInputs[1]
 #define rgbaTex sTD2DInputs[2]
 #define trailTex sTD2DInputs[3]
-#define fieldTex sTD2DInputs[4]
-#define inputTex sTD2DInputs[5]
-#define diffuseTex sTD2DInputs[6]
+#define inputTex sTD2DInputs[4]
 // Common Agent Architecture inputs
-
 
 
 
@@ -22,21 +19,11 @@ uniform float turnSpeed;
 uniform float sensorAngle;
 uniform float sensorDistance;  // Now in normalized [0,1] coords
 uniform float inputWeight;
-uniform float fieldActive;
 
 // MRT outputs
 layout(location = 0) out vec4 outXYZ;
 layout(location = 1) out vec4 outVel;
 layout(location = 2) out vec4 outRGBA;
-
-
-uniform float diffuseActive;
-
-vec4 selectedDiffuse(vec2 uv) {
-    ivec2 size = textureSize(diffuseTex, 0);
-    ivec2 pixel = clamp(ivec2(clamp(uv, vec2(0.0), vec2(0.999999)) * vec2(size)), ivec2(0), size - 1);
-    return texelFetch(diffuseTex, pixel, 0);
-}
 
 const float TAU = 6.28318530718;
 
@@ -73,8 +60,7 @@ float sampleTrail(vec2 uv) {
 float sampleExternalField(vec2 uv, float weight) {
     if (weight <= 0.0) return 0.0;
     float blend = clamp(weight * 0.01, 0.0, 1.0);
-    vec3 field = fieldActive > 0.5 ? texture(fieldTex, uv).rgb : texture(inputTex, uv).rgb;
-    return luminance(field) * blend * 0.05;
+    return luminance(texture(inputTex, uv).rgb) * blend * 0.05;
 }
 
 void main() {
@@ -140,8 +126,7 @@ void main() {
     float speedScale = 1.0;
     float blend = clamp(inputWeight * 0.01, 0.0, 1.0);
     if (blend > 0.0) {
-        vec3 field = fieldActive > 0.5 ? texture(fieldTex, pos).rgb : texture(inputTex, pos).rgb;
-        float localInput = luminance(field);
+        float localInput = luminance(texture(inputTex, pos).rgb);
         // Invert: slow in bright, fast in dark
         speedScale = mix(1.0, mix(1.8, 0.35, localInput), blend);
     }
@@ -157,5 +142,5 @@ void main() {
     // Output
     outXYZ = vec4(newPos, newHeading, 1.0);  // alive = 1
     outVel = vec4(0.0, 0.0, newAge, seed);
-    outRGBA = diffuseActive > 0.5 ? selectedDiffuse(outXYZ.xy) : rgba;
+    outRGBA = rgba;  // Color unchanged
 }

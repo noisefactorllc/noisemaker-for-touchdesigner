@@ -1,10 +1,9 @@
-// NM_INPUTS: inputTex=0 xyzTex=1 velTex=2 rgbaTex=3 diffuseTex=4
+// NM_INPUTS: inputTex=0 xyzTex=1 velTex=2 rgbaTex=3
 // NM_OUTPUT: MRT outXYZ,outVel,outRGBA
 #define inputTex sTD2DInputs[0]
 #define xyzTex sTD2DInputs[1]
 #define velTex sTD2DInputs[2]
 #define rgbaTex sTD2DInputs[3]
-#define diffuseTex sTD2DInputs[4]
 // Standard uniforms
 uniform vec2 resolution;
 uniform float time;
@@ -27,15 +26,6 @@ uniform float wander;
 layout(location = 0) out vec4 outXYZ;
 layout(location = 1) out vec4 outVel;
 layout(location = 2) out vec4 outRGBA;
-
-
-uniform float diffuseActive;
-
-vec4 selectedDiffuse(vec2 uv) {
-    ivec2 size = textureSize(diffuseTex, 0);
-    ivec2 pixel = clamp(ivec2(clamp(uv, vec2(0.0), vec2(0.999999)) * vec2(size)), ivec2(0), size - 1);
-    return texelFetch(diffuseTex, pixel, 0);
-}
 
 // Integer-based hash for cross-platform determinism
 uint hash_uint(uint seed) {
@@ -150,6 +140,6 @@ void main() {
     } else {
         outXYZ = vec4(px, py, pz, 1.0);
         outVel = vec4(vx, vy, vz, seed_f);
-        outRGBA = diffuseActive > 0.5 ? selectedDiffuse(outXYZ.xy) : rgba;
+        outRGBA = rgba;
     }
 }

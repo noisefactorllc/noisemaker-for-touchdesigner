@@ -8,11 +8,6 @@
   ],
   "description": "Physics-based particle simulation with wind and gravity forces",
   "globals": {
-    "diffuseTex": {
-      "type": "surface",
-      "default": "none",
-      "colorModeUniform": "diffuseActive"
-    },
     "stateSize": {
       "type": "int",
       "default": 256,
@@ -68,11 +63,9 @@
       "inputs": {
         "xyzTex": "global_xyz",
         "velTex": "global_vel",
-        "rgbaTex": "global_rgba",
-        "diffuseTex": "diffuseTex"
+        "rgbaTex": "global_rgba"
       },
       "uniforms": {
-        "diffuseActive": "diffuseActive",
         "gravity": "gravity",
         "wind": "wind",
         "energy": "energy",
