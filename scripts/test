@@ -229,7 +229,8 @@ UNIT_PID=$!
 # NM_CHANGED_FILES is set, only programs that exercise the changed paths run:
 # a changed .dsl program runs on itself; a change under td/noisemaker/compiler/
 # (the shared parser/validator), to a gate script (parity/compiler/check_*.py),
-# or to the gate runner itself exercises every program; a change to an effect
+# to a reference dump tool (tools/dump-*.mjs, which feeds every gate), or to the
+# gate runner itself exercises every program; a change to an effect
 # definition (td/noisemaker/effects/) exercises the programs that call that
 # effect; other changed files (shaders, tests) exercise no DSL program, so the
 # gates are skipped. With the variable unset the full set runs.
@@ -240,6 +241,7 @@ corpus = sorted(glob.glob('parity/corpus/*.dsl')) + sorted(glob.glob('parity/pro
 changed = [l.strip() for l in os.environ.get('NM_CHANGED_FILES', '').splitlines() if l.strip()]
 if not changed or any(c.startswith('td/noisemaker/compiler/')
                       or c.startswith('parity/compiler/')
+                      or c.startswith('tools/dump-')
                       or c == 'scripts/test'
                       for c in changed):
     print('\n'.join(corpus))
