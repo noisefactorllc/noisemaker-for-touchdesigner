@@ -160,11 +160,13 @@
     "global_physarum_base_color": {
       "width": {
         "param": "stateSize",
-        "inherit": true
+        "inherit": true,
+        "default": 256
       },
       "height": {
         "param": "stateSize",
-        "inherit": true
+        "inherit": true,
+        "default": 256
       },
       "format": "rgba8"
     },
