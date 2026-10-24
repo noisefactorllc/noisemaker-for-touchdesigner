@@ -639,12 +639,18 @@ def collect_license_state():
     # An empty license list is the programmatic correlate of the activation
     # modal shown on a fresh install: nothing installed yet.
     state['activation_needed'] = (entries == [] if isinstance(entries, list) else None)
-    # That mapping has never been observed against a real fresh install, so
-    # the report states its basis instead of presenting it as a measured fact.
-    state['activation_needed_basis'] = (
-        'inference: empty license list; not yet validated against a '
-        'fresh-install activation modal' if state['activation_needed'] is not None
-        else 'unknown: license enumeration failed')
+    # The empty-list mapping has never been observed against a real fresh
+    # install, so the report states each basis instead of presenting the
+    # value as a measured fact.
+    need = state['activation_needed']
+    if need is True:
+        state['activation_needed_basis'] = (
+            'inference: empty license list; not yet validated against a '
+            'fresh-install activation modal')
+    elif need is False:
+        state['activation_needed_basis'] = 'measured: installed licenses present'
+    else:
+        state['activation_needed_basis'] = 'unknown: license enumeration failed'
     return state
 
 
