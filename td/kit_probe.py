@@ -29,6 +29,9 @@ Phases (NM_KIT_PHASE, passed through the GPU host env):
                through its value control (set, rebuild, render, restore), and
                drive the documented rebuild() entry point and a program.dsl
                change, recording the render result after every change.
+  license   -- GAP-017 activation leg: record TouchDesigner's live license
+               state (installed licenses, type, isPro/isNonCommercial) so a
+               fresh install can be qualified before and after activation.
 """
 import hashlib
 import json
@@ -603,6 +606,58 @@ def parameters_phase():
     return steps
 
 
+def mask_key(key):
+    key = str(key)
+    if len(key) <= 8:
+        return '***'
+    return key[:4] + '***'
+
+
+def collect_license_state():
+    """Record TouchDesigner's installed-license state, live (GAP-017)."""
+    state = {}
+    for attr in ('isPro', 'isNonCommercial', 'type', 'machine'):
+        try:
+            state[attr] = str(getattr(licenses, attr))  # noqa: F821
+        except Exception as e:  # noqa: BLE001
+            state[attr] = 'error: %s' % e
+    entries = []
+    try:
+        for l in licenses:  # noqa: F821
+            row = {}
+            for attr in ('type', 'key', 'status', 'statusMessage', 'isEnabled',
+                         'isRemotelyDisabled', 'systemCode'):
+                try:
+                    val = getattr(l, attr)
+                    row[attr] = mask_key(val) if attr == 'key' else str(val)
+                except Exception as e:  # noqa: BLE001
+                    row[attr] = 'error: %s' % e
+            entries.append(row)
+    except Exception as e:  # noqa: BLE001
+        entries = 'error: %s' % e
+    state['installed'] = entries
+    # An empty license list is the programmatic correlate of the activation
+    # modal shown on a fresh install: nothing installed yet.
+    state['activation_needed'] = (entries == [] if isinstance(entries, list) else None)
+    return state
+
+
+def license_phase():
+    """GAP-017: record the license state on this host."""
+    steps = []
+    try:
+        root = op('/')  # noqa: F821
+        folder = project.folder  # noqa: F821
+        steps.append({'step': 'project-opened', 'project.folder': folder,
+                      'phase': PHASE, 'td': _versions()})
+        steps.append({'step': 'license-state', **collect_license_state()})
+    except Exception:
+        steps.append({'step': 'FATAL-license', 'error': traceback.format_exc()[-4000:]})
+    _write_report('report.license.json', {'phase': 'license', 'td': _versions(),
+                                          'steps': steps})
+    return steps
+
+
 def main():
     if PHASE == 'relocate':
         relocate_phase()
@@ -614,6 +669,8 @@ def main():
         remove_phase()
     elif PHASE == 'parameters':
         parameters_phase()
+    elif PHASE == 'license':
+        license_phase()
     else:
         build_phase()
     log('phase %s done' % PHASE)
