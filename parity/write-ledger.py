@@ -20,7 +20,7 @@ STRICT_TOLERANCE = 2.001
 STRICT_SSIM_MIN = 0.98
 ALLOWED_PRESERVED_SOURCES = {"3d/mrt/points", "accumulate", "cubemap"}
 PRESENT_HERO_PROTOCOL = {
-    "reference_sha": "6cb1a3c3e21010db956d41e7a6d57a02b0be1e7d",
+    "reference_sha": "d0ed94ae19cca7328bc7d6b28902712a0838e1a9",
     "size": 256, "time": 0.25, "timestep": 0,
     "reference_backend": "webgl2", "reference_frames": [1, 2, 8],
     "native_frames": 8, "native_samples": [1, 2, 8], "initial_state": "zeroed",

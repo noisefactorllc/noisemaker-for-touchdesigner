@@ -300,7 +300,7 @@ class HarnessContractTests(unittest.TestCase):
         frame_bounds = {frame: ledger_module.accumulation_frame_bound(name, frame) for frame in (1, 2, 8)}
         tolerance, aggregate_ssim = ledger_module.accumulation_bound(name)
         near_frames = [frame for frame, bound in frame_bounds.items() if bound[0] > 2.001]
-        reference_sha = "6cb1a3c3e21010db956d41e7a6d57a02b0be1e7d" if name == "present_hero" else "a" * 40
+        reference_sha = "d0ed94ae19cca7328bc7d6b28902712a0838e1a9" if name == "present_hero" else "a" * 40
         with tempfile.TemporaryDirectory(prefix="nm-td-accumulate-") as temp:
             root = Path(temp)
             parity = root / "parity"
