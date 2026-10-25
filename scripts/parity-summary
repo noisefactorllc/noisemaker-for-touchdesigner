@@ -14,8 +14,10 @@ parity/stage_coverage.py from parity/programs/). Each case is classified from th
   missing  in the render set but absent from the ledger
 `executed` counts exact + strict + near + fail.
 
-Goldens are rendered by the sweep from the reference engine at NM_REFERENCE_ROOT, which must be
-checked out at the revision pinned in scripts/test (NM_REFERENCE_SHA_PINNED).
+Goldens are rendered by the sweep from the reference engine at NM_REFERENCE_ROOT. The entrypoint
+requires that checkout at the revision pinned in scripts/test (NM_REFERENCE_SHA_PINNED). A stale
+checkout is moved to the pin first: git fetch, then checkout, then re-check the head. A checkout
+that is not a git clone, or a fetch that fails, still fails closed with the same guard message.
 
 Usage:
   NM_REFERENCE_ROOT=/path/to/noisemaker scripts/parity-summary
@@ -102,6 +104,28 @@ def reference_head(ref_root):
     return result.stdout.strip() if result.returncode == 0 else None
 
 
+def align_reference(ref_root, pin):
+    """Move a stale reference checkout to the pin. Returns (head, error).
+
+    A git clone is fetched and checked out at the pin. Anything else (not a
+    clone, fetch failure, checkout failure) returns the observed head so the
+    caller fails closed with the guard message.
+    """
+    if subprocess.run(["git", "-C", str(ref_root), "rev-parse", "--is-inside-work-tree"],
+                      capture_output=True, text=True).stdout.strip() != "true":
+        return None, "not a git clone"
+    fetch = subprocess.run(["git", "-C", str(ref_root), "fetch", "origin", pin],
+                           capture_output=True, text=True)
+    if fetch.returncode != 0:
+        return reference_head(ref_root), "fetch origin %s failed: %s" % (pin, fetch.stderr.strip())
+    checkout = subprocess.run(["git", "-C", str(ref_root), "checkout", "--detach",
+                               pin], capture_output=True, text=True)
+    if checkout.returncode != 0:
+        return reference_head(ref_root), "checkout %s failed: %s" % (pin, checkout.stderr.strip())
+    head = reference_head(ref_root)
+    return head, None if head == pin else "checkout did not land on the pin"
+
+
 def main(argv):
     sweep_status = 0
     if argv[:1] == ["--ledger"] and len(argv) == 2:
@@ -113,8 +137,10 @@ def main(argv):
         pin = pinned_revision()
         head = reference_head(ref_root)
         if head != pin:
-            raise SystemExit("parity-summary: NM_REFERENCE_ROOT is at %s, not the pinned revision %s"
-                             % (head, pin))
+            head, err = align_reference(ref_root, pin)
+            if head != pin:
+                raise SystemExit("parity-summary: NM_REFERENCE_ROOT is at %s, not the pinned revision %s (%s)"
+                                 % (head, pin, err))
         work = Path(os.environ.get("NM_PARITY_WORK", ROOT / "parity" / "out" / "parity-summary"))
         work.mkdir(parents=True, exist_ok=True)
         ledger = work / "ledger.tsv"

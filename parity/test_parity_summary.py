@@ -8,6 +8,7 @@ import io
 import os
 import re
 import tempfile
+import subprocess
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -70,6 +71,70 @@ class SummaryTests(unittest.TestCase):
 class PinTests(unittest.TestCase):
     def test_the_pin_comes_from_scripts_test(self):
         self.assertRegex(parity_summary.pinned_revision(), re.compile(r"^[0-9a-f]{40}$"))
+
+
+class AlignReferenceTests(unittest.TestCase):
+    PIN = "b" * 40
+
+    def _run(self, ref, pin=None):
+        return parity_summary.align_reference(ref, pin or self.PIN)
+
+    def test_a_stale_git_clone_is_fetched_and_checked_out_to_the_pin(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            seed = root / "seed"
+            seed.mkdir()
+            env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example.com",
+                       GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@example.com")
+            for argv in (["git", "init", "-q", str(seed)],
+                         ["git", "-C", str(seed), "commit", "-q", "--allow-empty",
+                          "-m", "seed", "--"], ["git", "-C", str(seed), "branch", "-m", "main"]):
+                subprocess.run(argv, check=True, capture_output=True, env=env)
+            clone = root / "ref"
+            subprocess.run(["git", "clone", "-q", str(seed), str(clone)],
+                           check=True, capture_output=True)
+            stale = subprocess.run(["git", "-C", str(clone), "rev-parse", "HEAD"],
+                                   check=True, capture_output=True, text=True).stdout.strip()
+            subprocess.run(["git", "-C", str(seed), "commit", "-q", "--allow-empty",
+                            "-m", "newer", "--"], check=True, capture_output=True, env=env)
+            seed_head = subprocess.run(["git", "-C", str(seed), "rev-parse", "HEAD"],
+                                       check=True, capture_output=True, text=True).stdout.strip()
+            pin = seed_head
+            head, err = self._run(str(clone), pin=pin)
+            self.assertEqual(head, pin)
+            self.assertIsNone(err)
+            self.assertNotEqual(stale, pin)
+            self.assertEqual(
+                subprocess.run(["git", "-C", str(clone), "rev-parse", "HEAD"],
+                               check=True, capture_output=True, text=True).stdout.strip(),
+                pin)
+
+    def test_a_fetch_failure_fails_closed_with_the_observed_head(self):
+        pin = "d" * 40
+        def fetch_fails(argv, **kw):
+            result = mock.Mock(returncode=0, stdout="", stderr="")
+            if "--is-inside-work-tree" in argv:
+                result.stdout = "true\n"
+            if "fetch" in argv:
+                result.returncode = 128
+                result.stderr = "no net"
+            if "checkout" in argv:
+                result.returncode = 1
+                result.stderr = "aborted"
+            return result
+
+        with mock.patch.object(parity_summary, "reference_head", return_value="e" * 40) as head_mock, \
+                mock.patch.object(parity_summary.subprocess, "run", side_effect=fetch_fails) as run_mock:
+            head, err = self._run("/does/not/matter")
+        self.assertEqual(head, "e" * 40)
+        self.assertIn("fetch origin", err)
+        calls = [c.args[0] for c in run_mock.call_args_list if c.args]
+        self.assertTrue(all(isinstance(a, list) for a in calls), calls)
+
+    def test_a_non_clone_fails_closed(self):
+        head, err = self._run("/tmp")
+        self.assertIsNone(head)
+        self.assertEqual(err, "not a git clone")
 
 
 class SweepStatusTests(unittest.TestCase):
