@@ -2,11 +2,11 @@
 
 TouchDesigner integration and compiler for the Noisemaker shader platform.
 
-## Strict Rules
+## Rules
 
-HARD, PERMANENT, INVIOLABLE BAN: BANNED FROM SYMLINKS. Never create, introduce, or use symbolic links anywhere in checkouts, repositories, configuration, scripts, or documentation. All files must be regular files. Zero exceptions.
+Never create, introduce or use symbolic links anywhere in checkouts, repositories, configuration, scripts or documentation. Every file is a regular file.
 
-HARD, PERMANENT, INVIOLABLE BAN: Research documents must be written and presented strictly in the established technical whitepaper style. Banned from slop headlines, promotional/slogan headers, parenthetical subtitles in titles, stat cards, metric cards, decorative callouts, marketing-speak, and invented report layouts. Zero exceptions.
+Write and present research documents in the established technical whitepaper style. Never use slop headlines, promotional or slogan headers, parenthetical subtitles in titles, stat cards, metric cards, decorative callouts, marketing-speak or invented report layouts.
 
 ## Testing & Build
 
