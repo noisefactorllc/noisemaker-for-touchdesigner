@@ -21,7 +21,10 @@ stop_td() {
 }
 HERE="$(cd "$(dirname "$0")" && pwd)"; REPO="$(cd "$HERE/.." && pwd)"
 TD="${TD_BIN:-/Applications/TouchDesigner.app/Contents/MacOS/TouchDesigner}"
-PY="$REPO/parity/.venv/bin/python"; [ -x "$PY" ] || PY=python3
+# Prefer the venv only when its interpreter actually runs (a venv built by a
+# since-removed interpreter execs the CLT stub and every python call fails).
+PY="$REPO/parity/.venv/bin/python"
+"$PY" -c 'import numpy, PIL' >/dev/null 2>&1 || PY=python3
 OUT="$REPO/parity/out"; mkdir -p "$OUT"
 PROG="${NM_PROGRAM:-present_hero}"
 SHOT="$OUT/${PROG}.tdshot.png"

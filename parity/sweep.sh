@@ -13,7 +13,11 @@
 #   parity/sweep.sh --compare-only  # don't render; re-grade the existing candidates
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"; REPO="$(cd "$HERE/.." && pwd)"
-PY="$REPO/parity/.venv/bin/python"; [ -x "$PY" ] || PY=python3
+# Prefer the venv only when its interpreter actually runs: a venv built by a
+# since-removed interpreter (an Xcode or Homebrew upgrade) execs the CLT stub, and
+# every python call in this script would then fail with no output.
+PY="$REPO/parity/.venv/bin/python"
+"$PY" -c 'import numpy, PIL' >/dev/null 2>&1 || PY=python3
 OUT="$REPO/parity/out"; CHUNK="${CHUNK:-15}"
 LEDGER_PATH="${LEDGER_PATH:-parity/out/ledger.tsv}"
 case "$LEDGER_PATH" in /*) ;; *) LEDGER_PATH="$REPO/$LEDGER_PATH" ;; esac
@@ -96,10 +100,26 @@ esac; done
 if [ "$stage" = 1 ]; then "$PY" "$REPO/parity/stage_coverage.py" >/dev/null || exit $?; fi
 SET="$(cat "$OUT/_render_set.txt" 2>/dev/null || true)"
 [ -n "$SET" ] || { echo "no render set — run parity/stage_coverage.py first"; exit 1; }
-if ! "$PY" "$REPO/parity/stage_coverage.py" --validate-set "$OUT/_render_set.txt"; then
-  echo "[FAIL] render set does not match the expected staged universe"
-  exit 1
-fi
+EXPECTED_SET="$OUT/_render_set.txt"
+case "${NM_CASES:-}" in
+  "")
+    if ! "$PY" "$REPO/parity/stage_coverage.py" --validate-set "$OUT/_render_set.txt"; then
+      echo "[FAIL] render set does not match the expected staged universe"
+      exit 1
+    fi ;;
+  *)
+    # Scoped run: only the named cases. The subset intentionally differs from the staged
+    # universe, so the universe validation is skipped and the ledger is graded against the
+    # subset instead.
+    FILTER=""
+    for want in $NM_CASES; do
+      case " $SET " in *" $want "*) FILTER="$FILTER $want" ;; *)
+        echo "[FAIL] unknown case: $want" >&2; exit 1 ;; esac
+    done
+    SET="$FILTER"
+    EXPECTED_SET="$OUT/_expected_set.txt"
+    printf '%s\n' $SET > "$EXPECTED_SET" ;;
+esac
 
 # 1. render all candidates (chunked TD sessions). Permissive tol so the render step always emits a
 #    candidate; the authoritative verdict is the per-effect compare in step 2.
@@ -177,7 +197,7 @@ for name in $SET; do
   record_result "$name" REPORT "$report" "$TOL" "$SSIM"
 done
 if ! "$PY" "$REPO/parity/write-ledger.py" --root "$REPO" --results "$RESULTS" \
-     --expected-set "$OUT/_render_set.txt" --output "$LEDGER_PATH"; then
+     --expected-set "$EXPECTED_SET" --output "$LEDGER_PATH"; then
   echo "[FAIL] canonical ledger contains rejecting or incomplete evidence: $LEDGER_PATH"
   if [ "$fail" -eq 0 ]; then fail=$((fail + 1)); failed="$failed ledger"; fi
 fi

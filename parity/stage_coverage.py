@@ -204,7 +204,10 @@ def main():
         return
 
     # Render the reference goldens for the gateable set (skipped in --emit mode to keep it cheap).
-    render_goldens(render)
+    # A scoped run (NM_CASES) renders goldens only for the named single-frame cases; accumulate.sh
+    # and cubemap.sh render their own goldens for their cases.
+    cases = [c for c in os.environ.get('NM_CASES', '').split() if c]
+    render_goldens([n for n in render if not cases or n in cases])
 
     # _render_set.txt drives sweep.sh; include ACCUM names so it reports them ([ACCUM] -> accumulate.sh).
     with open(os.path.join(OUT, '_render_set.txt'), 'w') as fh:

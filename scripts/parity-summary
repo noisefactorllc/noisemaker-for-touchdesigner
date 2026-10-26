@@ -25,7 +25,9 @@ when no reference at the pin can be provided.
 
 Usage:
   NM_REFERENCE_ROOT=/path/to/noisemaker scripts/parity-summary
-  scripts/parity-summary --ledger PATH   # classify an existing ledger; render nothing
+  scripts/parity-summary                  # render + compare + classify the whole port
+  scripts/parity-summary CASE [CASE ...]  # render + compare + classify only these staged cases
+  scripts/parity-summary --ledger PATH    # classify an existing ledger; render nothing
 
 Environment: NM_PARITY_WORK (work dir, default parity/out/parity-summary) plus everything
 parity/sweep.sh and parity/run.sh read (TD_BIN, CHUNK, ...).
@@ -182,41 +184,110 @@ def reference_harness_ready(ref_root):
     return probe.returncode == 0 and bool(probe.stdout.strip())
 
 
+def reference_browser_ready(ref_root, browsers_path=None):
+    """True when the reference's playwright can launch chromium the way the harness does.
+
+    A browser that merely exists is not enough: a cache on a noexec mount or a
+    truncated download yields a browser that cannot be launched, so the probe
+    launches it headless and closes it.
+    browsers_path names the cache the probe resolves the browser in.
+    """
+    harness = Path(ref_root) / "vendor" / "shade-mcp" / "harness"
+    if shutil.which("node") is None:
+        return False
+    env = os.environ
+    if browsers_path:
+        env = dict(os.environ, PLAYWRIGHT_BROWSERS_PATH=str(browsers_path))
+    probe = subprocess.run(
+        ["node", "-e",
+         "const p=require(require.resolve('playwright',{paths:[process.argv[1]]}));"
+         "(async()=>{try{const b=await p.chromium.launch({headless:true,"
+         "args:['--disable-gpu-sandbox']});await b.close();"
+         "process.stdout.write('true')}catch(e){process.stdout.write('false')}})()",
+         str(harness)],
+        capture_output=True, text=True, env=env, timeout=300)
+    return probe.stdout.strip() == "true"
+
+
 CA_BUNDLES = ("/etc/ssl/cert.pem", "/etc/ssl/certs/ca-certificates.crt")
 
 
-def install_reference_dependencies(ref_root):
-    """Install the reference's npm dependencies when the golden renderer lacks them.
+def _run_with_ca_retry(argv, env=None):
+    """Run an install command; retry once with the system CA bundle on a TLS failure.
+
+    Returns the last CompletedProcess and the extra environment of the successful
+    attempt (a NODE_EXTRA_CA_CERTS retry reports its bundle so later stages can reuse
+    the same trust anchors).
+    """
+    result = subprocess.run(argv, capture_output=True, text=True, env=env)
+    extra_env = {}
+    if result.returncode != 0 and "NODE_EXTRA_CA_CERTS" not in os.environ:
+        for bundle in CA_BUNDLES:
+            if not os.path.isfile(bundle):
+                continue
+            extra_env = {"NODE_EXTRA_CA_CERTS": bundle}
+            merged = dict(os.environ)
+            merged.update(env or {})
+            merged["NODE_EXTRA_CA_CERTS"] = bundle
+            result = subprocess.run(argv, capture_output=True, text=True, env=merged)
+            break
+    return result, extra_env
+
+
+def install_reference_dependencies(ref_root, work):
+    """Install the reference's npm dependencies and browser when rendering lacks them.
 
     The golden renderer imports the browser harness from the reference tree, so the
     reference needs its dependencies installed. This is the same npm ci the native
     parity profile runs before rendering. A torn node_modules (for example one left
     by an interrupted install) fails the resolution probe, and npm ci rebuilds it from
-    scratch. When an install fails because a TLS root is missing (a local filtering
-    proxy re-signs the registry connection), the install retries with the standard
-    CA bundle of the operating system added through NODE_EXTRA_CA_CERTS. Verification
-    stays strict; the retry only adds the operating system's own trust anchors.
-    Returns an error string or None.
+    scratch. A missing or unlaunchable chromium fails the browser probe, and the
+    reference's own playwright CLI installs it — first into the default cache (or the
+    cache PLAYWRIGHT_BROWSERS_PATH names), then, when that cache cannot execute the
+    binary (a noexec home mount), into a managed cache inside the work directory,
+    which the caller must pass to the sweep as PLAYWRIGHT_BROWSERS_PATH. When an
+    install fails because a TLS root is missing (a local filtering proxy re-signs the
+    connection), the install retries with the standard CA bundle of the operating
+    system added through NODE_EXTRA_CA_CERTS. Verification stays strict; the retry
+    only adds the operating system's own trust anchors.
+    Returns (error string or None, extra environment for the sweep).
     """
+    extra_env = {}
     if not (Path(ref_root) / "package.json").is_file():
-        return "the reference has no package.json"
-    if reference_harness_ready(ref_root):
-        return None
+        return "the reference has no package.json", extra_env
+    harness_ready = reference_harness_ready(ref_root)
+    if harness_ready and reference_browser_ready(ref_root):
+        return None, extra_env
     npm = shutil.which("npm")
-    if npm is None:
-        return "npm is not on PATH to install the reference's dependencies"
-    argv = [npm, "ci", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", str(ref_root)]
-    result = subprocess.run(argv, capture_output=True, text=True)
-    if result.returncode != 0 and "NODE_EXTRA_CA_CERTS" not in os.environ:
-        for bundle in CA_BUNDLES:
-            if not os.path.isfile(bundle):
-                continue
-            result = subprocess.run(argv, capture_output=True, text=True,
-                                    env=dict(os.environ, NODE_EXTRA_CA_CERTS=bundle))
-            break
-    if result.returncode != 0 or not reference_harness_ready(ref_root):
-        return "npm ci in the reference failed: %s" % result.stderr.strip()[:400]
-    return None
+    if npm is None and not harness_ready:
+        return "npm is not on PATH to install the reference's dependencies", extra_env
+    if not harness_ready:
+        result, ca_env = _run_with_ca_retry(
+            [npm, "ci", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", str(ref_root)])
+        if result.returncode != 0 or not reference_harness_ready(ref_root):
+            return "npm ci in the reference failed: %s" % result.stderr.strip()[:400], extra_env
+        extra_env.update(ca_env)
+    if not reference_browser_ready(ref_root):
+        cli = Path(ref_root) / "node_modules" / "playwright-core" / "cli.js"
+        if not cli.is_file():
+            return "the reference has no playwright CLI to install its browser", extra_env
+        argv = ["node", str(cli), "install", "chromium"]
+        result, ca_env = _run_with_ca_retry(argv)
+        if not reference_browser_ready(ref_root):
+            # The cache is platform-specific: a managed cache shared between hosts holds
+            # binaries the other platform cannot launch, and the installer would then skip
+            # the download as already done. Tag the managed cache with the running platform.
+            managed = Path(work) / ("browsers-" + sys.platform)
+            result, ca_env = _run_with_ca_retry(
+                argv, env=dict(os.environ, PLAYWRIGHT_BROWSERS_PATH=str(managed), **ca_env))
+            if not reference_browser_ready(ref_root, managed):
+                detail = result.stderr.strip()[:400] or "the browser does not launch"
+                return "the reference browser install failed: %s" % detail, extra_env
+            extra_env.update(ca_env)
+            extra_env["PLAYWRIGHT_BROWSERS_PATH"] = str(managed)
+        elif ca_env:
+            extra_env.update(ca_env)
+    return None, extra_env
 
 
 def resolve_reference(work):
@@ -245,13 +316,19 @@ def resolve_reference(work):
 
 def main(argv):
     sweep_status = 0
+    scoped = None
     if argv[:1] == ["--ledger"] and len(argv) == 2:
         ledger = Path(argv[1])
-    elif not argv:
+    elif argv and all(not a.startswith("-") for a in argv):
+        staged = RENDER_SET.read_text().split() if RENDER_SET.exists() else []
+        unknown = sorted(set(argv) - set(staged))
+        if unknown:
+            raise SystemExit("parity-summary: not staged cases: %s" % ", ".join(unknown))
+        scoped = list(argv)
         work = Path(os.environ.get("NM_PARITY_WORK", ROOT / "parity" / "out" / "parity-summary"))
         work.mkdir(parents=True, exist_ok=True)
         ref_root = resolve_reference(work)
-        dep_err = install_reference_dependencies(ref_root)
+        dep_err, extra_env = install_reference_dependencies(ref_root, work)
         if dep_err:
             raise SystemExit("parity-summary: %s at %s" % (dep_err, ref_root))
         pin = pinned_revision()
@@ -259,12 +336,29 @@ def main(argv):
         ledger = work / "ledger.tsv"
         if ledger.exists():
             ledger.unlink()
-        env = dict(os.environ, LEDGER_PATH=str(ledger), NM_REFERENCE_ROOT=ref_root, NM_REFERENCE_SHA=pin)
+        env = dict(os.environ, LEDGER_PATH=str(ledger), NM_REFERENCE_ROOT=ref_root, NM_REFERENCE_SHA=pin,
+                   NM_CASES=" ".join(scoped), **extra_env)
+        sweep_status = subprocess.run(
+            ["bash", str(ROOT / "parity" / "sweep.sh")], cwd=str(ROOT), env=env).returncode
+    elif not argv:
+        work = Path(os.environ.get("NM_PARITY_WORK", ROOT / "parity" / "out" / "parity-summary"))
+        work.mkdir(parents=True, exist_ok=True)
+        ref_root = resolve_reference(work)
+        dep_err, extra_env = install_reference_dependencies(ref_root, work)
+        if dep_err:
+            raise SystemExit("parity-summary: %s at %s" % (dep_err, ref_root))
+        pin = pinned_revision()
+        print("parity-summary: reference root %s at %s" % (ref_root, pin))
+        ledger = work / "ledger.tsv"
+        if ledger.exists():
+            ledger.unlink()
+        env = dict(os.environ, LEDGER_PATH=str(ledger), NM_REFERENCE_ROOT=ref_root, NM_REFERENCE_SHA=pin,
+                   **extra_env)
         sweep_status = subprocess.run(
             ["bash", str(ROOT / "parity" / "sweep.sh")], cwd=str(ROOT), env=env).returncode
     else:
         raise SystemExit(__doc__)
-    expected = RENDER_SET.read_text().split() if RENDER_SET.exists() else []
+    expected = scoped if scoped else (RENDER_SET.read_text().split() if RENDER_SET.exists() else [])
     rows = read_ledger(ledger) if ledger.exists() else {}
     counts, lines = summarize(expected, rows)
     for line in lines:

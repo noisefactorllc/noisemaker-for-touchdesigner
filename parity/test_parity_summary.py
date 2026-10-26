@@ -7,6 +7,7 @@ import contextlib
 import io
 import os
 import re
+import sys
 import tempfile
 import subprocess
 import unittest
@@ -221,7 +222,9 @@ class InstallReferenceDependenciesTests(unittest.TestCase):
                 sh.which.side_effect = lambda name: "/usr/bin/" + name if name else None
                 with mock.patch.object(parity_summary, "subprocess") as sp:
                     sp.run.side_effect = run
-                    error = parity_summary.install_reference_dependencies(str(root))
+                    with mock.patch.object(parity_summary, "reference_browser_ready",
+                                           return_value=True):
+                        error, _ = parity_summary.install_reference_dependencies(str(root), root)
             self.assertIsNone(error)
             npm_calls = [c for c in commands if c and c[0].endswith("npm")]
             self.assertEqual(len(npm_calls), 1)
@@ -238,7 +241,7 @@ class InstallReferenceDependenciesTests(unittest.TestCase):
                     def run(argv, **kwargs):
                         return subprocess.CompletedProcess(argv, 1, stdout="", stderr="boom")
                     sp.run.side_effect = run
-                    error = parity_summary.install_reference_dependencies(str(root))
+                    error, _ = parity_summary.install_reference_dependencies(str(root), root)
             self.assertIn("npm ci in the reference failed", error)
             self.assertIn("boom", error)
 
@@ -270,11 +273,121 @@ class InstallReferenceDependenciesTests(unittest.TestCase):
                         return subprocess.CompletedProcess(argv, 1, stdout="", stderr="")
 
                     sp.run.side_effect = lambda argv, **kw: probe(argv, **kw) if argv[0] == "node" else run(argv, **kw)
-                    error = parity_summary.install_reference_dependencies(str(root))
+                    with mock.patch.object(parity_summary, "reference_browser_ready",
+                                           return_value=True):
+                        error, _ = parity_summary.install_reference_dependencies(str(root), root)
             self.assertIsNone(error)
             retries = [env for _, env in commands if "NODE_EXTRA_CA_CERTS" in env]
             self.assertEqual(len(retries), 1)
             self.assertIn(bundles[0], retries[0]["NODE_EXTRA_CA_CERTS"])
+
+
+    def test_a_missing_browser_is_installed_by_the_reference_playwright(self):
+        commands = []
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "package.json").write_text("{}\n")
+            cli = root / "node_modules" / "playwright-core" / "cli.js"
+            cli.parent.mkdir(parents=True)
+            cli.write_text("// playwright cli\n")
+
+            def run(argv, **kwargs):
+                commands.append((list(argv), dict(kwargs.get("env") or {})))
+                return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+            with mock.patch.object(parity_summary, "shutil") as sh:
+                sh.which.side_effect = lambda name: "/usr/bin/" + name if name else None
+                with mock.patch.object(parity_summary, "subprocess") as sp:
+                    sp.run.side_effect = run
+                    with mock.patch.object(parity_summary, "reference_harness_ready",
+                                           return_value=True), \
+                            mock.patch.object(parity_summary, "reference_browser_ready",
+                                              side_effect=[False, False, False, True]):
+                        error, extra_env = parity_summary.install_reference_dependencies(str(root), root)
+            self.assertIsNone(error)
+            installs = [c for c, _ in commands if "install" in c and "chromium" in c]
+            self.assertEqual(len(installs), 2)
+            self.assertEqual(installs[0][:2], ["node", str(cli)])
+            managed = [env for _, env in commands if env.get("PLAYWRIGHT_BROWSERS_PATH")]
+            self.assertEqual(managed, [dict(os.environ,
+                                            PLAYWRIGHT_BROWSERS_PATH=str(root / ("browsers-" + sys.platform)))])
+            self.assertEqual(extra_env.get("PLAYWRIGHT_BROWSERS_PATH"),
+                                 str(root / ("browsers-" + sys.platform)))
+
+    def test_a_failed_browser_install_reports_the_error(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "package.json").write_text("{}\n")
+            cli = root / "node_modules" / "playwright-core" / "cli.js"
+            cli.parent.mkdir(parents=True)
+            cli.write_text("// playwright cli\n")
+            with mock.patch.object(parity_summary, "shutil") as sh:
+                sh.which.side_effect = lambda name: "/usr/bin/" + name if name else None
+                with mock.patch.object(parity_summary, "subprocess") as sp:
+                    def run(argv, **kwargs):
+                        if "install" in argv and "chromium" in argv:
+                            return subprocess.CompletedProcess(argv, 1, stdout="", stderr="no net")
+                        if argv[0] == "node":
+                            return subprocess.CompletedProcess(argv, 0, stdout="ready", stderr="")
+                        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+                    sp.run.side_effect = run
+                    with mock.patch.object(parity_summary, "reference_harness_ready",
+                                           return_value=True), \
+                            mock.patch.object(parity_summary, "reference_browser_ready",
+                                              return_value=False):
+                        error, _ = parity_summary.install_reference_dependencies(str(root), root)
+            self.assertIn("the reference browser install failed", error)
+            self.assertIn("no net", error)
+
+
+class ScopedRunTests(unittest.TestCase):
+    def _prepare(self, root, render_set):
+        (root / "parity" / "out").mkdir(parents=True, exist_ok=True)
+        (root / "scripts").mkdir(exist_ok=True)
+        (root / "package.json").write_text("{}\n")
+        pin = "b" * 40
+        (root / "scripts" / "test").write_text(f'NM_REFERENCE_SHA_PINNED="{pin}"\n')
+        render = root / "parity" / "out" / "_render_set.txt"
+        render.write_text(render_set)
+        return pin, render
+
+    def test_named_cases_render_and_count_only_those(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            pin, render = self._prepare(root, "adjust\nbitwise\npresent_hero\n")
+            sweep = root / "parity" / "sweep.sh"
+            sweep.write_text(
+                'printf "%s" "$NM_CASES" > "$NM_PARITY_WORK/cases.env"\n'
+                'cat > "$LEDGER_PATH" <<\'LEDGER\'\n'
+                "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
+                "bitwise\tPASS\t0\t1\t2.001\t0.98\tsweep\tbitwise.golden.png\n"
+                "LEDGER\nexit 0\n")
+            output = io.StringIO()
+            with mock.patch.object(parity_summary, "ROOT", root), \
+                    mock.patch.object(parity_summary, "RENDER_SET", render), \
+                    mock.patch.object(parity_summary, "reference_head", return_value=pin), \
+                    mock.patch.object(parity_summary, "reference_harness_ready",
+                                      return_value=True), \
+                    mock.patch.object(parity_summary, "reference_browser_ready",
+                                      return_value=True), \
+                    mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root),
+                                                "NM_PARITY_WORK": str(root / "work")}), \
+                    contextlib.redirect_stdout(output):
+                status = parity_summary.main(["bitwise"])
+            self.assertEqual(status, 0)
+            self.assertEqual((root / "work" / "cases.env").read_text(), "bitwise")
+            self.assertIn('"expected":1,"executed":1,"exact":1', output.getvalue())
+
+    def test_an_unknown_case_fails_before_the_sweep(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            pin, render = self._prepare(root, "adjust\n")
+            with mock.patch.object(parity_summary, "ROOT", root), \
+                    mock.patch.object(parity_summary, "RENDER_SET", render), \
+                    mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root)}):
+                with self.assertRaises(SystemExit) as caught:
+                    parity_summary.main(["nope"])
+            self.assertIn("not staged cases: nope", str(caught.exception))
 
 
 class ProvisionReferenceTests(unittest.TestCase):
@@ -353,6 +466,8 @@ class SweepStatusTests(unittest.TestCase):
                             mock.patch.object(parity_summary, "RENDER_SET", render_set), \
                             mock.patch.object(parity_summary, "reference_head", return_value=pin), \
                             mock.patch.object(parity_summary, "reference_harness_ready",
+                                              return_value=True), \
+                            mock.patch.object(parity_summary, "reference_browser_ready",
                                               return_value=True), \
                             mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root),
                                                         "NM_PARITY_WORK": str(root / "work")}), \

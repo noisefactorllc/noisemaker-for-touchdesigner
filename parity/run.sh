@@ -30,8 +30,12 @@ REPO="$(cd "$HERE/.." && pwd)"
 REF="${NM_REFERENCE_ROOT:-}"
 if [ -z "$REF" ] && [ -d "$REPO/upstream-noisemaker/shaders" ]; then REF="$REPO/upstream-noisemaker"; fi
 [ -n "$REF" ] && [ -d "$REF/shaders" ] || { echo "set NM_REFERENCE_ROOT to the upstream Noisemaker engine (the tree containing shaders/) — no sibling is assumed on clone"; exit 2; }
-# Ensure the venv exists with numpy + pillow (fresh clones / runners lack parity/.venv).
-if [ ! -x "$REPO/parity/.venv/bin/python" ] && ! python3 -c 'import numpy, PIL' >/dev/null 2>&1; then
+# Ensure a WORKING interpreter with numpy + pillow. A stale parity/.venv (built by a
+# since-removed interpreter, e.g. after an Xcode or Homebrew upgrade) fails at exec;
+# rebuild it in that case. Use plain python3 when it already has the imports.
+venv_ok() { [ -x "$REPO/parity/.venv/bin/python" ] && "$REPO/parity/.venv/bin/python" -c 'import numpy, PIL' >/dev/null 2>&1; }
+if ! venv_ok && ! python3 -c 'import numpy, PIL' >/dev/null 2>&1; then
+  rm -rf "$REPO/parity/.venv"
   python3 -m venv "$REPO/parity/.venv" && "$REPO/parity/.venv/bin/pip" install -q -r "$REPO/requirements.txt" \
     || { echo "could not provision parity/.venv (numpy + pillow required)"; exit 2; }
 fi
@@ -72,7 +76,7 @@ else
   TD_APP="${TD_APP:-$_td_bin}"
 fi
 export TD_APP
-PY="$REPO/parity/.venv/bin/python"; [ -x "$PY" ] || PY=python3   # needs numpy + pillow
+PY="$REPO/parity/.venv/bin/python"; "$PY" -c 'import numpy, PIL' >/dev/null 2>&1 || PY=python3   # needs numpy + pillow
 SIZE="${SIZE:-256}"; TIME="${TIME:-0.25}"; TOL="${TOL:-2}"; SSIM="${SSIM:-0.98}"
 OUT="$REPO/parity/out"; mkdir -p "$OUT"
 ALL="solid noise cell gradient shape osc2d blur blendMode"

@@ -21,7 +21,10 @@
 #   parity/corpus_sweep.sh --stateless   # only the fast deterministic byte/SSIM tier
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"; REPO="$(cd "$HERE/.." && pwd)"
-PY="$REPO/parity/.venv/bin/python"; [ -x "$PY" ] || PY=python3
+# Prefer the venv only when its interpreter actually runs (a venv built by a
+# since-removed interpreter execs the CLT stub and every python call fails).
+PY="$REPO/parity/.venv/bin/python"
+"$PY" -c 'import numpy, PIL' >/dev/null 2>&1 || PY=python3
 OUT="$REPO/parity/out"; mkdir -p "$OUT"
 REF="${NM_REFERENCE_ROOT:-}"
 [ -n "$REF" ] && [ -d "$REF/shaders" ] || { echo "set NM_REFERENCE_ROOT to the upstream Noisemaker engine (tree with shaders/)"; exit 2; }
