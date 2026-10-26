@@ -477,13 +477,18 @@ class HarnessContractTests(unittest.TestCase):
                 self.assertEqual(restored.returncode, 0, restored.stdout + restored.stderr)
             summary = subprocess.run(
                 [sys.executable, str(root / "scripts" / "parity-summary"), "--ledger", str(out / "ledger.tsv")],
-                capture_output=True, text=True,
+                capture_output=True, text=True, env=environment,
             )
             self.assertEqual(summary.returncode, 0, summary.stdout + summary.stderr)
             counts = json.loads(summary.stdout.split("PARITY-SUMMARY ", 1)[1])
             self.assertEqual(counts, {"expected": 1, "executed": 1, "exact": 0,
                                       "strict": 0 if near_frames else 1, "near": 1 if near_frames else 0,
                                       "defer": 0, "skip": 0, "fail": 0, "missing": 0})
+            stale_source = subprocess.run(
+                summary.args, capture_output=True, text=True,
+                env=dict(environment, TEST_REFERENCE_HEAD="b" * 40),
+            )
+            self.assertNotEqual(stale_source.returncode, 0, stale_source.stdout + stale_source.stderr)
             (root / "reference-dirty").unlink(missing_ok=True)
             (parity / "run.sh").write_text("exit 29\n")
             sweep_output = root / "sweep-output"

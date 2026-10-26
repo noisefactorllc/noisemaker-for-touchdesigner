@@ -5,6 +5,7 @@ import importlib.machinery
 import importlib.util
 import contextlib
 import io
+import json
 import os
 import re
 import sys
@@ -361,11 +362,16 @@ class ScopedRunTests(unittest.TestCase):
                 'cat > "$LEDGER_PATH" <<\'LEDGER\'\n'
                 "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
                 "bitwise\tPASS\t0\t1\t2.001\t0.98\tsweep\tbitwise.golden.png\n"
-                "LEDGER\nexit 0\n")
+                "LEDGER\n"
+                f'printf \'{{"source": "test-source", "pin": "{pin}"}}\\n\' '
+                '> "$LEDGER_PATH.binding.json"\n'
+                "exit 0\n")
             output = io.StringIO()
             with mock.patch.object(parity_summary, "ROOT", root), \
                     mock.patch.object(parity_summary, "RENDER_SET", render), \
                     mock.patch.object(parity_summary, "reference_head", return_value=pin), \
+                    mock.patch.object(parity_summary, "checkout_source",
+                                      return_value="test-source"), \
                     mock.patch.object(parity_summary, "reference_harness_ready",
                                       return_value=True), \
                     mock.patch.object(parity_summary, "reference_browser_ready",
@@ -391,6 +397,65 @@ class ScopedRunTests(unittest.TestCase):
             self.assertIn("not staged cases: nope", str(caught.exception))
 
 
+class LedgerBindingTests(unittest.TestCase):
+    PIN = "c" * 40
+    SOURCE = "d" * 40
+
+    def _bound_ledger(self, root, source=None, pin=None):
+        ledger = root / "ledger.tsv"
+        ledger.write_text(
+            "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
+            "adjust\tPASS\t0\t1\t2.001\t0.98\tsweep\tadjust.golden.png\n")
+        binding = {"source": source or self.SOURCE, "pin": pin or self.PIN}
+        Path(str(ledger) + ".binding.json").write_text(json.dumps(binding) + "\n")
+        return ledger
+
+    def _main(self, root, ledger):
+        render_set = root / "_render_set.txt"
+        render_set.write_text("adjust\n")
+        with mock.patch.object(parity_summary, "ROOT", root), \
+                mock.patch.object(parity_summary, "RENDER_SET", render_set), \
+                mock.patch.object(parity_summary, "checkout_source",
+                                  return_value=self.SOURCE), \
+                mock.patch.object(parity_summary, "pinned_revision",
+                                  return_value=self.PIN), \
+                contextlib.redirect_stdout(io.StringIO()):
+            return parity_summary.main(["--ledger", str(ledger)])
+
+    def test_a_ledger_bound_to_this_source_and_pin_grades(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            ledger = self._bound_ledger(root)
+            self.assertEqual(self._main(root, ledger), 0)
+
+    def test_a_ledger_without_a_binding_fails_closed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            ledger = root / "ledger.tsv"
+            ledger.write_text(
+                "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
+                "adjust\tPASS\t0\t1\t2.001\t0.98\tsweep\tadjust.golden.png\n")
+            with self.assertRaises(SystemExit) as caught:
+                self._main(root, ledger)
+            self.assertIn("has no binding", str(caught.exception))
+
+    def test_a_ledger_bound_to_another_source_fails_closed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            ledger = self._bound_ledger(root, source="e" * 40)
+            with self.assertRaises(SystemExit) as caught:
+                self._main(root, ledger)
+            self.assertIn("bound to source", str(caught.exception))
+
+    def test_a_ledger_bound_to_another_pin_fails_closed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            ledger = self._bound_ledger(root, pin="f" * 40)
+            with self.assertRaises(SystemExit) as caught:
+                self._main(root, ledger)
+            self.assertIn("bound to source", str(caught.exception))
+
+
 class TouchDesignerGateTests(unittest.TestCase):
     def _prepare(self, root, render_set):
         (root / "parity" / "out").mkdir(parents=True, exist_ok=True)
@@ -405,6 +470,32 @@ class TouchDesignerGateTests(unittest.TestCase):
     def test_td_bin_names_the_binary_the_sweep_launches(self):
         with mock.patch.dict(os.environ, {"TD_BIN": sys.executable}):
             self.assertEqual(parity_summary.touchdesigner_binary(), sys.executable)
+
+    def test_a_bundle_without_a_readable_version_is_not_usable(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            app = root / "Broken.app"
+            binary = app / "Contents" / "MacOS" / "TouchDesigner"
+            binary.parent.mkdir(parents=True)
+            binary.write_text("#!/bin/sh\n")
+            binary.chmod(0o755)
+            with mock.patch.dict(os.environ, {"TD_BIN": str(binary)}):
+                self.assertIsNone(parity_summary.touchdesigner_binary())
+
+    def test_a_bundle_that_reports_its_version_is_usable(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            app = root / "TouchDesigner.app"
+            binary = app / "Contents" / "MacOS" / "TouchDesigner"
+            binary.parent.mkdir(parents=True)
+            binary.write_text("#!/bin/sh\n")
+            binary.chmod(0o755)
+            (app / "Contents" / "Info.plist").write_text("<plist/>")
+            probe = subprocess.CompletedProcess([], 0, stdout="2025.32820\n", stderr="")
+            with mock.patch.dict(os.environ, {"TD_BIN": str(binary)}), \
+                    mock.patch.object(parity_summary.subprocess, "run",
+                                      return_value=probe):
+                self.assertEqual(parity_summary.touchdesigner_binary(), str(binary))
 
     def test_a_missing_touchdesigner_fails_closed_before_any_setup(self):
         # A host without TouchDesigner must stop before reference resolution,
@@ -497,11 +588,16 @@ class SweepStatusTests(unittest.TestCase):
                 with self.subTest(sweep_status=sweep_status):
                     sweep.write_text(
                         'cat > "$LEDGER_PATH" <<\'LEDGER\'\n'
-                        + ledger + f"LEDGER\nexit {sweep_status}\n")
+                        + ledger + "LEDGER\n"
+                        + f'printf \'{{"source": "test-source", "pin": "{pin}"}}\\n\' '
+                        + '> "$LEDGER_PATH.binding.json"\n'
+                        + f"exit {sweep_status}\n")
                     output = io.StringIO()
                     with mock.patch.object(parity_summary, "ROOT", root), \
                             mock.patch.object(parity_summary, "RENDER_SET", render_set), \
                             mock.patch.object(parity_summary, "reference_head", return_value=pin), \
+                            mock.patch.object(parity_summary, "checkout_source",
+                                              return_value="test-source"), \
                             mock.patch.object(parity_summary, "reference_harness_ready",
                                               return_value=True), \
                             mock.patch.object(parity_summary, "reference_browser_ready",

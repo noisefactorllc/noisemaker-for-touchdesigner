@@ -27,7 +27,9 @@ Usage:
   NM_REFERENCE_ROOT=/path/to/noisemaker scripts/parity-summary
   scripts/parity-summary                  # render + compare + classify the whole port
   scripts/parity-summary CASE [CASE ...]  # render + compare + classify only these staged cases
-  scripts/parity-summary --ledger PATH    # classify an existing ledger; render nothing
+  scripts/parity-summary --ledger PATH    # classify an existing ledger; render nothing.
+                                          # The ledger must carry a binding from the sweep
+                                          # writer at this checkout and the current pin
 
 Environment: NM_PARITY_WORK (work dir, default parity/out/parity-summary) plus everything
 parity/sweep.sh and parity/run.sh read (TD_BIN, CHUNK, ...).
@@ -323,7 +325,9 @@ def touchdesigner_binary():
 
     Same discovery order as parity/run.sh: TD_BIN, the /Applications installs,
     PATH, then the common install prefixes. A binary that exists but cannot
-    execute is treated as absent, so the gate fails closed before rendering.
+    execute is treated as absent, and a macOS .app binary must also expose a
+    readable bundle version (the same probe the native profile uses), so a
+    truncated install fails closed before rendering.
     """
     candidates = []
     env_bin = os.environ.get("TD_BIN", "")
@@ -342,9 +346,32 @@ def touchdesigner_binary():
                                                      "bin/TouchDesigner.exe",
                                                      "Contents/MacOS/TouchDesigner")]
     for cand in candidates:
-        if cand and os.access(cand, os.X_OK):
+        if cand and os.access(cand, os.X_OK) and _bundle_reports_version(cand):
             return cand
     return None
+
+
+def _bundle_reports_version(binary):
+    """True when a .app binary exposes its bundle version; other layouts pass.
+
+    TouchDesigner has no headless CLI probe, so the check reads the bundle's
+    Info.plist the way the native parity profile does. A .app whose plist or
+    version is missing is a broken install, not a usable engine.
+    """
+    app = None
+    for parent in [Path(binary).parent, *Path(binary).parents]:
+        if parent.suffix == ".app":
+            app = parent
+            break
+    if app is None:
+        return True
+    plist = app / "Contents" / "Info.plist"
+    if not plist.is_file():
+        return False
+    plutil = shutil.which("plutil") or "/usr/bin/plutil"
+    probe = subprocess.run([plutil, "-extract", "CFBundleShortVersionString", "raw",
+                            "-o", "-", str(plist)], capture_output=True, text=True)
+    return probe.returncode == 0 and bool(probe.stdout.strip())
 
 
 def require_touchdesigner():
@@ -354,11 +381,42 @@ def require_touchdesigner():
                          "the rendered parity cases need a licensed TouchDesigner host")
 
 
+def checkout_source():
+    """The HEAD of the checkout whose sweep a ledger must be bound to."""
+    result = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+                            capture_output=True, text=True)
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def verify_ledger_binding(ledger):
+    """Fail closed when the ledger was not produced at this checkout and pin.
+
+    The sweep's ledger writer records the source SHA and the pinned authority
+    beside the ledger. A summary must never read stale rows as a pass at a
+    different source.
+    """
+    path = Path(str(ledger) + ".binding.json")
+    if not path.is_file():
+        raise SystemExit("parity-summary: the ledger has no binding (%s); produce it "
+                         "with the sweep on the TouchDesigner host" % path)
+    try:
+        binding = json.loads(path.read_text())
+    except ValueError:
+        raise SystemExit("parity-summary: the ledger binding %s is not valid JSON" % path)
+    head = checkout_source()
+    pin = pinned_revision()
+    if binding.get("source") != head or binding.get("pin") != pin:
+        raise SystemExit("parity-summary: the ledger is bound to source %s at pin %s, "
+                         "but this checkout is %s at pin %s"
+                         % (binding.get("source"), binding.get("pin"), head, pin))
+
+
 def main(argv):
     sweep_status = 0
     scoped = None
     if argv[:1] == ["--ledger"] and len(argv) == 2:
         ledger = Path(argv[1])
+        verify_ledger_binding(ledger)
     elif argv and all(not a.startswith("-") for a in argv):
         staged = RENDER_SET.read_text().split() if RENDER_SET.exists() else []
         unknown = sorted(set(argv) - set(staged))
@@ -381,6 +439,7 @@ def main(argv):
                    NM_CASES=" ".join(scoped), **extra_env)
         sweep_status = subprocess.run(
             ["bash", str(ROOT / "parity" / "sweep.sh")], cwd=str(ROOT), env=env).returncode
+        verify_ledger_binding(ledger)
     elif not argv:
         require_touchdesigner()
         work = Path(os.environ.get("NM_PARITY_WORK", ROOT / "parity" / "out" / "parity-summary"))
@@ -398,6 +457,7 @@ def main(argv):
                    **extra_env)
         sweep_status = subprocess.run(
             ["bash", str(ROOT / "parity" / "sweep.sh")], cwd=str(ROOT), env=env).returncode
+        verify_ledger_binding(ledger)
     else:
         raise SystemExit(__doc__)
     expected = scoped if scoped else (RENDER_SET.read_text().split() if RENDER_SET.exists() else [])

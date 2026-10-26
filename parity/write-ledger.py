@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import re
+import subprocess
 import sys
 import runpy
 from pathlib import Path
@@ -320,6 +321,22 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
     return row
 
 
+def ledger_binding(root):
+    """The source SHA and pinned authority a ledger was produced at."""
+    try:
+        pin_match = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
+                              (root / "scripts" / "test").read_text(), re.M)
+        head = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
+                              capture_output=True, text=True)
+    except OSError as error:
+        raise ValueError("cannot bind the ledger: %s" % error) from error
+    if not pin_match:
+        raise ValueError("cannot bind the ledger: no NM_REFERENCE_SHA_PINNED in scripts/test")
+    if head.returncode != 0:
+        raise ValueError("cannot bind the ledger: %s" % head.stderr.strip()[:200])
+    return {"source": head.stdout.strip(), "pin": pin_match.group(1)}
+
+
 def main():
     if sys.argv[1:2] == ["--accumulation-cases"]:
         print(" ".join(ACCUMULATION_CASES))
@@ -421,6 +438,19 @@ def main():
         writer.writeheader()
         writer.writerows(rows[name] for name in sorted(rows))
     temporary.replace(output)
+    # Bind the ledger to the source it graded and the pin its goldens came from, so a
+    # summary can never read stale rows as a pass at a different source. When the
+    # binding cannot be established, say so and leave the ledger unbound; the summary
+    # then refuses the unbound ledger instead of trusting it.
+    try:
+        binding = ledger_binding(args.root)
+    except ValueError as error:
+        print("write-ledger: %s" % error, file=sys.stderr)
+    else:
+        binding_path = output.with_name(output.name + ".binding.json")
+        binding_tmp = binding_path.with_name(binding_path.name + ".tmp")
+        binding_tmp.write_text(json.dumps(binding, sort_keys=True) + "\n")
+        binding_tmp.replace(binding_path)
     if any(row["verdict"] == "FAIL" for row in rows.values()):
         raise SystemExit(1)
 
