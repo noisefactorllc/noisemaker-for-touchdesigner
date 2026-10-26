@@ -84,7 +84,7 @@ def candidate_sources(root, name="cellularAutomata"):
         raise ValueError("candidate runtime sources are missing")
     paths.extend(root / name for name in (
         "td/parity_evolve.py", "td/build_evolve_toe.py", "parity/evolve.sh",
-        "parity/accumulate.sh", "parity/compare.py", "parity/write-ledger.py",
+        "parity/accumulate.sh", "parity/pylib.sh", "parity/compare.py", "parity/write-ledger.py",
         f"parity/programs/{name}.dsl",
     ))
     if name == "present_hero":
@@ -144,6 +144,7 @@ def cubemap_sources(root, name):
         raise ValueError("candidate runtime sources are missing")
     paths.extend(root / relative for relative in (
         "td/cubemap_bake.py", "td/build_points_probe_toe.py", "parity/cubemap.sh",
+        "parity/pylib.sh",
         "parity/cube_cross.py", "parity/export-and-render.mjs", "parity/harness-port.mjs",
         "parity/compare.py", "parity/write-ledger.py", "tools/export-graph.mjs",
         "tools/reference-root.mjs", "scripts/test",

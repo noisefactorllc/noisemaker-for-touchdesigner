@@ -25,6 +25,7 @@ PROTOCOL = {"size": 256, "time": 0.25, "backend": "webgl2",
             "face_order": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"],
             "cross_cells": [list(cell) for cell in CELLS]}
 BOUND_FILES = ("td/cubemap_bake.py", "td/build_points_probe_toe.py", "parity/cubemap.sh",
+               "parity/pylib.sh",
                "parity/cube_cross.py", "parity/export-and-render.mjs", "parity/harness-port.mjs",
                "parity/compare.py", "parity/write-ledger.py", "tools/export-graph.mjs",
                "tools/reference-root.mjs", "scripts/test")
@@ -178,7 +179,8 @@ class CubemapTests(unittest.TestCase):
                     (root / "parity/programs").mkdir()
                     (root / "parity/programs" / f"{name}.dsl").write_text("fixture\n")
                     (out / "_render_set.txt").write_text(name + "\n")
-                    for helper in ("stage_coverage.py", "sweep.sh", "write-ledger.py"):
+                    for helper in ("stage_coverage.py", "sweep.sh", "write-ledger.py",
+                                   "pylib.sh"):
                         shutil.copy2(REPO / "parity" / helper, root / "parity" / helper)
                     (root / "parity/run.sh").write_text("touch generic-called\nexit 0\n")
                     (root / "parity/cubemap.sh").write_text(

@@ -13,11 +13,8 @@
 #   parity/sweep.sh --compare-only  # don't render; re-grade the existing candidates
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"; REPO="$(cd "$HERE/.." && pwd)"
-# Prefer the venv only when its interpreter actually runs: a venv built by a
-# since-removed interpreter (an Xcode or Homebrew upgrade) execs the CLT stub, and
-# every python call in this script would then fail with no output.
-PY="$REPO/parity/.venv/bin/python"
-"$PY" -c 'import numpy, PIL' >/dev/null 2>&1 || PY=python3
+# Pick an interpreter that has numpy + pillow (see parity/pylib.sh).
+if ! PY="$(bash "$HERE/pylib.sh" "$REPO")"; then exit 2; fi
 OUT="$REPO/parity/out"; CHUNK="${CHUNK:-15}"
 LEDGER_PATH="${LEDGER_PATH:-parity/out/ledger.tsv}"
 case "$LEDGER_PATH" in /*) ;; *) LEDGER_PATH="$REPO/$LEDGER_PATH" ;; esac
@@ -133,8 +130,11 @@ if [ "$render" = 1 ]; then
   n=${#ALL[@]}; i=0
   while [ $i -lt $n ]; do
     chunk="${ALL[*]:i:CHUNK}"
-    if ! TOL=255 SSIM=0 bash "$REPO/parity/run.sh" "$chunk" >/dev/null 2>&1; then
+    chunk_log="$OUT/_chunk_render.log"
+    if ! TOL=255 SSIM=0 bash "$REPO/parity/run.sh" "$chunk" >"$chunk_log" 2>&1; then
+      reason="$(sed -n '/[^[:space:]]/{p;q;}' "$chunk_log" 2>/dev/null | tr -d '\t')"
       render_failed="$render_failed $chunk"
+      render_reason="${reason:-run.sh exited without a message}"
     fi
     i=$((i + CHUNK))
   done
@@ -158,7 +158,7 @@ for name in $SET; do
   case " $render_failed " in
     *" $name "*)
       echo "[FAIL] $name (renderer exited nonzero)"
-      record_result "$name" FAIL "TouchDesigner renderer exited nonzero" - -
+      record_result "$name" FAIL "renderer exited nonzero: ${render_reason:0:120}" - -
       fail=$((fail + 1)); failed="$failed $name"; continue ;;
   esac
   if is_accum "$name" && [ "$render" = 1 ]; then

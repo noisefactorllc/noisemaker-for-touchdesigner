@@ -23,10 +23,8 @@ HERE="$(cd "$(dirname "$0")" && pwd)"; REPO="$(cd "$HERE/.." && pwd)"
 REF="${NM_REFERENCE_ROOT:-}"
 [ -n "$REF" ] && [ -d "$REF/shaders" ] || { echo "set NM_REFERENCE_ROOT to the upstream Noisemaker engine (tree with shaders/)"; exit 2; }
 TD="${TD_BIN:-/Applications/TouchDesigner.app/Contents/MacOS/TouchDesigner}"
-# Prefer the venv only when its interpreter actually runs (a venv built by a
-# since-removed interpreter execs the CLT stub and every python call fails).
-PY="$REPO/parity/.venv/bin/python"
-"$PY" -c 'import numpy, PIL' >/dev/null 2>&1 || PY=python3
+# Pick an interpreter that has numpy + pillow (see parity/pylib.sh).
+if ! PY="$(bash "$HERE/pylib.sh" "$REPO")"; then exit 2; fi
 PROG="${1:-synth3d_renderCubemapSurface}"
 [ "$#" -eq 0 ] || shift
 result_report=""

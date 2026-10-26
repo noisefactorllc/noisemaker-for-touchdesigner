@@ -149,7 +149,7 @@ class HarnessContractTests(unittest.TestCase):
             (parity / "programs").mkdir()
             (parity / "programs" / "cellularAutomata.dsl").write_text("cellularAutomata().write(o0)\n")
             (out / "_render_set.txt").write_text("cellularAutomata\n")
-            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py"):
+            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py", "pylib.sh"):
                 shutil.copy2(REPO / "parity" / helper, parity / helper)
             (parity / "run.sh").write_text("touch single-render-called\nexit 0\n")
             (parity / "accumulate.sh").write_text("touch accumulation-called\nexit 7\n")
@@ -171,7 +171,7 @@ class HarnessContractTests(unittest.TestCase):
             (parity / "programs").mkdir()
             (parity / "programs" / "motionBlur.dsl").write_text("noise().motionBlur().write(o0)\n")
             (out / "_render_set.txt").write_text("motionBlur\n")
-            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py"):
+            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py", "pylib.sh"):
                 shutil.copy2(REPO / "parity" / helper, parity / helper)
             (parity / "run.sh").write_text("touch single-render-called\nexit 0\n")
             (parity / "accumulate.sh").write_text("touch accumulation-called\nexit 7\n")
@@ -312,7 +312,7 @@ class HarnessContractTests(unittest.TestCase):
             python = root / "bin" / "python3"
             python.write_text("#!" + sys.executable + "\nimport os,sys\nos.execv(sys.executable,[sys.executable,*sys.argv[1:]])\n")
             python.chmod(0o755)
-            for helper in ("accumulate.sh", "write-ledger.py", "sweep.sh", "stage_coverage.py", "compare.py"):
+            for helper in ("accumulate.sh", "write-ledger.py", "sweep.sh", "stage_coverage.py", "compare.py", "pylib.sh"):
                 shutil.copy2(REPO / "parity" / helper, parity / helper)
             if name == "present_hero":
                 shutil.copy2(REPO / "parity" / "batch-golden.mjs", parity / "batch-golden.mjs")
@@ -631,7 +631,7 @@ class HarnessContractTests(unittest.TestCase):
             parity = root / "parity"
             out = parity / "out"
             out.mkdir(parents=True)
-            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py"):
+            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py", "pylib.sh"):
                 source = REPO / "parity" / helper
                 if source.exists():
                     shutil.copy2(source, parity / helper)
@@ -657,7 +657,7 @@ class HarnessContractTests(unittest.TestCase):
             parity = root / "parity"
             out = parity / "out"
             out.mkdir(parents=True)
-            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py"):
+            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py", "pylib.sh"):
                 shutil.copy2(REPO / "parity" / helper, parity / helper)
             (parity / "programs").mkdir()
             deferred = ("cellularAutomata", "motionBlur", "convolutionFeedback", "reactionDiffusion",
@@ -712,7 +712,7 @@ class HarnessContractTests(unittest.TestCase):
             parity = root / "parity"
             out = parity / "out"
             out.mkdir(parents=True)
-            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py"):
+            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py", "pylib.sh"):
                 shutil.copy2(REPO / "parity" / helper, parity / helper)
             (parity / "programs").mkdir()
             (parity / "programs" / "adjust.dsl").write_text(
@@ -755,7 +755,7 @@ class HarnessContractTests(unittest.TestCase):
             programs = parity / "programs"
             out.mkdir(parents=True)
             programs.mkdir()
-            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py"):
+            for helper in ("sweep.sh", "write-ledger.py", "stage_coverage.py", "pylib.sh"):
                 shutil.copy2(REPO / "parity" / helper, parity / helper)
             for name in ("adjust", "chrome"):
                 (programs / f"{name}.dsl").write_text(

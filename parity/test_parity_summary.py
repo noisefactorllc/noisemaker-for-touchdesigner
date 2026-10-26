@@ -371,7 +371,8 @@ class ScopedRunTests(unittest.TestCase):
                     mock.patch.object(parity_summary, "reference_browser_ready",
                                       return_value=True), \
                     mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root),
-                                                "NM_PARITY_WORK": str(root / "work")}), \
+                                                "NM_PARITY_WORK": str(root / "work"),
+                                                "TD_BIN": sys.executable}), \
                     contextlib.redirect_stdout(output):
                 status = parity_summary.main(["bitwise"])
             self.assertEqual(status, 0)
@@ -388,6 +389,42 @@ class ScopedRunTests(unittest.TestCase):
                 with self.assertRaises(SystemExit) as caught:
                     parity_summary.main(["nope"])
             self.assertIn("not staged cases: nope", str(caught.exception))
+
+
+class TouchDesignerGateTests(unittest.TestCase):
+    def _prepare(self, root, render_set):
+        (root / "parity" / "out").mkdir(parents=True, exist_ok=True)
+        (root / "scripts").mkdir(exist_ok=True)
+        (root / "package.json").write_text("{}\n")
+        pin = "b" * 40
+        (root / "scripts" / "test").write_text(f'NM_REFERENCE_SHA_PINNED="{pin}"\n')
+        render = root / "parity" / "out" / "_render_set.txt"
+        render.write_text(render_set)
+        return pin, render
+
+    def test_td_bin_names_the_binary_the_sweep_launches(self):
+        with mock.patch.dict(os.environ, {"TD_BIN": sys.executable}):
+            self.assertEqual(parity_summary.touchdesigner_binary(), sys.executable)
+
+    def test_a_missing_touchdesigner_fails_closed_before_any_setup(self):
+        # A host without TouchDesigner must stop before reference resolution,
+        # dependency installs and rendering; the whole port would otherwise be
+        # graded against a ledger of renderer failures that are not parity data.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            pin, render = self._prepare(root, "adjust\n")
+            env = {"NM_REFERENCE_ROOT": str(root), "NM_PARITY_WORK": str(root / "work")}
+            with mock.patch.object(parity_summary, "ROOT", root), \
+                    mock.patch.object(parity_summary, "RENDER_SET", render), \
+                    mock.patch.object(parity_summary, "resolve_reference") as resolve, \
+                    mock.patch.object(parity_summary, "install_reference_dependencies") as install, \
+                    mock.patch.dict(os.environ, env):
+                os.environ.pop("TD_BIN", None)
+                with self.assertRaises(SystemExit) as caught:
+                    parity_summary.main(["adjust"])
+            self.assertIn("TouchDesigner binary not found", str(caught.exception))
+            resolve.assert_not_called()
+            install.assert_not_called()
 
 
 class ProvisionReferenceTests(unittest.TestCase):
@@ -470,7 +507,8 @@ class SweepStatusTests(unittest.TestCase):
                             mock.patch.object(parity_summary, "reference_browser_ready",
                                               return_value=True), \
                             mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root),
-                                                        "NM_PARITY_WORK": str(root / "work")}), \
+                                                        "NM_PARITY_WORK": str(root / "work"),
+                                                        "TD_BIN": sys.executable}), \
                             contextlib.redirect_stdout(output):
                         status = parity_summary.main([])
                     self.assertEqual(status, expected_status)

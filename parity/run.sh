@@ -30,15 +30,10 @@ REPO="$(cd "$HERE/.." && pwd)"
 REF="${NM_REFERENCE_ROOT:-}"
 if [ -z "$REF" ] && [ -d "$REPO/upstream-noisemaker/shaders" ]; then REF="$REPO/upstream-noisemaker"; fi
 [ -n "$REF" ] && [ -d "$REF/shaders" ] || { echo "set NM_REFERENCE_ROOT to the upstream Noisemaker engine (the tree containing shaders/) — no sibling is assumed on clone"; exit 2; }
-# Ensure a WORKING interpreter with numpy + pillow. A stale parity/.venv (built by a
-# since-removed interpreter, e.g. after an Xcode or Homebrew upgrade) fails at exec;
-# rebuild it in that case. Use plain python3 when it already has the imports.
-venv_ok() { [ -x "$REPO/parity/.venv/bin/python" ] && "$REPO/parity/.venv/bin/python" -c 'import numpy, PIL' >/dev/null 2>&1; }
-if ! venv_ok && ! python3 -c 'import numpy, PIL' >/dev/null 2>&1; then
-  rm -rf "$REPO/parity/.venv"
-  python3 -m venv "$REPO/parity/.venv" && "$REPO/parity/.venv/bin/pip" install -q -r "$REPO/requirements.txt" \
-    || { echo "could not provision parity/.venv (numpy + pillow required)"; exit 2; }
-fi
+# Pick an interpreter that actually has numpy + pillow (parity/pylib.sh): a venv
+# built by a since-removed interpreter, or an ambient python3 without the stack,
+# used to break every python call with no output.
+if ! PY="$(bash "$HERE/pylib.sh" "$REPO")"; then exit 2; fi
 TD_BIN="${TD_BIN:-}"
 if [ -z "$TD_BIN" ]; then
   for cand in /Applications/TouchDesigner.app/Contents/MacOS/TouchDesigner \
@@ -76,7 +71,6 @@ else
   TD_APP="${TD_APP:-$_td_bin}"
 fi
 export TD_APP
-PY="$REPO/parity/.venv/bin/python"; "$PY" -c 'import numpy, PIL' >/dev/null 2>&1 || PY=python3   # needs numpy + pillow
 SIZE="${SIZE:-256}"; TIME="${TIME:-0.25}"; TOL="${TOL:-2}"; SSIM="${SSIM:-0.98}"
 OUT="$REPO/parity/out"; mkdir -p "$OUT"
 ALL="solid noise cell gradient shape osc2d blur blendMode"
@@ -94,7 +88,7 @@ for p in $PROGS; do
 done
 
 # 2. bootstrap .toe
-python3 "$REPO/td/build_parity_toe.py" >/dev/null || { echo "FAIL: build_parity_toe.py"; exit 1; }
+"$PY" "$REPO/td/build_parity_toe.py" >/dev/null || { echo "FAIL: build_parity_toe.py"; exit 1; }
 
 # 3. render candidates in TouchDesigner (batch; the .toe renders NM_PROGRAMS then quits)
 rm -f "$OUT/_render_log.txt"; for p in $PROGS; do rm -f "$OUT/$p.candidate.png"; done

@@ -96,14 +96,14 @@ echo "reference: $NM_REFERENCE_REPO @ $REF_SHA"
 
 echo "== python environment (numpy==$NUMPY_VERSION)"
 if "$PYTHON" -m venv "$VENV" >"$LOGS/venv.log" 2>&1; then
-  "$VENV/bin/python" -m pip install --quiet --only-binary=:all: "numpy==$NUMPY_VERSION"
+  "$VENV/bin/python" -m pip install --quiet --only-binary=:all: "numpy==$NUMPY_VERSION" pillow
 elif command -v uv >/dev/null 2>&1; then
   # Debian ships the venv module separately (python3-venv); uv provides the same isolation.
   cat "$LOGS/venv.log"
   echo "python -m venv failed; creating the venv with uv"
   rm -rf "$VENV"
   uv venv --quiet --python "$PYTHON" "$VENV"
-  uv pip install --quiet --python "$VENV/bin/python" --only-binary=:all: "numpy==$NUMPY_VERSION"
+  uv pip install --quiet --python "$VENV/bin/python" --only-binary=:all: "numpy==$NUMPY_VERSION" pillow
 else
   cat "$LOGS/venv.log" >&2
   fail "cannot create a virtual environment: install the python venv module or uv"

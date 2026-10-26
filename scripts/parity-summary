@@ -33,6 +33,10 @@ Environment: NM_PARITY_WORK (work dir, default parity/out/parity-summary) plus e
 parity/sweep.sh and parity/run.sh read (TD_BIN, CHUNK, ...).
 
 Exit code 0 only when fail == missing == 0.
+
+The rendered cases run TouchDesigner, so the entrypoint fails closed before any
+rendering when no TouchDesigner binary can run (TD_BIN, /Applications, PATH or
+the common install prefixes). Run it on a licensed TouchDesigner host.
 """
 import json
 import os
@@ -314,6 +318,42 @@ def resolve_reference(work):
                      % (pin, err))
 
 
+def touchdesigner_binary():
+    """The TouchDesigner binary the sweep will launch, or None when absent.
+
+    Same discovery order as parity/run.sh: TD_BIN, the /Applications installs,
+    PATH, then the common install prefixes. A binary that exists but cannot
+    execute is treated as absent, so the gate fails closed before rendering.
+    """
+    candidates = []
+    env_bin = os.environ.get("TD_BIN", "")
+    if env_bin:
+        candidates.append(env_bin)
+    app_dir = Path("/Applications")
+    if app_dir.is_dir():
+        candidates += [str(p) for p in sorted(app_dir.glob("TouchDesigner*.app/Contents/MacOS/TouchDesigner"))]
+    found = shutil.which("TouchDesigner") or shutil.which("touchdesigner")
+    if found:
+        candidates.append(found)
+    home = Path.home()
+    for base in ("/opt/TouchDesigner", "/opt/touchdesigner", "/usr/local/TouchDesigner",
+                 "/usr/local/touchdesigner", home / "TouchDesigner", home / "touchdesigner"):
+        candidates += [str(Path(base) / s) for s in ("bin/TouchDesigner", "bin/touchdesigner",
+                                                     "bin/TouchDesigner.exe",
+                                                     "Contents/MacOS/TouchDesigner")]
+    for cand in candidates:
+        if cand and os.access(cand, os.X_OK):
+            return cand
+    return None
+
+
+def require_touchdesigner():
+    """Fail closed when no TouchDesigner binary can run the candidate renders."""
+    if touchdesigner_binary() is None:
+        raise SystemExit("parity-summary: TouchDesigner binary not found (set TD_BIN); "
+                         "the rendered parity cases need a licensed TouchDesigner host")
+
+
 def main(argv):
     sweep_status = 0
     scoped = None
@@ -325,6 +365,7 @@ def main(argv):
         if unknown:
             raise SystemExit("parity-summary: not staged cases: %s" % ", ".join(unknown))
         scoped = list(argv)
+        require_touchdesigner()
         work = Path(os.environ.get("NM_PARITY_WORK", ROOT / "parity" / "out" / "parity-summary"))
         work.mkdir(parents=True, exist_ok=True)
         ref_root = resolve_reference(work)
@@ -341,6 +382,7 @@ def main(argv):
         sweep_status = subprocess.run(
             ["bash", str(ROOT / "parity" / "sweep.sh")], cwd=str(ROOT), env=env).returncode
     elif not argv:
+        require_touchdesigner()
         work = Path(os.environ.get("NM_PARITY_WORK", ROOT / "parity" / "out" / "parity-summary"))
         work.mkdir(parents=True, exist_ok=True)
         ref_root = resolve_reference(work)

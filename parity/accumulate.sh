@@ -17,10 +17,8 @@
 #   parity/accumulate.sh --no-stage   # reuse existing parity/out/<e>.f*.golden.png; just drive+grade
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"; REPO="$(cd "$HERE/.." && pwd)"
-# Prefer the venv only when its interpreter actually runs (a venv built by a
-# since-removed interpreter execs the CLT stub and every python call fails).
-PY="$REPO/parity/.venv/bin/python"
-"$PY" -c 'import numpy, PIL' >/dev/null 2>&1 || PY=python3
+# Pick an interpreter that has numpy + pillow (see parity/pylib.sh).
+if ! PY="$(bash "$HERE/pylib.sh" "$REPO")"; then exit 2; fi
 OUT="$REPO/parity/out"; mkdir -p "$OUT"
 
 EFFECTS="$("$PY" "$REPO/parity/write-ledger.py" --accumulation-cases)" || exit 2
