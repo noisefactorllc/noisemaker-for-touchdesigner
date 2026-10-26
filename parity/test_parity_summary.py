@@ -456,6 +456,82 @@ class LedgerBindingTests(unittest.TestCase):
             self.assertIn("bound to source", str(caught.exception))
 
 
+class LedgerFallbackTests(unittest.TestCase):
+    """The whole-port run grades a bound ledger when TouchDesigner cannot run here."""
+
+    PIN = "b" * 40
+    SOURCE = "a" * 40
+
+    def _prepare(self, render_set="adjust\n"):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        root = Path(temp.name)
+        work = root / "work"
+        work.mkdir()
+        (root / "scripts").mkdir()
+        (root / "scripts" / "test").write_text(f'NM_REFERENCE_SHA_PINNED="{self.PIN}"\n')
+        render = root / "_render_set.txt"
+        render.write_text(render_set)
+        return root, work, render
+
+    def _bound_ledger(self, work, source=None, pin=None):
+        ledger = work / "ledger.tsv"
+        ledger.write_text(
+            "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
+            "adjust\tPASS\t0\t1\t2.001\t0.98\tsweep\tadjust.golden.png\n")
+        Path(str(ledger) + ".binding.json").write_text(
+            json.dumps({"source": source or self.SOURCE, "pin": pin or self.PIN}) + "\n")
+        return ledger
+
+    def _main(self, root, render):
+        with mock.patch.object(parity_summary, "ROOT", root), \
+                mock.patch.object(parity_summary, "RENDER_SET", render), \
+                mock.patch.object(parity_summary, "checkout_source", return_value=self.SOURCE), \
+                mock.patch.object(parity_summary, "pinned_revision", return_value=self.PIN), \
+                mock.patch.dict(os.environ, {"NM_PARITY_WORK": str(root / "work")}):
+            os.environ.pop("TD_BIN", None)
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                status = parity_summary.main([])
+        return status, out.getvalue()
+
+    def test_a_whole_port_run_without_touchdesigner_grades_a_bound_ledger(self):
+        root, work, render = self._prepare()
+        self._bound_ledger(work)
+        status, out = self._main(root, render)
+        self.assertEqual(status, 0)
+        self.assertIn('"exact":1', out)
+
+    def test_a_whole_port_run_without_touchdesigner_fails_closed_without_a_ledger(self):
+        root, work, render = self._prepare()
+        with mock.patch.object(parity_summary, "ROOT", root), \
+                mock.patch.object(parity_summary, "RENDER_SET", render), \
+                mock.patch.dict(os.environ, {"NM_PARITY_WORK": str(work)}):
+            os.environ.pop("TD_BIN", None)
+            with self.assertRaises(SystemExit) as caught:
+                parity_summary.main([])
+        self.assertIn("TouchDesigner binary not found", str(caught.exception))
+
+    def test_a_whole_port_run_without_touchdesigner_rejects_a_foreign_ledger(self):
+        root, work, render = self._prepare()
+        self._bound_ledger(work, source="e" * 40)
+        with mock.patch.object(parity_summary, "ROOT", root), \
+                mock.patch.object(parity_summary, "RENDER_SET", render), \
+                mock.patch.object(parity_summary, "checkout_source", return_value=self.SOURCE), \
+                mock.patch.object(parity_summary, "pinned_revision", return_value=self.PIN), \
+                mock.patch.dict(os.environ, {"NM_PARITY_WORK": str(work)}):
+            os.environ.pop("TD_BIN", None)
+            with self.assertRaises(SystemExit) as caught:
+                parity_summary.main([])
+        self.assertIn("bound to source", str(caught.exception))
+
+    def test_a_whole_port_run_without_touchdesigner_rejects_an_incomplete_ledger(self):
+        root, work, render = self._prepare(render_set="adjust\nblur\n")
+        self._bound_ledger(work)
+        status, out = self._main(root, render)
+        self.assertEqual(status, 1)
+        self.assertIn('"missing":1', out)
+
+
 class TouchDesignerGateTests(unittest.TestCase):
     def _prepare(self, root, render_set):
         (root / "parity" / "out").mkdir(parents=True, exist_ok=True)

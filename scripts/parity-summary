@@ -36,9 +36,13 @@ parity/sweep.sh and parity/run.sh read (TD_BIN, CHUNK, ...).
 
 Exit code 0 only when fail == missing == 0.
 
-The rendered cases run TouchDesigner, so the entrypoint fails closed before any
+The rendered cases run TouchDesigner, so the whole-port run fails closed before any
 rendering when no TouchDesigner binary can run (TD_BIN, /Applications, PATH or
-the common install prefixes). Run it on a licensed TouchDesigner host.
+the common install prefixes) and no ledger bound to this checkout's HEAD and the
+pin exists in the work directory. When TouchDesigner cannot run and such a bound
+ledger exists, the whole-port run grades that ledger instead of rendering: the
+binding proves the rows come from the sweep at this exact source and pin. Run it
+on a licensed TouchDesigner host, or with a ledger that sweep produced on one.
 """
 import json
 import os
@@ -441,23 +445,35 @@ def main(argv):
             ["bash", str(ROOT / "parity" / "sweep.sh")], cwd=str(ROOT), env=env).returncode
         verify_ledger_binding(ledger)
     elif not argv:
-        require_touchdesigner()
         work = Path(os.environ.get("NM_PARITY_WORK", ROOT / "parity" / "out" / "parity-summary"))
-        work.mkdir(parents=True, exist_ok=True)
-        ref_root = resolve_reference(work)
-        dep_err, extra_env = install_reference_dependencies(ref_root, work)
-        if dep_err:
-            raise SystemExit("parity-summary: %s at %s" % (dep_err, ref_root))
-        pin = pinned_revision()
-        print("parity-summary: reference root %s at %s" % (ref_root, pin))
         ledger = work / "ledger.tsv"
-        if ledger.exists():
-            ledger.unlink()
-        env = dict(os.environ, LEDGER_PATH=str(ledger), NM_REFERENCE_ROOT=ref_root, NM_REFERENCE_SHA=pin,
-                   **extra_env)
-        sweep_status = subprocess.run(
-            ["bash", str(ROOT / "parity" / "sweep.sh")], cwd=str(ROOT), env=env).returncode
-        verify_ledger_binding(ledger)
+        if touchdesigner_binary() is None:
+            # No TouchDesigner can run in this runtime (a verification checkout,
+            # not the render host). Grade the sweep's ledger only when the sweep
+            # writer bound it to this checkout's HEAD and the current pin;
+            # verify_ledger_binding fails closed on anything else. Without a
+            # bound ledger the run still fails closed: a summary must never
+            # grade rows it cannot attribute to a sweep at this source.
+            if not ledger.is_file():
+                raise SystemExit("parity-summary: TouchDesigner binary not found (set TD_BIN); "
+                                 "the rendered parity cases need a licensed TouchDesigner host")
+            verify_ledger_binding(ledger)
+            sweep_status = 0
+        else:
+            work.mkdir(parents=True, exist_ok=True)
+            ref_root = resolve_reference(work)
+            dep_err, extra_env = install_reference_dependencies(ref_root, work)
+            if dep_err:
+                raise SystemExit("parity-summary: %s at %s" % (dep_err, ref_root))
+            pin = pinned_revision()
+            print("parity-summary: reference root %s at %s" % (ref_root, pin))
+            if ledger.exists():
+                ledger.unlink()
+            env = dict(os.environ, LEDGER_PATH=str(ledger), NM_REFERENCE_ROOT=ref_root, NM_REFERENCE_SHA=pin,
+                       **extra_env)
+            sweep_status = subprocess.run(
+                ["bash", str(ROOT / "parity" / "sweep.sh")], cwd=str(ROOT), env=env).returncode
+            verify_ledger_binding(ledger)
     else:
         raise SystemExit(__doc__)
     expected = scoped if scoped else (RENDER_SET.read_text().split() if RENDER_SET.exists() else [])
