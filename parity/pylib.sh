@@ -24,6 +24,12 @@ add "$repo/parity/.venv/bin/python"
 while IFS= read -r p; do add "$p"; done < <(type -a -p python3 2>/dev/null)
 for c in /usr/bin/python3 /usr/local/bin/python3 /opt/homebrew/bin/python3 \
          "${HOME:-/root}/homebrew/bin/python3"; do add "$c"; done
+# A redirected HOME (a sandboxed runner, a service account) hides the real
+# Homebrew prefix, so also probe the invoking user's actual home directory.
+real_home="$(eval echo "~$(id -un 2>/dev/null)" 2>/dev/null)" || real_home=""
+if [ -n "$real_home" ] && [ "$real_home" != "$HOME" ]; then
+  add "$real_home/homebrew/bin/python3"
+fi
 for c in $CANDS; do
   if ok "$c"; then printf '%s\n' "$c"; exit 0; fi
 done
