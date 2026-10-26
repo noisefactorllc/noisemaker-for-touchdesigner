@@ -137,6 +137,48 @@ class AlignReferenceTests(unittest.TestCase):
         self.assertEqual(err, "not a git clone")
 
 
+class ResolveReferenceTests(unittest.TestCase):
+    def test_an_unset_root_falls_back_to_the_vendored_clone_at_the_pin(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            vendored = root / "upstream-noisemaker"
+            vendored.mkdir()
+            pin = "f" * 40
+            with mock.patch.object(parity_summary, "ROOT", root), \
+                    mock.patch.object(parity_summary, "reference_head", return_value=pin), \
+                    mock.patch.object(parity_summary, "pinned_revision", return_value=pin), \
+                    mock.patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("NM_REFERENCE_ROOT", None)
+                self.assertEqual(parity_summary.resolve_reference(), str(vendored))
+
+    def test_a_stale_root_that_cannot_align_falls_back_to_the_vendored_clone(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            vendored = root / "upstream-noisemaker"
+            vendored.mkdir()
+            pin = "1" * 40
+            stale = "2" * 40
+            heads = {str(root / "stale"): stale, str(vendored): pin}
+            with mock.patch.object(parity_summary, "ROOT", root), \
+                    mock.patch.object(parity_summary, "reference_head",
+                                      side_effect=lambda r: heads.get(str(r))), \
+                    mock.patch.object(parity_summary, "align_reference",
+                                      return_value=(stale, "fetch failed")), \
+                    mock.patch.object(parity_summary, "pinned_revision", return_value=pin), \
+                    mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root / "stale")}):
+                self.assertEqual(parity_summary.resolve_reference(), str(vendored))
+
+    def test_no_usable_reference_fails_closed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            pin = "3" * 40
+            with mock.patch.object(parity_summary, "ROOT", root), \
+                    mock.patch.object(parity_summary, "pinned_revision", return_value=pin), \
+                    mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root / "missing")}):
+                with self.assertRaises(SystemExit):
+                    parity_summary.resolve_reference()
+
+
 class SweepStatusTests(unittest.TestCase):
     def test_sweep_failure_rejects_an_otherwise_passing_ledger(self):
         with tempfile.TemporaryDirectory() as temp:

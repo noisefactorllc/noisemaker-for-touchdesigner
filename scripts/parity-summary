@@ -17,7 +17,9 @@ parity/stage_coverage.py from parity/programs/). Each case is classified from th
 Goldens are rendered by the sweep from the reference engine at NM_REFERENCE_ROOT. The entrypoint
 requires that checkout at the revision pinned in scripts/test (NM_REFERENCE_SHA_PINNED). A stale
 checkout is moved to the pin first: git fetch, then checkout, then re-check the head. A checkout
-that is not a git clone, or a fetch that fails, still fails closed with the same guard message.
+that is not a git clone, or a fetch that fails, falls back to a vendored engine clone in this
+repository (upstream-noisemaker/) when that clone sits exactly at the pin. The guard still fails
+closed when no usable reference at the pin exists.
 
 Usage:
   NM_REFERENCE_ROOT=/path/to/noisemaker scripts/parity-summary
@@ -126,27 +128,53 @@ def align_reference(ref_root, pin):
     return head, None if head == pin else "checkout did not land on the pin"
 
 
+def vendored_reference(pin):
+    """A vendored engine clone inside this repository, when it sits exactly at the pin.
+
+    The vendored tree carries the node_modules the golden renderer needs, so it is the
+    reference of record for gate runs that cannot reach the network or cannot read an
+    externally mounted checkout. Returns the path or None.
+    """
+    candidate = ROOT / "upstream-noisemaker"
+    if candidate.is_dir() and reference_head(str(candidate)) == pin:
+        return str(candidate)
+    return None
+
+
+def resolve_reference():
+    """NM_REFERENCE_ROOT aligned to the pin, or the vendored clone, or None."""
+    pin = pinned_revision()
+    ref_root = os.environ.get("NM_REFERENCE_ROOT")
+    if ref_root:
+        head = reference_head(ref_root)
+        if head == pin:
+            return ref_root
+        head, err = align_reference(ref_root, pin)
+        if head == pin:
+            return ref_root
+    else:
+        err = "not set"
+    vendored = vendored_reference(pin)
+    if vendored:
+        return vendored
+    raise SystemExit("parity-summary: NM_REFERENCE_ROOT is at %s, not the pinned revision %s (%s)"
+                     % (head, pin, err))
+
+
 def main(argv):
     sweep_status = 0
     if argv[:1] == ["--ledger"] and len(argv) == 2:
         ledger = Path(argv[1])
     elif not argv:
-        ref_root = os.environ.get("NM_REFERENCE_ROOT")
-        if not ref_root:
-            raise SystemExit("parity-summary: set NM_REFERENCE_ROOT to a noisemaker checkout")
+        ref_root = resolve_reference()
         pin = pinned_revision()
-        head = reference_head(ref_root)
-        if head != pin:
-            head, err = align_reference(ref_root, pin)
-            if head != pin:
-                raise SystemExit("parity-summary: NM_REFERENCE_ROOT is at %s, not the pinned revision %s (%s)"
-                                 % (head, pin, err))
+        print("parity-summary: reference root %s at %s" % (ref_root, pin))
         work = Path(os.environ.get("NM_PARITY_WORK", ROOT / "parity" / "out" / "parity-summary"))
         work.mkdir(parents=True, exist_ok=True)
         ledger = work / "ledger.tsv"
         if ledger.exists():
             ledger.unlink()
-        env = dict(os.environ, LEDGER_PATH=str(ledger), NM_REFERENCE_SHA=pin)
+        env = dict(os.environ, LEDGER_PATH=str(ledger), NM_REFERENCE_ROOT=ref_root, NM_REFERENCE_SHA=pin)
         sweep_status = subprocess.run(
             ["bash", str(ROOT / "parity" / "sweep.sh")], cwd=str(ROOT), env=env).returncode
     else:
