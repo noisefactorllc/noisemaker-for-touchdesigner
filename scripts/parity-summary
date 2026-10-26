@@ -16,10 +16,12 @@ parity/stage_coverage.py from parity/programs/). Each case is classified from th
 
 Goldens are rendered by the sweep from the reference engine at NM_REFERENCE_ROOT. The entrypoint
 requires that checkout at the revision pinned in scripts/test (NM_REFERENCE_SHA_PINNED). A stale
-checkout is moved to the pin first: git fetch, then checkout, then re-check the head. A checkout
-that is not a git clone, or a fetch that fails, falls back to a vendored engine clone in this
-repository (upstream-noisemaker/) when that clone sits exactly at the pin. The guard still fails
-closed when no usable reference at the pin exists.
+checkout is moved to the pin first: git fetch, then checkout, then re-check the head. When no
+usable reference checkout exists, the entrypoint provides one itself, in this order:
+a vendored engine clone inside this repository (upstream-noisemaker/) when it sits exactly at
+the pin, then a managed checkout that this entrypoint fetches from the upstream repository at
+the pin (the same fetch-by-SHA the gates in scripts/test use). The guard still fails closed
+when no reference at the pin can be provided.
 
 Usage:
   NM_REFERENCE_ROOT=/path/to/noisemaker scripts/parity-summary
@@ -33,12 +35,14 @@ Exit code 0 only when fail == missing == 0.
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 RENDER_SET = ROOT / "parity" / "out" / "_render_set.txt"
+REFERENCE_REPO = "https://github.com/noisefactorllc/noisemaker.git"
 STRICT_TOLERANCE = 2.001
 STRICT_SSIM_MIN = 0.98
 
@@ -141,8 +145,68 @@ def vendored_reference(pin):
     return None
 
 
-def resolve_reference():
-    """NM_REFERENCE_ROOT aligned to the pin, or the vendored clone, or None."""
+def provision_reference(work, pin):
+    """Fetch the pinned engine revision into the managed work directory.
+
+    This is the entrypoint's own reference: a fresh checkout fetched by SHA from the
+    upstream repository, the same mechanism scripts/test uses for its gates. A checkout
+    already at the pin is reused. Returns the path or None.
+    """
+    target = work / "reference"
+    if reference_head(str(target)) == pin:
+        return str(target)
+    init = subprocess.run(["git", "-c", "init.defaultBranch=main", "init", "--quiet", str(target)],
+                          capture_output=True, text=True)
+    if init.returncode != 0:
+        return None
+    fetch = subprocess.run(["git", "-C", str(target), "fetch", "--quiet", "--depth", "1",
+                            REFERENCE_REPO, pin], capture_output=True, text=True)
+    if fetch.returncode != 0:
+        return None
+    checkout = subprocess.run(["git", "-C", str(target), "checkout", "--quiet", "--detach",
+                               "FETCH_HEAD"], capture_output=True, text=True)
+    if checkout.returncode != 0 or reference_head(str(target)) != pin:
+        return None
+    return str(target)
+
+
+def reference_harness_ready(ref_root):
+    """True when the reference's browser harness can resolve its playwright import."""
+    harness = Path(ref_root) / "vendor" / "shade-mcp" / "harness"
+    if shutil.which("node") is None:
+        return False
+    probe = subprocess.run(
+        ["node", "-e", "process.stdout.write(require.resolve('playwright',"
+         " {paths: [process.argv[1]]}))", str(harness)],
+        capture_output=True, text=True)
+    return probe.returncode == 0 and bool(probe.stdout.strip())
+
+
+def install_reference_dependencies(ref_root):
+    """Install the reference's npm dependencies when the golden renderer lacks them.
+
+    The golden renderer imports the browser harness from the reference tree, so the
+    reference needs its dependencies installed. This is the same npm ci the native
+    parity profile runs before rendering. A torn node_modules (for example one left
+    by an interrupted install) fails the resolution probe, and npm ci rebuilds it from
+    scratch. Returns an error string or None.
+    """
+    if not (Path(ref_root) / "package.json").is_file():
+        return "the reference has no package.json"
+    if reference_harness_ready(ref_root):
+        return None
+    npm = shutil.which("npm")
+    if npm is None:
+        return "npm is not on PATH to install the reference's dependencies"
+    result = subprocess.run([npm, "ci", "--ignore-scripts", "--no-audit", "--no-fund",
+                             "--prefix", str(ref_root)], capture_output=True, text=True)
+    if result.returncode != 0 or not reference_harness_ready(ref_root):
+        return "npm ci in the reference failed: %s" % result.stderr.strip()[:400]
+    return None
+
+
+def resolve_reference(work):
+    """NM_REFERENCE_ROOT aligned to the pin, the vendored clone, or a managed fetch."""
     pin = pinned_revision()
     ref_root = os.environ.get("NM_REFERENCE_ROOT")
     if ref_root:
@@ -157,8 +221,12 @@ def resolve_reference():
     vendored = vendored_reference(pin)
     if vendored:
         return vendored
-    raise SystemExit("parity-summary: NM_REFERENCE_ROOT is at %s, not the pinned revision %s (%s)"
-                     % (head, pin, err))
+    provisioned = provision_reference(work, pin)
+    if provisioned:
+        return provisioned
+    raise SystemExit("parity-summary: no reference checkout at the pinned revision %s (%s); "
+                     "set NM_REFERENCE_ROOT to a noisemaker checkout at that revision"
+                     % (pin, err))
 
 
 def main(argv):
@@ -166,11 +234,14 @@ def main(argv):
     if argv[:1] == ["--ledger"] and len(argv) == 2:
         ledger = Path(argv[1])
     elif not argv:
-        ref_root = resolve_reference()
-        pin = pinned_revision()
-        print("parity-summary: reference root %s at %s" % (ref_root, pin))
         work = Path(os.environ.get("NM_PARITY_WORK", ROOT / "parity" / "out" / "parity-summary"))
         work.mkdir(parents=True, exist_ok=True)
+        ref_root = resolve_reference(work)
+        dep_err = install_reference_dependencies(ref_root)
+        if dep_err:
+            raise SystemExit("parity-summary: %s at %s" % (dep_err, ref_root))
+        pin = pinned_revision()
+        print("parity-summary: reference root %s at %s" % (ref_root, pin))
         ledger = work / "ledger.tsv"
         if ledger.exists():
             ledger.unlink()

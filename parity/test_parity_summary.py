@@ -149,7 +149,7 @@ class ResolveReferenceTests(unittest.TestCase):
                     mock.patch.object(parity_summary, "pinned_revision", return_value=pin), \
                     mock.patch.dict(os.environ, {}, clear=False):
                 os.environ.pop("NM_REFERENCE_ROOT", None)
-                self.assertEqual(parity_summary.resolve_reference(), str(vendored))
+                self.assertEqual(parity_summary.resolve_reference(root), str(vendored))
 
     def test_a_stale_root_that_cannot_align_falls_back_to_the_vendored_clone(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -166,17 +166,129 @@ class ResolveReferenceTests(unittest.TestCase):
                                       return_value=(stale, "fetch failed")), \
                     mock.patch.object(parity_summary, "pinned_revision", return_value=pin), \
                     mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root / "stale")}):
-                self.assertEqual(parity_summary.resolve_reference(), str(vendored))
+                self.assertEqual(parity_summary.resolve_reference(root), str(vendored))
+
+    def test_no_vendored_clone_falls_back_to_a_provisioned_reference_at_the_pin(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            work = root / "work"
+            work.mkdir()
+            pin = "4" * 40
+            provisioned = str(work / "reference")
+            with mock.patch.object(parity_summary, "ROOT", root), \
+                    mock.patch.object(parity_summary, "reference_head",
+                                      return_value=None), \
+                    mock.patch.object(parity_summary, "align_reference",
+                                      return_value=(None, "not a git clone")), \
+                    mock.patch.object(parity_summary, "provision_reference",
+                                      return_value=provisioned), \
+                    mock.patch.object(parity_summary, "pinned_revision", return_value=pin), \
+                    mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root / "missing")}):
+                self.assertEqual(parity_summary.resolve_reference(work), provisioned)
 
     def test_no_usable_reference_fails_closed(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
+            work = root / "work"
+            work.mkdir()
             pin = "3" * 40
             with mock.patch.object(parity_summary, "ROOT", root), \
                     mock.patch.object(parity_summary, "pinned_revision", return_value=pin), \
+                    mock.patch.object(parity_summary, "provision_reference",
+                                      return_value=None), \
                     mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root / "missing")}):
                 with self.assertRaises(SystemExit):
-                    parity_summary.resolve_reference()
+                    parity_summary.resolve_reference(work)
+
+
+class InstallReferenceDependenciesTests(unittest.TestCase):
+    def test_a_torn_node_modules_is_rebuilt_by_npm_ci(self):
+        commands = []
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "package.json").write_text("{}\n")
+
+            def run(argv, **kwargs):
+                commands.append(list(argv))
+                if argv[0] == "node":
+                    if len(commands) == 1:
+                        return subprocess.CompletedProcess(argv, 1, stdout="", stderr="")
+                    return subprocess.CompletedProcess(argv, 0,
+                                                       stdout=str(root / "node_modules"), stderr="")
+                return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+            with mock.patch.object(parity_summary, "shutil") as sh:
+                sh.which.side_effect = lambda name: "/usr/bin/" + name if name else None
+                with mock.patch.object(parity_summary, "subprocess") as sp:
+                    sp.run.side_effect = run
+                    error = parity_summary.install_reference_dependencies(str(root))
+            self.assertIsNone(error)
+            npm_calls = [c for c in commands if c and c[0].endswith("npm")]
+            self.assertEqual(len(npm_calls), 1)
+            self.assertIn("ci", npm_calls[0])
+            self.assertIn("--prefix", npm_calls[0])
+
+    def test_a_failed_install_reports_the_npm_error(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "package.json").write_text("{}\n")
+            with mock.patch.object(parity_summary, "shutil") as sh:
+                sh.which.side_effect = lambda name: "/usr/bin/" + name if name else None
+                with mock.patch.object(parity_summary, "subprocess") as sp:
+                    def run(argv, **kwargs):
+                        return subprocess.CompletedProcess(argv, 1, stdout="", stderr="boom")
+                    sp.run.side_effect = run
+                    error = parity_summary.install_reference_dependencies(str(root))
+            self.assertIn("npm ci in the reference failed", error)
+            self.assertIn("boom", error)
+
+
+class ProvisionReferenceTests(unittest.TestCase):
+    def test_a_fresh_fetch_lands_on_the_pin(self):
+        calls = []
+        pin = "5" * 40
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp)
+            target = work / "reference"
+
+            state = {"checked_out": False}
+
+            def run(argv, **kwargs):
+                calls.append(list(argv))
+                if "rev-parse" in argv:
+                    if state["checked_out"]:
+                        return subprocess.CompletedProcess(argv, 0, stdout=pin + "\n", stderr="")
+                    return subprocess.CompletedProcess(argv, 1, stdout="", stderr="")
+                if "fetch" in argv:
+                    return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+                if "checkout" in argv:
+                    state["checked_out"] = True
+                return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+            with mock.patch.object(parity_summary, "subprocess") as sp:
+                sp.run.side_effect = run
+                result = parity_summary.provision_reference(work, pin)
+            self.assertEqual(result, str(target))
+            fetches = [c for c in calls if "fetch" in c]
+            self.assertEqual(len(fetches), 1)
+            self.assertIn(pin, fetches[0])
+            self.assertIn(parity_summary.REFERENCE_REPO, fetches[0])
+
+    def test_a_fetch_failure_provides_nothing(self):
+        pin = "6" * 40
+        with tempfile.TemporaryDirectory() as temp:
+            work = Path(temp)
+
+            def run(argv, **kwargs):
+                if "rev-parse" in argv:
+                    return subprocess.CompletedProcess(argv, 1, stdout="", stderr="")
+                if "fetch" in argv:
+                    return subprocess.CompletedProcess(argv, 128, stdout="", stderr="network down")
+                return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+            with mock.patch.object(parity_summary, "subprocess") as sp:
+                sp.run.side_effect = run
+                self.assertIsNone(parity_summary.provision_reference(work, pin))
 
 
 class SweepStatusTests(unittest.TestCase):
@@ -185,6 +297,8 @@ class SweepStatusTests(unittest.TestCase):
             root = Path(temp)
             (root / "parity" / "out").mkdir(parents=True)
             (root / "scripts").mkdir()
+            (root / "node_modules").mkdir()
+            (root / "package.json").write_text("{}\n")
             pin = "a" * 40
             (root / "scripts" / "test").write_text(
                 f'NM_REFERENCE_SHA_PINNED="{pin}"\n')
@@ -204,6 +318,8 @@ class SweepStatusTests(unittest.TestCase):
                     with mock.patch.object(parity_summary, "ROOT", root), \
                             mock.patch.object(parity_summary, "RENDER_SET", render_set), \
                             mock.patch.object(parity_summary, "reference_head", return_value=pin), \
+                            mock.patch.object(parity_summary, "reference_harness_ready",
+                                              return_value=True), \
                             mock.patch.dict(os.environ, {"NM_REFERENCE_ROOT": str(root),
                                                         "NM_PARITY_WORK": str(root / "work")}), \
                             contextlib.redirect_stdout(output):
