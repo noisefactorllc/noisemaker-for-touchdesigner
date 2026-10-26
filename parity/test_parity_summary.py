@@ -4,6 +4,7 @@
 import importlib.machinery
 import importlib.util
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -357,13 +358,17 @@ class ScopedRunTests(unittest.TestCase):
             root = Path(temp)
             pin, render = self._prepare(root, "adjust\nbitwise\npresent_hero\n")
             sweep = root / "parity" / "sweep.sh"
+            ledger_sha = hashlib.sha256(
+                ("case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
+                 "bitwise\tPASS\t0\t1\t2.001\t0.98\tsweep\tbitwise.golden.png\n").encode()).hexdigest()
             sweep.write_text(
                 'printf "%s" "$NM_CASES" > "$NM_PARITY_WORK/cases.env"\n'
                 'cat > "$LEDGER_PATH" <<\'LEDGER\'\n'
                 "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
                 "bitwise\tPASS\t0\t1\t2.001\t0.98\tsweep\tbitwise.golden.png\n"
                 "LEDGER\n"
-                f'printf \'{{"source": "test-source", "pin": "{pin}"}}\\n\' '
+                f'printf \'{{"source": "test-source", "pin": "{pin}", '
+                f'"ledger_sha256": "{ledger_sha}"}}\\n\' '
                 '> "$LEDGER_PATH.binding.json"\n'
                 "exit 0\n")
             output = io.StringIO()
@@ -401,12 +406,15 @@ class LedgerBindingTests(unittest.TestCase):
     PIN = "c" * 40
     SOURCE = "d" * 40
 
-    def _bound_ledger(self, root, source=None, pin=None):
+    def _bound_ledger(self, root, source=None, pin=None, ledger_sha256=None, omit_sha=False):
         ledger = root / "ledger.tsv"
         ledger.write_text(
             "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
             "adjust\tPASS\t0\t1\t2.001\t0.98\tsweep\tadjust.golden.png\n")
-        binding = {"source": source or self.SOURCE, "pin": pin or self.PIN}
+        binding = {"source": source or self.SOURCE, "pin": pin or self.PIN,
+                   "ledger_sha256": ledger_sha256 or hashlib.sha256(ledger.read_bytes()).hexdigest()}
+        if omit_sha:
+            binding.pop("ledger_sha256")
         Path(str(ledger) + ".binding.json").write_text(json.dumps(binding) + "\n")
         return ledger
 
@@ -455,6 +463,22 @@ class LedgerBindingTests(unittest.TestCase):
                 self._main(root, ledger)
             self.assertIn("bound to source", str(caught.exception))
 
+    def test_a_ledger_whose_binding_omits_the_ledger_sha256_fails_closed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            ledger = self._bound_ledger(root, omit_sha=True)
+            with self.assertRaises(SystemExit) as caught:
+                self._main(root, ledger)
+            self.assertIn("does not bind the ledger bytes", str(caught.exception))
+
+    def test_a_ledger_whose_bytes_do_not_match_the_binding_fails_closed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            ledger = self._bound_ledger(root, ledger_sha256="0" * 64)
+            with self.assertRaises(SystemExit) as caught:
+                self._main(root, ledger)
+            self.assertIn("bytes do not match the binding", str(caught.exception))
+
 
 class LedgerFallbackTests(unittest.TestCase):
     """The whole-port run grades a bound ledger when TouchDesigner cannot run here."""
@@ -474,13 +498,16 @@ class LedgerFallbackTests(unittest.TestCase):
         render.write_text(render_set)
         return root, work, render
 
-    def _bound_ledger(self, work, source=None, pin=None):
+    def _bound_ledger(self, work, source=None, pin=None, ledger_sha256=None, omit_sha=False):
         ledger = work / "ledger.tsv"
         ledger.write_text(
             "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
             "adjust\tPASS\t0\t1\t2.001\t0.98\tsweep\tadjust.golden.png\n")
-        Path(str(ledger) + ".binding.json").write_text(
-            json.dumps({"source": source or self.SOURCE, "pin": pin or self.PIN}) + "\n")
+        binding = {"source": source or self.SOURCE, "pin": pin or self.PIN,
+                   "ledger_sha256": ledger_sha256 or hashlib.sha256(ledger.read_bytes()).hexdigest()}
+        if omit_sha:
+            binding.pop("ledger_sha256")
+        Path(str(ledger) + ".binding.json").write_text(json.dumps(binding) + "\n")
         return ledger
 
     def _main(self, root, render):
@@ -530,6 +557,32 @@ class LedgerFallbackTests(unittest.TestCase):
         status, out = self._main(root, render)
         self.assertEqual(status, 1)
         self.assertIn('"missing":1', out)
+
+    def test_a_whole_port_run_without_touchdesigner_rejects_a_binding_without_the_ledger_sha256(self):
+        root, work, render = self._prepare()
+        self._bound_ledger(work, omit_sha=True)
+        with mock.patch.object(parity_summary, "ROOT", root), \
+                mock.patch.object(parity_summary, "RENDER_SET", render), \
+                mock.patch.object(parity_summary, "checkout_source", return_value=self.SOURCE), \
+                mock.patch.object(parity_summary, "pinned_revision", return_value=self.PIN), \
+                mock.patch.dict(os.environ, {"NM_PARITY_WORK": str(work)}):
+            os.environ.pop("TD_BIN", None)
+            with self.assertRaises(SystemExit) as caught:
+                parity_summary.main([])
+        self.assertIn("does not bind the ledger bytes", str(caught.exception))
+
+    def test_a_whole_port_run_without_touchdesigner_rejects_ledger_bytes_that_differ(self):
+        root, work, render = self._prepare()
+        self._bound_ledger(work, ledger_sha256="0" * 64)
+        with mock.patch.object(parity_summary, "ROOT", root), \
+                mock.patch.object(parity_summary, "RENDER_SET", render), \
+                mock.patch.object(parity_summary, "checkout_source", return_value=self.SOURCE), \
+                mock.patch.object(parity_summary, "pinned_revision", return_value=self.PIN), \
+                mock.patch.dict(os.environ, {"NM_PARITY_WORK": str(work)}):
+            os.environ.pop("TD_BIN", None)
+            with self.assertRaises(SystemExit) as caught:
+                parity_summary.main([])
+        self.assertIn("bytes do not match the binding", str(caught.exception))
 
 
 class TouchDesignerGateTests(unittest.TestCase):
@@ -660,12 +713,14 @@ class SweepStatusTests(unittest.TestCase):
                 "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
                 "adjust\tPASS\t0\t1\t2.001\t0.98\tsweep\tadjust.golden.png\n"
             )
+            ledger_sha = hashlib.sha256(ledger.encode()).hexdigest()
             for sweep_status, expected_status in ((0, 0), (7, 1)):
                 with self.subTest(sweep_status=sweep_status):
                     sweep.write_text(
                         'cat > "$LEDGER_PATH" <<\'LEDGER\'\n'
                         + ledger + "LEDGER\n"
-                        + f'printf \'{{"source": "test-source", "pin": "{pin}"}}\\n\' '
+                        + f'printf \'{{"source": "test-source", "pin": "{pin}", '
+                        + f'"ledger_sha256": "{ledger_sha}"}}\\n\' '
                         + '> "$LEDGER_PATH.binding.json"\n'
                         + f"exit {sweep_status}\n")
                     output = io.StringIO()

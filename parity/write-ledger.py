@@ -321,8 +321,12 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
     return row
 
 
-def ledger_binding(root):
-    """The source SHA and pinned authority a ledger was produced at."""
+def ledger_binding(root, ledger_path=None):
+    """The source SHA and pinned authority a ledger was produced at.
+
+    When the ledger path is given, the binding also records the ledger's
+    sha256, so a summary can verify the very bytes it grades.
+    """
     try:
         pin_match = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
                               (root / "scripts" / "test").read_text(), re.M)
@@ -334,7 +338,10 @@ def ledger_binding(root):
         raise ValueError("cannot bind the ledger: no NM_REFERENCE_SHA_PINNED in scripts/test")
     if head.returncode != 0:
         raise ValueError("cannot bind the ledger: %s" % head.stderr.strip()[:200])
-    return {"source": head.stdout.strip(), "pin": pin_match.group(1)}
+    binding = {"source": head.stdout.strip(), "pin": pin_match.group(1)}
+    if ledger_path is not None:
+        binding["ledger_sha256"] = hashlib.sha256(Path(ledger_path).read_bytes()).hexdigest()
+    return binding
 
 
 def main():
@@ -443,7 +450,7 @@ def main():
     # binding cannot be established, say so and leave the ledger unbound; the summary
     # then refuses the unbound ledger instead of trusting it.
     try:
-        binding = ledger_binding(args.root)
+        binding = ledger_binding(args.root, output)
     except ValueError as error:
         print("write-ledger: %s" % error, file=sys.stderr)
     else:

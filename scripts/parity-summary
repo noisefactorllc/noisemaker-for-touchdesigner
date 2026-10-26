@@ -44,6 +44,7 @@ ledger exists, the whole-port run grades that ledger instead of rendering: the
 binding proves the rows come from the sweep at this exact source and pin. Run it
 on a licensed TouchDesigner host, or with a ledger that sweep produced on one.
 """
+import hashlib
 import json
 import os
 import re
@@ -413,6 +414,14 @@ def verify_ledger_binding(ledger):
         raise SystemExit("parity-summary: the ledger is bound to source %s at pin %s, "
                          "but this checkout is %s at pin %s"
                          % (binding.get("source"), binding.get("pin"), head, pin))
+    expected = binding.get("ledger_sha256")
+    if not expected:
+        raise SystemExit("parity-summary: the ledger binding %s does not bind the ledger "
+                         "bytes; re-run the sweep so the writer binds them" % path)
+    actual = hashlib.sha256(ledger.read_bytes()).hexdigest()
+    if actual != expected:
+        raise SystemExit("parity-summary: the ledger bytes do not match the binding "
+                         "(%s != %s)" % (actual, expected))
 
 
 def main(argv):
