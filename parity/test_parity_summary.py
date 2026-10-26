@@ -242,6 +242,40 @@ class InstallReferenceDependenciesTests(unittest.TestCase):
             self.assertIn("npm ci in the reference failed", error)
             self.assertIn("boom", error)
 
+    def test_a_missing_tls_root_retries_with_the_system_ca_bundle(self):
+        commands = []
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "package.json").write_text("{}\n")
+            bundles = [b for b in parity_summary.CA_BUNDLES if Path(b).is_file()]
+            self.assertTrue(bundles, "the test host has a system CA bundle")
+
+            installed = {"ready": False}
+
+            def run(argv, **kwargs):
+                env = kwargs.get("env") or {}
+                commands.append((list(argv), dict(env)))
+                if "NODE_EXTRA_CA_CERTS" in env:
+                    installed["ready"] = True
+                    return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+                return subprocess.CompletedProcess(argv, 1, stdout="", stderr="UNABLE_TO_GET_ISSUER")
+
+            with mock.patch.object(parity_summary, "shutil") as sh:
+                sh.which.side_effect = lambda name: "/usr/bin/" + name if name else None
+                with mock.patch.object(parity_summary, "subprocess") as sp:
+                    def probe(argv, **kwargs):
+                        commands.append((list(argv), {}))
+                        if installed["ready"]:
+                            return subprocess.CompletedProcess(argv, 0, stdout="/ok", stderr="")
+                        return subprocess.CompletedProcess(argv, 1, stdout="", stderr="")
+
+                    sp.run.side_effect = lambda argv, **kw: probe(argv, **kw) if argv[0] == "node" else run(argv, **kw)
+                    error = parity_summary.install_reference_dependencies(str(root))
+            self.assertIsNone(error)
+            retries = [env for _, env in commands if "NODE_EXTRA_CA_CERTS" in env]
+            self.assertEqual(len(retries), 1)
+            self.assertIn(bundles[0], retries[0]["NODE_EXTRA_CA_CERTS"])
+
 
 class ProvisionReferenceTests(unittest.TestCase):
     def test_a_fresh_fetch_lands_on_the_pin(self):

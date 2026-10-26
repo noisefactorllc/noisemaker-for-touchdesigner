@@ -182,6 +182,9 @@ def reference_harness_ready(ref_root):
     return probe.returncode == 0 and bool(probe.stdout.strip())
 
 
+CA_BUNDLES = ("/etc/ssl/cert.pem", "/etc/ssl/certs/ca-certificates.crt")
+
+
 def install_reference_dependencies(ref_root):
     """Install the reference's npm dependencies when the golden renderer lacks them.
 
@@ -189,7 +192,11 @@ def install_reference_dependencies(ref_root):
     reference needs its dependencies installed. This is the same npm ci the native
     parity profile runs before rendering. A torn node_modules (for example one left
     by an interrupted install) fails the resolution probe, and npm ci rebuilds it from
-    scratch. Returns an error string or None.
+    scratch. When an install fails because a TLS root is missing (a local filtering
+    proxy re-signs the registry connection), the install retries with the standard
+    CA bundle of the operating system added through NODE_EXTRA_CA_CERTS. Verification
+    stays strict; the retry only adds the operating system's own trust anchors.
+    Returns an error string or None.
     """
     if not (Path(ref_root) / "package.json").is_file():
         return "the reference has no package.json"
@@ -198,8 +205,15 @@ def install_reference_dependencies(ref_root):
     npm = shutil.which("npm")
     if npm is None:
         return "npm is not on PATH to install the reference's dependencies"
-    result = subprocess.run([npm, "ci", "--ignore-scripts", "--no-audit", "--no-fund",
-                             "--prefix", str(ref_root)], capture_output=True, text=True)
+    argv = [npm, "ci", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", str(ref_root)]
+    result = subprocess.run(argv, capture_output=True, text=True)
+    if result.returncode != 0 and "NODE_EXTRA_CA_CERTS" not in os.environ:
+        for bundle in CA_BUNDLES:
+            if not os.path.isfile(bundle):
+                continue
+            result = subprocess.run(argv, capture_output=True, text=True,
+                                    env=dict(os.environ, NODE_EXTRA_CA_CERTS=bundle))
+            break
     if result.returncode != 0 or not reference_harness_ready(ref_root):
         return "npm ci in the reference failed: %s" % result.stderr.strip()[:400]
     return None
