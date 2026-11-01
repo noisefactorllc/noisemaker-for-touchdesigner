@@ -8,7 +8,7 @@ import stat
 import subprocess
 
 
-def verify_archive(root, git_dir, requested):
+def verify_archive(root, git_dir, requested, *, materialize=False):
     root, git_dir = Path(root), Path(git_dir)
     if not re.fullmatch(r'[0-9a-f]{40}', requested):
         raise ValueError('Archive authority requires an exact commit SHA.')
@@ -111,6 +111,26 @@ def verify_archive(root, git_dir, requested):
             raise ValueError('Reference alias target is empty.')
         for relative, value in target_files.items():
             expected['shaders/share/' + relative] = value
+    if materialize:
+        if any(root.iterdir()):
+            raise ValueError('Archive materialization requires an empty directory.')
+        blobs = list(dict.fromkeys(blob for mode, blob in expected.values()))
+        packed = command([*args, 'cat-file', '--batch'], input=('\n'.join(blobs) + '\n').encode())
+        payloads, position = {}, 0
+        for blob in blobs:
+            end = packed.index(b'\n', position)
+            actual_oid, kind, size = packed[position:end].decode().split()
+            payload = packed[end + 1:end + 1 + int(size)]
+            digest = hashlib.sha1(b'blob ' + size.encode() + b'\0' + payload).hexdigest()
+            if actual_oid != blob or kind != 'blob' or digest != blob:
+                raise ValueError('Reference blob failed content authentication.')
+            payloads[blob] = payload
+            position = end + 2 + int(size)
+        for relative, (mode, blob) in expected.items():
+            destination = root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(payloads[blob])
+            destination.chmod(0o755 if mode == '100755' else 0o644)
     actual = {}
     for directory, dirs, files in os.walk(root, followlinks=False):
         for name in dirs + files:
@@ -132,3 +152,15 @@ def verify_archive(root, git_dir, requested):
     inventory = json.dumps(sorted(actual.items()), separators=(',', ':')).encode()
     return {'kind': 'verified-archive', 'commit': commit, 'tree': tree,
             'inventory_sha256': hashlib.sha256(inventory).hexdigest(), 'projection': alias}
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--materialize', action='store_true')
+    parser.add_argument('root')
+    parser.add_argument('object_store')
+    parser.add_argument('commit')
+    options = parser.parse_args()
+    print(json.dumps(verify_archive(options.root, options.object_store, options.commit,
+                                    materialize=options.materialize), sort_keys=True))

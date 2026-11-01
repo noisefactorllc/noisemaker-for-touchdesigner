@@ -53,6 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           python311="$(realpath "$HOME/.local/bin/python3.11")"
+          mkdir -p parity/.venv/lib64
           "$python311" -m venv --copies parity/.venv
           test -z "$(find parity/.venv -type l -print -quit)"
           parity/.venv/bin/python -m pip install -r requirements.txt
@@ -62,18 +63,27 @@ jobs:
           set -euo pipefail
           pin="$(sed -n 's/^NM_REFERENCE_SHA_PINNED="\([0-9a-f]\{40\}\)"$/\1/p' scripts/test)"
           [[ "$pin" =~ ^[0-9a-f]{40}$ ]]
-          reference="$RUNNER_TEMP/noisemaker-reference"
-          rm -rf "$reference"
-          git clone -q https://github.com/noisefactorllc/noisemaker "$reference"
-          git -C "$reference" checkout -q --detach "$pin"
-          npm ci --prefix "$reference" --ignore-scripts --no-audit --no-fund
-          (cd "$reference" && npx playwright install chromium)
-          test "$(git -C "$reference" rev-parse HEAD)" = "$pin"
-          test -z "$(git -C "$reference" status --porcelain)"
-          echo "NM_REFERENCE_ROOT=$reference" >> "$GITHUB_ENV"
+          work="$(mktemp -d "$RUNNER_TEMP/touchdesigner-reference.XXXXXX")"
+          reference="$work/source"
+          objects="$work/objects.git"
+          dependencies="$work/dependencies"
+          mkdir "$reference" "$dependencies"
+          git init --bare -q "$objects"
+          git --git-dir="$objects" fetch -q --depth=1 https://github.com/noisefactorllc/noisemaker "$pin"
+          parity/.venv/bin/python parity/reference_archive.py --materialize "$reference" "$objects" "$pin"
+          cp "$reference/package.json" "$reference/package-lock.json" "$dependencies/"
+          npm ci --prefix "$dependencies" --ignore-scripts --no-bin-links --no-audit --no-fund
+          node "$dependencies/node_modules/playwright/cli.js" install chromium
+          test -z "$(find "$reference" "$objects" "$dependencies" -type l -print -quit)"
+          parity/.venv/bin/python parity/reference_archive.py "$reference" "$objects" "$pin"
+          {
+            echo "NM_REFERENCE_ROOT=$reference"
+            echo "NM_REFERENCE_OBJECT_STORE=$objects"
+            echo "NM_REFERENCE_DEPENDENCIES=$dependencies"
+          } >> "$GITHUB_ENV"
 
       - name: Run full rendered parity
-        run: parity/.venv/bin/python scripts/parity-summary
+        run: NODE_OPTIONS="--import $GITHUB_WORKSPACE/tools/reference-dependencies.mjs" parity/.venv/bin/python scripts/parity-summary
 
   dispatch:
     needs: parity

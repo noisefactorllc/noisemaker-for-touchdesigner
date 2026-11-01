@@ -298,6 +298,10 @@ class HarnessContractTests(unittest.TestCase):
     def test_current_hero_requires_canonical_rendered_evidence(self):
         self.check_selected_accumulation("present_hero", "06070900e506b6c8ff6eb7b12d33e6c1bf285108")
 
+    def test_hero_67d_authority_uses_same_rendered_protocol(self):
+        self.check_selected_accumulation("present_hero", "67d6e44c750e4f9bebb34f88645b934e3b933a84")
+
+
     def test_original_hero_requires_canonical_rendered_evidence(self):
         self.check_selected_accumulation("present_hero", "32d8d3e6a6dbb3dee2dfbcc8d31bd1c52342eca3")
 
