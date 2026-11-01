@@ -95,18 +95,21 @@ echo "node:      $(node --version)"
 echo "reference: $NM_REFERENCE_REPO @ $REF_SHA"
 
 echo "== python environment (numpy==$NUMPY_VERSION)"
-if "$PYTHON" -m venv "$VENV" >"$LOGS/venv.log" 2>&1; then
+mkdir -p "$VENV/lib64"
+if "$PYTHON" -m venv --copies "$VENV" >"$LOGS/venv.log" 2>&1; then
   "$VENV/bin/python" -m pip install --quiet --only-binary=:all: "numpy==$NUMPY_VERSION" pillow
 elif command -v uv >/dev/null 2>&1; then
-  # Debian ships the venv module separately (python3-venv); uv provides the same isolation.
+  # Use uv to install packages when ensurepip is unavailable.
   cat "$LOGS/venv.log"
-  echo "python -m venv failed; creating the venv with uv"
+  echo "python -m venv failed; retrying without pip"
   rm -rf "$VENV"
-  uv venv --quiet --python "$PYTHON" "$VENV"
-  uv pip install --quiet --python "$VENV/bin/python" --only-binary=:all: "numpy==$NUMPY_VERSION" pillow
+  mkdir -p "$VENV/lib64"
+  "$PYTHON" -m venv --without-pip --copies "$VENV" \
+    || fail "cannot create a regular-file environment: install the python venv module"
+  uv pip install --quiet --link-mode copy --python "$VENV/bin/python" --only-binary=:all: "numpy==$NUMPY_VERSION" pillow
 else
   cat "$LOGS/venv.log" >&2
-  fail "cannot create a virtual environment: install the python venv module or uv"
+  fail "cannot create a regular-file environment: install the python venv module with ensurepip"
 fi
 VPY="$VENV/bin/python"
 export PATH="$VENV/bin:$PATH"
@@ -127,7 +130,8 @@ if [[ $fetched -ne 1 ]]; then
   pin_hint
   fail "cannot fetch $REF_SHA from $NM_REFERENCE_REPO"
 fi
-git -C "$REF" -c advice.detachedHead=false checkout --quiet FETCH_HEAD
+git -C "$REF" config core.symlinks false
+git -C "$REF" -c core.symlinks=false -c advice.detachedHead=false checkout --quiet FETCH_HEAD
 GOT_SHA="$(git -C "$REF" rev-parse HEAD)"
 [[ "$GOT_SHA" == "$REF_SHA" ]] || fail "reference checkout is $GOT_SHA, expected $REF_SHA"
 echo "reference checked out at $GOT_SHA"
