@@ -22,7 +22,7 @@
 //      e.g. agent passes) are emitted verbatim and FLAGGED for manual review (no auto-wrap).
 //   4. everything else — uniforms, helpers (PCG/prng/map/…), `gl_FragCoord`, `textureSize`,
 //      `#ifndef X #define X default #endif` define-fallbacks, the entire body — is preserved
-//      VERBATIM. Per-pass compile-time define overrides (NOISE_TYPE, LOOP_OFFSET) are injected
+//      VERBATIM, except source-bound phase precision and median selection adaptations. Per-pass compile-time define overrides (NOISE_TYPE, LOOP_OFFSET) are injected
 //      by the builder at network-build time, not baked here.
 //
 // Y-flip: default OFF (TD == reference == OpenGL bottom-left, verified at bring-up Task 2.3).
@@ -41,6 +41,7 @@
 
 import { readdirSync, statSync, mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { join, dirname, resolve, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { referenceRoot } from './reference-root.mjs'
@@ -181,6 +182,71 @@ function* enumeratePrograms (filter) {
   }
 }
 
+// Preserve the measured phase precision and bounded median selection on regeneration.
+function adaptShaderSource (source, key) {
+  const contracts = {
+    'synth/noise/noise': { declaration: 'float periodicFunction(float p) {', sha: 'ed07796c7faa2d37f67a1ff8d3414e73dca58425921c2cf6b3de6854ff6e5c4c' },
+    'filter/median/median': { declaration: 'void main() {', sha: '5a8f9995f50420d9acd64428db5e9aea8da14ae501fb1cbb01420f1782009852' }
+  }
+  const contract = contracts[key]
+  if (!contract) return source
+  const start = source.indexOf(contract.declaration)
+  const fail = () => { throw new Error(`${key}: source shape changed; review the shader adaptation`) }
+  if (start < 0 || source.indexOf(contract.declaration, start + 1) >= 0) fail()
+  let end = start + contract.declaration.length
+  let depth = 1
+  while (depth && end < source.length) {
+    if (source[end] === '{') depth++
+    if (source[end] === '}') depth--
+    end++
+  }
+  const body = source.slice(start, end)
+  if (depth || createHash('sha256').update(body).digest('hex') !== contract.sha) fail()
+  if (key === 'synth/noise/noise') return source.slice(0, start) + 'precise ' + source.slice(start)
+  const previous = `    int left = 0;
+    int right = REAL_COUNT - 1;
+    while (left < right) {
+        uvec2 pivotMajor = majorRecords[medianIndex];
+        uint pivotBlue = blueRecords[medianIndex];
+        int scanLeft = left;
+        int scanRight = right;
+        while (scanLeft <= scanRight) {
+            while (lessRecord(majorRecords[scanLeft], blueRecords[scanLeft], pivotMajor, pivotBlue)) { scanLeft++; }
+            while (lessRecord(pivotMajor, pivotBlue, majorRecords[scanRight], blueRecords[scanRight])) { scanRight--; }
+            if (scanLeft <= scanRight) {
+                uvec2 temporaryMajor = majorRecords[scanLeft];
+                majorRecords[scanLeft] = majorRecords[scanRight];
+                majorRecords[scanRight] = temporaryMajor;
+                uint temporaryBlue = blueRecords[scanLeft];
+                blueRecords[scanLeft] = blueRecords[scanRight];
+                blueRecords[scanRight] = temporaryBlue;
+                scanLeft++;
+                scanRight--;
+            }
+        }
+        if (scanRight < medianIndex) { left = scanLeft; }
+        if (medianIndex < scanLeft) { right = scanRight; }
+    }`
+  const replacement = `    for (int i = 1; i < REAL_COUNT; i++) {
+        uvec2 selectedMajor = majorRecords[i];
+        uint selectedBlue = blueRecords[i];
+        int insertAt = i;
+        while (insertAt > 0) {
+            if (!lessRecord(selectedMajor, selectedBlue,
+                            majorRecords[insertAt - 1], blueRecords[insertAt - 1])) {
+                break;
+            }
+            majorRecords[insertAt] = majorRecords[insertAt - 1];
+            blueRecords[insertAt] = blueRecords[insertAt - 1];
+            insertAt--;
+        }
+        majorRecords[insertAt] = selectedMajor;
+        blueRecords[insertAt] = selectedBlue;
+    }`
+  if (!body.includes(previous)) fail()
+  return source.slice(0, start) + body.replace(previous, replacement) + source.slice(end)
+}
+
 function main () {
   const argv = process.argv.slice(2)
   const dryRun = argv.includes('--dry-run')
@@ -192,7 +258,7 @@ function main () {
 
   for (const { namespace, name, program, path } of enumeratePrograms(filter)) {
     programs++
-    const src = readFileSync(path, 'utf8')
+    const src = adaptShaderSource(readFileSync(path, 'utf8'), `${namespace}/${name}/${program}`)
     let res
     try {
       res = transpile(src, { flipY })

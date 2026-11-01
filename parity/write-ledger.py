@@ -6,6 +6,7 @@ import csv
 import hashlib
 import json
 import math
+import os
 import re
 import subprocess
 import sys
@@ -27,6 +28,60 @@ PRESENT_HERO_PROTOCOL = {
     "native_frames": 8, "native_samples": [1, 2, 8], "initial_state": "zeroed",
     "fixture_sha256": "e0c083445a843a137e76fbba4572c897a6a0b034956253910dd61b9638493e08",
 }
+PRESENT_HERO_PROTOCOLS = {
+    PRESENT_HERO_PROTOCOL["reference_sha"]: PRESENT_HERO_PROTOCOL,
+    "32d8d3e6a6dbb3dee2dfbcc8d31bd1c52342eca3": {
+        **PRESENT_HERO_PROTOCOL,
+        "reference_sha": "32d8d3e6a6dbb3dee2dfbcc8d31bd1c52342eca3",
+    },
+    "06070900e506b6c8ff6eb7b12d33e6c1bf285108": {
+        **PRESENT_HERO_PROTOCOL,
+        "reference_sha": "06070900e506b6c8ff6eb7b12d33e6c1bf285108",
+    },
+}
+
+
+def requested_authority(root):
+    try:
+        pin_source = (root / "scripts" / "test").read_text()
+    except OSError as error:
+        raise ValueError("Cannot read the requested authority pin.") from error
+    match = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$', pin_source, re.M)
+    requested = os.environ.get("NM_REFERENCE_SHA", match.group(1) if match else "")
+    if not re.fullmatch(r"[0-9a-f]{40}", requested):
+        raise ValueError("The requested authority must be a full commit SHA.")
+    return requested
+
+
+def verified_authority(root, provenance=False):
+    requested = requested_authority(root)
+    reference = os.environ.get("NM_REFERENCE_ROOT")
+    if not reference:
+        raise ValueError("The reference authority requires NM_REFERENCE_ROOT.")
+    object_store = os.environ.get("NM_REFERENCE_OBJECT_STORE")
+    if object_store:
+        verifier = runpy.run_path(str(Path(__file__).with_name("reference_archive.py")))
+        receipt = verifier["verify_archive"](reference, object_store, requested)
+        return receipt if provenance else receipt["commit"]
+    try:
+        observed = subprocess.check_output(
+            ["git", "-C", reference, "rev-parse", "HEAD"], text=True).strip()
+        dirty = subprocess.check_output(
+            ["git", "-C", reference, "status", "--porcelain"], text=True)
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise ValueError("Cannot verify the reference authority.") from error
+    if dirty or observed != requested:
+        raise ValueError("The reference checkout must be clean and match the requested authority.")
+    return {"kind": "clean-git", "commit": observed} if provenance else observed
+
+
+def hero_protocol(root):
+    protocol = PRESENT_HERO_PROTOCOLS.get(requested_authority(root))
+    if protocol is None:
+        raise ValueError("The hero authority does not match the visual policy.")
+    return protocol
+
+
 # Multi-frame cases graded by parity/accumulate.sh at frames 1, 2 and 8 from a zeroed start.
 ACCUMULATION_CASES = (
     "cellularAutomata", "motionBlur", "convolutionFeedback", "reactionDiffusion",
@@ -71,10 +126,7 @@ def candidate_sources(root, name="cellularAutomata"):
         override = root / "parity" / "corpus" / "present_hero.dsl"
         if override.exists() or override.is_symlink():
             raise ValueError("The hero protocol does not permit a corpus override.")
-        pin = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
-                        (root / "scripts" / "test").read_text(), re.M)
-        if not pin or pin.group(1) != PRESENT_HERO_PROTOCOL["reference_sha"]:
-            raise ValueError("The hero authority does not match the visual policy.")
+        hero_protocol(root)
     runtime = root / "td" / "noisemaker"
     entries = list(runtime.rglob("*"))
     if runtime.is_symlink() or any(path.is_symlink() for path in entries):
@@ -85,7 +137,7 @@ def candidate_sources(root, name="cellularAutomata"):
         raise ValueError("candidate runtime sources are missing")
     paths.extend(root / name for name in (
         "td/parity_evolve.py", "td/build_evolve_toe.py", "parity/evolve.sh",
-        "parity/accumulate.sh", "parity/pylib.sh", "parity/compare.py", "parity/write-ledger.py",
+        "parity/accumulate.sh", "parity/pylib.sh", "parity/compare.py", "parity/write-ledger.py", "parity/reference_archive.py",
         f"parity/programs/{name}.dsl",
     ))
     if name == "present_hero":
@@ -94,7 +146,7 @@ def candidate_sources(root, name="cellularAutomata"):
         raise ValueError("candidate sources contain a symbolic link")
     sources = {str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
                for path in sorted(paths)}
-    if name == "present_hero" and sources["parity/programs/present_hero.dsl"] != PRESENT_HERO_PROTOCOL["fixture_sha256"]:
+    if name == "present_hero" and sources["parity/programs/present_hero.dsl"] != hero_protocol(root)["fixture_sha256"]:
         raise ValueError("The hero fixture does not match the visual policy.")
     return sources
 
@@ -147,7 +199,7 @@ def cubemap_sources(root, name):
         "td/cubemap_bake.py", "td/build_points_probe_toe.py", "parity/cubemap.sh",
         "parity/pylib.sh",
         "parity/cube_cross.py", "parity/export-and-render.mjs", "parity/harness-port.mjs",
-        "parity/compare.py", "parity/write-ledger.py", "tools/export-graph.mjs",
+        "parity/compare.py", "parity/write-ledger.py", "parity/reference_archive.py", "tools/export-graph.mjs",
         "tools/reference-root.mjs", "scripts/test",
         f"parity/programs/{name}.dsl",
     ))
@@ -161,8 +213,7 @@ def cubemap_row(root, name, report_path, tolerance, ssim_min):
            "tol_max": str(tolerance), "tol_ssim": str(ssim_min), "source": "cubemap", "golden": str(report_path)}
     try:
         evidence = json.loads(report_path.read_text())
-        pin = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
-                        (root / "scripts/test").read_text(), re.M).group(1)
+        pin = requested_authority(root)
         outputs = evidence["outputs"]
         if (name not in CUBEMAP_CASES or evidence["case"] != name
                 or evidence["reference_sha"] != pin or evidence["protocol"] != CUBEMAP_PROTOCOL
@@ -269,8 +320,7 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
            "source": "accumulate", "golden": str(report_path)}
     try:
         evidence = json.loads(report_path.read_text())
-        pin = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
-                        (root / "scripts" / "test").read_text(), re.M).group(1)
+        pin = requested_authority(root)
         frames = evidence["frames"]
         if (name not in ACCUMULATION_CASES
                 or evidence["case"] != name
@@ -280,8 +330,8 @@ def accumulate_row(root, name, report_path, tolerance, ssim_min):
                 or (tolerance, ssim_min) != accumulation_bound(name)):
             return row
         if name == "present_hero" and (
-                evidence.get("protocol") != PRESENT_HERO_PROTOCOL
-                or evidence["candidate_sources"]["parity/programs/present_hero.dsl"] != PRESENT_HERO_PROTOCOL["fixture_sha256"]):
+                evidence.get("protocol") != hero_protocol(root)
+                or evidence["candidate_sources"]["parity/programs/present_hero.dsl"] != hero_protocol(root)["fixture_sha256"]):
             return row
         for item in frames:
             report = item["report"]
@@ -327,18 +377,15 @@ def ledger_binding(root, ledger_path=None):
     When the ledger path is given, the binding also records the ledger's
     sha256, so a summary can verify the very bytes it grades.
     """
+    authority = verified_authority(root, provenance=True)
     try:
-        pin_match = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
-                              (root / "scripts" / "test").read_text(), re.M)
         head = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
                               capture_output=True, text=True)
     except OSError as error:
         raise ValueError("cannot bind the ledger: %s" % error) from error
-    if not pin_match:
-        raise ValueError("cannot bind the ledger: no NM_REFERENCE_SHA_PINNED in scripts/test")
     if head.returncode != 0:
         raise ValueError("cannot bind the ledger: %s" % head.stderr.strip()[:200])
-    binding = {"source": head.stdout.strip(), "pin": pin_match.group(1)}
+    binding = {"source": head.stdout.strip(), "pin": authority["commit"], "authority": authority}
     if ledger_path is not None:
         binding["ledger_sha256"] = hashlib.sha256(Path(ledger_path).read_bytes()).hexdigest()
     return binding
@@ -449,12 +496,13 @@ def main():
     # summary can never read stale rows as a pass at a different source. When the
     # binding cannot be established, say so and leave the ledger unbound; the summary
     # then refuses the unbound ledger instead of trusting it.
+    binding_path = output.with_name(output.name + ".binding.json")
+    binding_path.unlink(missing_ok=True)
     try:
         binding = ledger_binding(args.root, output)
     except ValueError as error:
         print("write-ledger: %s" % error, file=sys.stderr)
     else:
-        binding_path = output.with_name(output.name + ".binding.json")
         binding_tmp = binding_path.with_name(binding_path.name + ".tmp")
         binding_tmp.write_text(json.dumps(binding, sort_keys=True) + "\n")
         binding_tmp.replace(binding_path)

@@ -75,29 +75,21 @@ void nm_main() {
     }
 
     int medianIndex = REAL_COUNT / 2;
-    int left = 0;
-    int right = REAL_COUNT - 1;
-    while (left < right) {
-        uvec2 pivotMajor = majorRecords[medianIndex];
-        uint pivotBlue = blueRecords[medianIndex];
-        int scanLeft = left;
-        int scanRight = right;
-        while (scanLeft <= scanRight) {
-            while (lessRecord(majorRecords[scanLeft], blueRecords[scanLeft], pivotMajor, pivotBlue)) { scanLeft++; }
-            while (lessRecord(pivotMajor, pivotBlue, majorRecords[scanRight], blueRecords[scanRight])) { scanRight--; }
-            if (scanLeft <= scanRight) {
-                uvec2 temporaryMajor = majorRecords[scanLeft];
-                majorRecords[scanLeft] = majorRecords[scanRight];
-                majorRecords[scanRight] = temporaryMajor;
-                uint temporaryBlue = blueRecords[scanLeft];
-                blueRecords[scanLeft] = blueRecords[scanRight];
-                blueRecords[scanRight] = temporaryBlue;
-                scanLeft++;
-                scanRight--;
+    for (int i = 1; i < REAL_COUNT; i++) {
+        uvec2 selectedMajor = majorRecords[i];
+        uint selectedBlue = blueRecords[i];
+        int insertAt = i;
+        while (insertAt > 0) {
+            if (!lessRecord(selectedMajor, selectedBlue,
+                            majorRecords[insertAt - 1], blueRecords[insertAt - 1])) {
+                break;
             }
+            majorRecords[insertAt] = majorRecords[insertAt - 1];
+            blueRecords[insertAt] = blueRecords[insertAt - 1];
+            insertAt--;
         }
-        if (scanRight < medianIndex) { left = scanLeft; }
-        if (medianIndex < scanLeft) { right = scanRight; }
+        majorRecords[insertAt] = selectedMajor;
+        blueRecords[insertAt] = selectedBlue;
     }
 
     vec3 medianRgb = unpackRecordRgb(majorRecords[medianIndex], blueRecords[medianIndex]);

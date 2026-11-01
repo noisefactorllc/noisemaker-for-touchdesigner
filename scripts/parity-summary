@@ -32,7 +32,9 @@ Usage:
                                           # writer at this checkout and the current pin
 
 Environment: NM_PARITY_WORK (work dir, default parity/out/parity-summary) plus everything
-parity/sweep.sh and parity/run.sh read (TD_BIN, CHUNK, ...).
+parity/sweep.sh and parity/run.sh read (TD_BIN, CHUNK, ...). NM_REFERENCE_SHA selects an
+explicit full authority SHA. NM_REFERENCE_OBJECT_STORE authenticates a regular archive
+against existing Git objects; its dependencies and browser must already be available externally.
 
 Exit code 0 only when fail == missing == 0.
 
@@ -48,6 +50,7 @@ import hashlib
 import json
 import os
 import re
+import runpy
 import shutil
 import subprocess
 import sys
@@ -61,12 +64,23 @@ STRICT_SSIM_MIN = 0.98
 
 
 def pinned_revision():
-    """NM_REFERENCE_SHA_PINNED from scripts/test."""
+    """Requested full authority SHA, or the tracked default pin."""
     text = (ROOT / "scripts" / "test").read_text()
     match = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$', text, re.M)
     if not match:
         raise SystemExit("parity-summary: no NM_REFERENCE_SHA_PINNED in scripts/test")
-    return match.group(1)
+    requested = os.environ.get("NM_REFERENCE_SHA", match.group(1))
+    if not re.fullmatch(r"[0-9a-f]{40}", requested):
+        raise SystemExit("parity-summary: requested authority must be a full commit SHA")
+    return requested
+
+
+def archive_identity(reference, pin):
+    verifier = runpy.run_path(str(ROOT / "parity" / "reference_archive.py"))
+    try:
+        return verifier["verify_archive"](reference, os.environ["NM_REFERENCE_OBJECT_STORE"], pin)
+    except ValueError as error:
+        raise SystemExit("parity-summary: " + str(error)) from error
 
 
 def read_ledger(path):
@@ -269,6 +283,8 @@ def install_reference_dependencies(ref_root, work):
     harness_ready = reference_harness_ready(ref_root)
     if harness_ready and reference_browser_ready(ref_root):
         return None, extra_env
+    if os.environ.get("NM_REFERENCE_OBJECT_STORE"):
+        return "verified archives require ready external dependencies and browser", extra_env
     npm = shutil.which("npm")
     if npm is None and not harness_ready:
         return "npm is not on PATH to install the reference's dependencies", extra_env
@@ -305,6 +321,11 @@ def resolve_reference(work):
     """NM_REFERENCE_ROOT aligned to the pin, the vendored clone, or a managed fetch."""
     pin = pinned_revision()
     ref_root = os.environ.get("NM_REFERENCE_ROOT")
+    if os.environ.get("NM_REFERENCE_OBJECT_STORE"):
+        if not ref_root:
+            raise SystemExit("parity-summary: archive authority requires NM_REFERENCE_ROOT")
+        archive_identity(ref_root, pin)
+        return ref_root
     if ref_root:
         head = reference_head(ref_root)
         if head == pin:

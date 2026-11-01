@@ -71,7 +71,7 @@ float map(float value, float inMin, float inMax, float outMin, float outMax) {
     return outMin + (outMax - outMin) * (value - inMin) / (inMax - inMin);
 }
 
-float periodicFunction(float p) {
+precise float periodicFunction(float p) {
     return map(cos(p * TAU), -1.0, 1.0, 0.0, 1.0);
 }
 

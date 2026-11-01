@@ -27,7 +27,7 @@ PROTOCOL = {"size": 256, "time": 0.25, "backend": "webgl2",
 BOUND_FILES = ("td/cubemap_bake.py", "td/build_points_probe_toe.py", "parity/cubemap.sh",
                "parity/pylib.sh",
                "parity/cube_cross.py", "parity/export-and-render.mjs", "parity/harness-port.mjs",
-               "parity/compare.py", "parity/write-ledger.py", "tools/export-graph.mjs",
+               "parity/compare.py", "parity/write-ledger.py", "parity/reference_archive.py", "tools/export-graph.mjs",
                "tools/reference-root.mjs", "scripts/test")
 IMAGE_STUB = '''import pathlib,struct,types,zlib,numpy as np
 class Image:

@@ -295,12 +295,18 @@ class HarnessContractTests(unittest.TestCase):
                 self.assertEqual(raised.exception.code, 2)
                 self.assertIn("unclassified gateable cases: synth3d_shape3d", errors.getvalue())
 
-    def check_selected_accumulation(self, name):
+    def test_current_hero_requires_canonical_rendered_evidence(self):
+        self.check_selected_accumulation("present_hero", "06070900e506b6c8ff6eb7b12d33e6c1bf285108")
+
+    def test_original_hero_requires_canonical_rendered_evidence(self):
+        self.check_selected_accumulation("present_hero", "32d8d3e6a6dbb3dee2dfbcc8d31bd1c52342eca3")
+
+    def check_selected_accumulation(self, name, reference_sha=None):
         ledger_module = load_write_ledger()
         frame_bounds = {frame: ledger_module.accumulation_frame_bound(name, frame) for frame in (1, 2, 8)}
         tolerance, aggregate_ssim = ledger_module.accumulation_bound(name)
         near_frames = [frame for frame, bound in frame_bounds.items() if bound[0] > 2.001]
-        reference_sha = "d0ed94ae19cca7328bc7d6b28902712a0838e1a9" if name == "present_hero" else "a" * 40
+        reference_sha = reference_sha or ("d0ed94ae19cca7328bc7d6b28902712a0838e1a9" if name == "present_hero" else "a" * 40)
         with tempfile.TemporaryDirectory(prefix="nm-td-accumulate-") as temp:
             root = Path(temp)
             parity = root / "parity"
@@ -312,7 +318,7 @@ class HarnessContractTests(unittest.TestCase):
             python = root / "bin" / "python3"
             python.write_text("#!" + sys.executable + "\nimport os,sys\nos.execv(sys.executable,[sys.executable,*sys.argv[1:]])\n")
             python.chmod(0o755)
-            for helper in ("accumulate.sh", "write-ledger.py", "sweep.sh", "stage_coverage.py", "compare.py", "pylib.sh"):
+            for helper in ("accumulate.sh", "write-ledger.py", "reference_archive.py", "sweep.sh", "stage_coverage.py", "compare.py", "pylib.sh"):
                 shutil.copy2(REPO / "parity" / helper, parity / helper)
             if name == "present_hero":
                 shutil.copy2(REPO / "parity" / "batch-golden.mjs", parity / "batch-golden.mjs")
@@ -447,6 +453,7 @@ class HarnessContractTests(unittest.TestCase):
                                            env=dirty_environment)
                     self.assertNotEqual(dirty.returncode, 0, dirty.stdout + dirty.stderr)
                     self.assertFalse((root / "evolve-called").exists())
+            (root / "reference-dirty").unlink(missing_ok=True)
             report.write_text(json.dumps(evidence))
             results = root / "results.tsv"
             results.write_text(f"{name}\tACCUMULATE\t{report}\t{tolerance}\t{aggregate_ssim}\n")

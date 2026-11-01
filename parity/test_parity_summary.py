@@ -486,6 +486,11 @@ class LedgerFallbackTests(unittest.TestCase):
     PIN = "b" * 40
     SOURCE = "a" * 40
 
+    def setUp(self):
+        absent = mock.patch.object(parity_summary, "touchdesigner_binary", return_value=None)
+        absent.start()
+        self.addCleanup(absent.stop)
+
     def _prepare(self, render_set="adjust\n"):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
@@ -608,7 +613,9 @@ class TouchDesignerGateTests(unittest.TestCase):
             binary.parent.mkdir(parents=True)
             binary.write_text("#!/bin/sh\n")
             binary.chmod(0o755)
-            with mock.patch.dict(os.environ, {"TD_BIN": str(binary)}):
+            with mock.patch.dict(os.environ, {"TD_BIN": str(binary)}), \
+                    mock.patch.object(parity_summary.os, "access",
+                                      side_effect=lambda path, mode: str(path) == str(binary)):
                 self.assertIsNone(parity_summary.touchdesigner_binary())
 
     def test_a_bundle_that_reports_its_version_is_usable(self):
@@ -636,6 +643,7 @@ class TouchDesignerGateTests(unittest.TestCase):
             env = {"NM_REFERENCE_ROOT": str(root), "NM_PARITY_WORK": str(root / "work")}
             with mock.patch.object(parity_summary, "ROOT", root), \
                     mock.patch.object(parity_summary, "RENDER_SET", render), \
+                    mock.patch.object(parity_summary, "touchdesigner_binary", return_value=None), \
                     mock.patch.object(parity_summary, "resolve_reference") as resolve, \
                     mock.patch.object(parity_summary, "install_reference_dependencies") as install, \
                     mock.patch.dict(os.environ, env):
@@ -740,6 +748,49 @@ class SweepStatusTests(unittest.TestCase):
                         status = parity_summary.main([])
                     self.assertEqual(status, expected_status)
                     self.assertIn('"expected":1,"executed":1,"exact":1', output.getvalue())
+
+
+
+
+
+class ArchiveReferenceTests(unittest.TestCase):
+    def test_requested_authority_override_is_explicit(self):
+        with mock.patch.dict(os.environ, {'NM_REFERENCE_SHA': 'b' * 40}):
+            self.assertEqual(parity_summary.pinned_revision(), 'b' * 40)
+        with mock.patch.dict(os.environ, {'NM_REFERENCE_SHA': 'main'}):
+            with self.assertRaises(SystemExit): parity_summary.pinned_revision()
+
+    def test_archive_resolution_authenticates_without_git_alignment(self):
+        with tempfile.TemporaryDirectory() as temp:
+            env = {'NM_REFERENCE_ROOT': temp, 'NM_REFERENCE_OBJECT_STORE': temp + '/objects',
+                   'NM_REFERENCE_SHA': 'b' * 40}
+            with mock.patch.dict(os.environ, env), \
+                    mock.patch.object(parity_summary, 'archive_identity', return_value={'commit': 'b' * 40}) as verify, \
+                    mock.patch.object(parity_summary, 'align_reference') as align:
+                self.assertEqual(parity_summary.resolve_reference(Path(temp)), temp)
+                verify.assert_called_once_with(temp, 'b' * 40)
+                align.assert_not_called()
+
+    def test_invalid_archive_never_falls_back(self):
+        with tempfile.TemporaryDirectory() as temp:
+            env = {'NM_REFERENCE_ROOT': temp, 'NM_REFERENCE_OBJECT_STORE': temp + '/objects'}
+            with mock.patch.dict(os.environ, env), \
+                    mock.patch.object(parity_summary, 'archive_identity', side_effect=SystemExit('invalid archive')), \
+                    mock.patch.object(parity_summary, 'provision_reference') as provision:
+                with self.assertRaises(SystemExit): parity_summary.resolve_reference(Path(temp))
+                provision.assert_not_called()
+
+    def test_archive_missing_external_dependencies_never_installs(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'package.json').write_text('{}')
+            with mock.patch.dict(os.environ, {'NM_REFERENCE_OBJECT_STORE': temp + '/objects'}), \
+                    mock.patch.object(parity_summary, 'reference_harness_ready', return_value=False), \
+                    mock.patch.object(parity_summary, 'reference_browser_ready', return_value=False), \
+                    mock.patch.object(parity_summary, '_run_with_ca_retry') as install:
+                error, _ = parity_summary.install_reference_dependencies(root, root)
+                self.assertIn('external dependencies', error)
+                install.assert_not_called()
 
 
 if __name__ == "__main__":

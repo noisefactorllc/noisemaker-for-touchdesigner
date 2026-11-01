@@ -41,20 +41,13 @@ DSL="$REPO/parity/programs/$PROG.dsl"; [ -f "$DSL" ] || DSL="$REPO/parity/corpus
 
 check_reference() {
   "$PY" - "$REPO" "$REF" <<'PY'
-import os
-import re
-import subprocess
+import runpy
 import sys
 from pathlib import Path
 
-root, reference = sys.argv[1:]
-pin = re.search(r'^NM_REFERENCE_SHA_PINNED="([0-9a-f]{40})"$',
-                (Path(root) / "scripts/test").read_text(), re.M).group(1)
-actual = subprocess.check_output(["git", "-C", reference, "rev-parse", "HEAD"], text=True).strip()
-dirty = subprocess.check_output(["git", "-C", reference, "status", "--porcelain"], text=True)
-if dirty or actual != pin or os.environ.get("NM_REFERENCE_SHA", actual) != actual:
-    raise SystemExit("The reference checkout must be clean and match the current authority pin.")
-print(actual)
+root = Path(sys.argv[1])
+ledger = runpy.run_path(str(root / "parity" / "write-ledger.py"))
+print(ledger["verified_authority"](root))
 PY
 }
 if [ -n "$result_report" ]; then
