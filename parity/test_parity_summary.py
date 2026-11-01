@@ -368,7 +368,7 @@ class ScopedRunTests(unittest.TestCase):
                 "bitwise\tPASS\t0\t1\t2.001\t0.98\tsweep\tbitwise.golden.png\n"
                 "LEDGER\n"
                 f'printf \'{{"source": "test-source", "pin": "{pin}", '
-                f'"ledger_sha256": "{ledger_sha}"}}\\n\' '
+                f'"ledger_sha256": "{ledger_sha}", "authority": {{"kind": "clean-git", "commit": "{pin}"}}}}\\n\' '
                 '> "$LEDGER_PATH.binding.json"\n'
                 "exit 0\n")
             output = io.StringIO()
@@ -412,7 +412,8 @@ class LedgerBindingTests(unittest.TestCase):
             "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
             "adjust\tPASS\t0\t1\t2.001\t0.98\tsweep\tadjust.golden.png\n")
         binding = {"source": source or self.SOURCE, "pin": pin or self.PIN,
-                   "ledger_sha256": ledger_sha256 or hashlib.sha256(ledger.read_bytes()).hexdigest()}
+                   "ledger_sha256": ledger_sha256 or hashlib.sha256(ledger.read_bytes()).hexdigest(),
+                   "authority": {"kind": "clean-git", "commit": pin or self.PIN}}
         if omit_sha:
             binding.pop("ledger_sha256")
         Path(str(ledger) + ".binding.json").write_text(json.dumps(binding) + "\n")
@@ -435,6 +436,45 @@ class LedgerBindingTests(unittest.TestCase):
             root = Path(temp)
             ledger = self._bound_ledger(root)
             self.assertEqual(self._main(root, ledger), 0)
+
+    def test_authority_receipt_must_be_consistent(self):
+        invalid = [None, {}, {"kind": "unknown", "commit": self.PIN},
+                   {"kind": "clean-git", "commit": "e" * 40},
+                   {"kind": "verified-archive", "commit": self.PIN}]
+        for authority in invalid:
+            with self.subTest(authority=authority), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                ledger = self._bound_ledger(root)
+                sidecar = Path(str(ledger) + ".binding.json")
+                binding = json.loads(sidecar.read_text())
+                binding["authority"] = authority
+                sidecar.write_text(json.dumps(binding))
+                with self.assertRaisesRegex(SystemExit, "authority"):
+                    self._main(root, ledger)
+
+    def test_explicit_archive_receipt_is_reauthenticated(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            ledger = self._bound_ledger(root)
+            sidecar = Path(str(ledger) + ".binding.json")
+            binding = json.loads(sidecar.read_text())
+            authority = {"kind": "verified-archive", "commit": self.PIN,
+                         "tree": "a" * 40, "inventory_sha256": "1" * 64,
+                         "projection": None}
+            binding["authority"] = authority
+            sidecar.write_text(json.dumps(binding))
+            with mock.patch.dict(os.environ, {"NM_REFERENCE_OBJECT_STORE": "objects",
+                                              "NM_REFERENCE_ROOT": "archive"}), \
+                    mock.patch.object(parity_summary, "archive_identity", return_value=authority) as verifier:
+                self.assertEqual(self._main(root, ledger), 0)
+                verifier.assert_called_once_with(Path("archive"), self.PIN)
+            binding["authority"] = dict(authority, inventory_sha256="2" * 64)
+            sidecar.write_text(json.dumps(binding))
+            with mock.patch.dict(os.environ, {"NM_REFERENCE_OBJECT_STORE": "objects",
+                                              "NM_REFERENCE_ROOT": "archive"}), \
+                    mock.patch.object(parity_summary, "archive_identity", return_value=authority):
+                with self.assertRaisesRegex(SystemExit, "authority"):
+                    self._main(root, ledger)
 
     def test_a_ledger_without_a_binding_fails_closed(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -509,7 +549,8 @@ class LedgerFallbackTests(unittest.TestCase):
             "case\tverdict\tmax_abs_diff\tssim\ttol_max\ttol_ssim\tsource\tgolden\n"
             "adjust\tPASS\t0\t1\t2.001\t0.98\tsweep\tadjust.golden.png\n")
         binding = {"source": source or self.SOURCE, "pin": pin or self.PIN,
-                   "ledger_sha256": ledger_sha256 or hashlib.sha256(ledger.read_bytes()).hexdigest()}
+                   "ledger_sha256": ledger_sha256 or hashlib.sha256(ledger.read_bytes()).hexdigest(),
+                   "authority": {"kind": "clean-git", "commit": pin or self.PIN}}
         if omit_sha:
             binding.pop("ledger_sha256")
         Path(str(ledger) + ".binding.json").write_text(json.dumps(binding) + "\n")
@@ -728,7 +769,7 @@ class SweepStatusTests(unittest.TestCase):
                         'cat > "$LEDGER_PATH" <<\'LEDGER\'\n'
                         + ledger + "LEDGER\n"
                         + f'printf \'{{"source": "test-source", "pin": "{pin}", '
-                        + f'"ledger_sha256": "{ledger_sha}"}}\\n\' '
+                        + f'"ledger_sha256": "{ledger_sha}", "authority": {{"kind": "clean-git", "commit": "{pin}"}}}}\\n\' '
                         + '> "$LEDGER_PATH.binding.json"\n'
                         + f"exit {sweep_status}\n")
                     output = io.StringIO()

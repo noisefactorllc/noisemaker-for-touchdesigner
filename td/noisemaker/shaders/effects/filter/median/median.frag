@@ -75,21 +75,22 @@ void nm_main() {
     }
 
     int medianIndex = REAL_COUNT / 2;
-    for (int i = 1; i < REAL_COUNT; i++) {
-        uvec2 selectedMajor = majorRecords[i];
-        uint selectedBlue = blueRecords[i];
-        int insertAt = i;
-        while (insertAt > 0) {
-            if (!lessRecord(selectedMajor, selectedBlue,
-                            majorRecords[insertAt - 1], blueRecords[insertAt - 1])) {
-                break;
+    for (int i = 0; i < REAL_COUNT - 1; i++) {
+        int minimum = i;
+        for (int j = i + 1; j < REAL_COUNT; j++) {
+            if (lessRecord(majorRecords[j], blueRecords[j],
+                           majorRecords[minimum], blueRecords[minimum])) {
+                minimum = j;
             }
-            majorRecords[insertAt] = majorRecords[insertAt - 1];
-            blueRecords[insertAt] = blueRecords[insertAt - 1];
-            insertAt--;
         }
-        majorRecords[insertAt] = selectedMajor;
-        blueRecords[insertAt] = selectedBlue;
+        if (minimum != i) {
+            uvec2 temporaryMajor = majorRecords[i];
+            uint temporaryBlue = blueRecords[i];
+            majorRecords[i] = majorRecords[minimum];
+            blueRecords[i] = blueRecords[minimum];
+            majorRecords[minimum] = temporaryMajor;
+            blueRecords[minimum] = temporaryBlue;
+        }
     }
 
     vec3 medianRgb = unpackRecordRgb(majorRecords[medianIndex], blueRecords[medianIndex]);

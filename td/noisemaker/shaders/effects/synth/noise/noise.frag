@@ -284,7 +284,7 @@ vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
 
-float simplexValue(vec2 st, vec2 freq, float s, float blend) {
+float simplexDot(vec2 st, vec2 freq, float s) {
     const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
     vec2 uv = st * freq;
     uv.x += s;
@@ -310,9 +310,17 @@ float simplexValue(vec2 st, vec2 freq, float s, float blend) {
     vec3 g;
     g.x = a0.x * x0.x + h.x * x0.y;
     g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-    float v = 130.0 * dot(m, g);
+    return dot(m, g);
+}
 
+float simplexValue(vec2 st, vec2 freq, float s, float blend) {
+    float v = 130.0 * simplexDot(st, freq, s);
     return periodicFunction(map(v, -1.0, 1.0, 0.0, 1.0) - blend);
+}
+
+float simplexOffset(vec2 st, vec2 freq, float s) {
+    float phase = simplexDot(st, freq, s) * (130.0 * 0.5 * TAU) + (0.5 * TAU);
+    return map(cos(phase), -1.0, 1.0, 0.0, 1.0);
 }
 #endif
 
@@ -415,7 +423,11 @@ float offset(vec2 st, vec2 freq) {
     return st.y * freq.x * 0.5;
 #elif LOOP_OFFSET == 300
     st -= vec2(aspectRatio * 0.5, 0.5);
+#if NOISE_TYPE == 10
+    return simplexOffset(st, freq, float(seed) + 50.0);
+#else
     return value(st, freq, float(seed) + 50.0, 0.0);
+#endif
 #elif LOOP_OFFSET == 400
     return 1.0 - rings(st, freq.x);
 #elif LOOP_OFFSET == 410

@@ -85,6 +85,24 @@ class ReferenceArchiveTests(unittest.TestCase):
         (self.root / 'shaders/share/extra').write_bytes(b'x')
         with self.assertRaises(ValueError): self.verify()
 
+    def test_resolved_tree_must_belong_to_authenticated_commit(self):
+        from unittest import mock
+        blob = self.git('hash-object', '-w', '--stdin', data=b'other').decode().strip()
+        rows = self.git('ls-tree', self.commit)
+        tree = self.git('mktree', data=rows + f'100644 blob {blob}\textra\n'.encode()).decode().strip()
+        (self.root / 'extra').write_bytes(b'other')
+        (self.root / 'extra').chmod(0o644)
+        original = subprocess.check_output
+        def read(args, **kwargs):
+            if args[-3:] == ['rev-parse', '--verify', self.commit + '^{tree}']:
+                return (tree + '\n').encode()
+            if args[-4:] == ['ls-tree', '-rtz', '--full-tree', self.commit]:
+                return original([*args[:-1], tree], **kwargs)
+            return original(args, **kwargs)
+        with mock.patch.object(subprocess, 'check_output', side_effect=read):
+            with self.assertRaisesRegex(ValueError, 'tree'):
+                self.verify()
+
     def test_forged_alias_object_payload_is_rejected(self):
         from unittest import mock
         alias = self.git('hash-object', '-w', '--stdin', data=b'../other').decode().strip()

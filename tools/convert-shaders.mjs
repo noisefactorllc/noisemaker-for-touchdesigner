@@ -190,19 +190,165 @@ function adaptShaderSource (source, key) {
   }
   const contract = contracts[key]
   if (!contract) return source
-  const start = source.indexOf(contract.declaration)
   const fail = () => { throw new Error(`${key}: source shape changed; review the shader adaptation`) }
-  if (start < 0 || source.indexOf(contract.declaration, start + 1) >= 0) fail()
-  let end = start + contract.declaration.length
-  let depth = 1
-  while (depth && end < source.length) {
-    if (source[end] === '{') depth++
-    if (source[end] === '}') depth--
-    end++
+  const verifyFunction = ({ declaration, sha }) => {
+    const start = source.indexOf(declaration)
+    if (start < 0 || source.indexOf(declaration, start + 1) >= 0) fail()
+    let end = start + declaration.length
+    let depth = 1
+    while (depth && end < source.length) {
+      if (source[end] === '{') depth++
+      if (source[end] === '}') depth--
+      end++
+    }
+    const body = source.slice(start, end)
+    if (depth || createHash('sha256').update(body).digest('hex') !== sha) fail()
+    return { start, end, body }
   }
-  const body = source.slice(start, end)
-  if (depth || createHash('sha256').update(body).digest('hex') !== contract.sha) fail()
-  if (key === 'synth/noise/noise') return source.slice(0, start) + 'precise ' + source.slice(start)
+  const { start, end, body } = verifyFunction(contract)
+  if (key === 'synth/noise/noise') {
+    const tauDefinitions = source.match(/^#define[ \t]+TAU[^\n]*/gm) || []
+    if (tauDefinitions.length !== 1 || tauDefinitions[0] !== '#define TAU 6.28318530718') fail()
+    for (const helper of [
+  {
+    "declaration": "float map(float value, float inMin, float inMax, float outMin, float outMax) {",
+    "sha": "11c57c9a006338bc8ecad380620c29d45e7665766e49a604749315c42bbb9f9a"
+  },
+  {
+    "declaration": "vec3 mod289(vec3 x) {",
+    "sha": "a4f088cf0693d4298c436c1b2a86a40d3625dadd857f225f0ceb78619fcd2e7f"
+  },
+  {
+    "declaration": "vec2 mod289(vec2 x) {",
+    "sha": "2498bae211349d26f431558242f8eec909eb6e63270e083d9c56448ef9e681b1"
+  },
+  {
+    "declaration": "vec3 permute(vec3 x) {",
+    "sha": "f066e42fbbd39c0eabb54f96822ee40d56a3446e4e79ac737e849da452d4efca"
+  },
+  {
+    "declaration": "float simplexValue(vec2 st, vec2 freq, float s, float blend) {",
+    "sha": "642fdc488e327abacadda823632525fad8de457faf276932f5597b7ad9fb39fe"
+  },
+  {
+    "declaration": "float value(vec2 st, vec2 freq, float s, float blend) {",
+    "sha": "ae11a207ed69f88ecba61e524f28c21651c509f43dabc51b7d5cae8e5ccf7d90"
+  },
+  {
+    "declaration": "float offset(vec2 st, vec2 freq) {",
+    "sha": "792dfc229bdf5c147f5c0db2f218490d444502d9facdbefcc06af576ca12225b"
+  }
+]) verifyFunction(helper)
+    const simplex = verifyFunction({"declaration": "float simplexValue(vec2 st, vec2 freq, float s, float blend) {", "sha": "642fdc488e327abacadda823632525fad8de457faf276932f5597b7ad9fb39fe"})
+    const offset = verifyFunction({"declaration": "float offset(vec2 st, vec2 freq) {", "sha": "792dfc229bdf5c147f5c0db2f218490d444502d9facdbefcc06af576ca12225b"})
+    const replacement = `float simplexDot(vec2 st, vec2 freq, float s) {
+    const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+    vec2 uv = st * freq;
+    uv.x += s;
+
+    vec2 i  = floor(uv + dot(uv, C.yy));
+    vec2 x0 = uv - i + dot(i, C.xx);
+    vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+    vec4 x12 = x0.xyxy + C.xxzz;
+    x12.xy -= i1;
+
+    i = mod289(i);
+    vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+    m = m*m;
+    m = m*m;
+
+    vec3 x = 2.0 * fract(p * C.www) - 1.0;
+    vec3 h = abs(x) - 0.5;
+    vec3 ox = floor(x + 0.5);
+    vec3 a0 = x - ox;
+    m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+
+    vec3 g;
+    g.x = a0.x * x0.x + h.x * x0.y;
+    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+    return dot(m, g);
+}
+
+float simplexValue(vec2 st, vec2 freq, float s, float blend) {
+    float v = 130.0 * simplexDot(st, freq, s);
+    return periodicFunction(map(v, -1.0, 1.0, 0.0, 1.0) - blend);
+}
+
+float simplexOffset(vec2 st, vec2 freq, float s) {
+    float phase = simplexDot(st, freq, s) * (130.0 * 0.5 * TAU) + (0.5 * TAU);
+    return map(cos(phase), -1.0, 1.0, 0.0, 1.0);
+}`
+    const offsetReplacement = `float offset(vec2 st, vec2 freq) {
+#if LOOP_OFFSET == 10
+    return circles(st, freq.x);
+#elif LOOP_OFFSET == 20
+    return shape(st, 3, freq.x * 0.5);
+#elif LOOP_OFFSET == 30
+    return (abs(st.x - 0.5 * aspectRatio) + abs(st.y - 0.5)) * freq.x * 0.5;
+#elif LOOP_OFFSET == 40
+    return shape(st, 4, freq.x * 0.5);
+#elif LOOP_OFFSET == 50
+    return shape(st, 5, freq.x * 0.5);
+#elif LOOP_OFFSET == 60
+    return shape(st, 6, freq.x * 0.5);
+#elif LOOP_OFFSET == 70
+    return shape(st, 7, freq.x * 0.5);
+#elif LOOP_OFFSET == 80
+    return shape(st, 8, freq.x * 0.5);
+#elif LOOP_OFFSET == 90
+    return shape(st, 9, freq.x * 0.5);
+#elif LOOP_OFFSET == 100
+    return shape(st, 10, freq.x * 0.5);
+#elif LOOP_OFFSET == 110
+    return shape(st, 11, freq.x * 0.5);
+#elif LOOP_OFFSET == 120
+    return shape(st, 12, freq.x * 0.5);
+#elif LOOP_OFFSET == 200
+    return st.x * freq.x * 0.5;
+#elif LOOP_OFFSET == 210
+    return st.y * freq.x * 0.5;
+#elif LOOP_OFFSET == 300
+    st -= vec2(aspectRatio * 0.5, 0.5);
+#if NOISE_TYPE == 10
+    return simplexOffset(st, freq, float(seed) + 50.0);
+#else
+    return value(st, freq, float(seed) + 50.0, 0.0);
+#endif
+#elif LOOP_OFFSET == 400
+    return 1.0 - rings(st, freq.x);
+#elif LOOP_OFFSET == 410
+    return 1.0 - diamonds(st, freq.x);
+#else
+    return 0.0;
+#endif
+}`
+    return source.replace(simplex.body, () => replacement)
+      .replace(offset.body, () => offsetReplacement)
+      .replace(body, () => 'precise ' + body)
+  }
+  for (const helper of [
+  {
+    "declaration": "bool lessRecord(uvec2 a, uint blueA, uvec2 b, uint blueB) {",
+    "sha": "ef593d067b18eb74d742db49cd6e11215623451d1270727b0ff70d9ffa2b8b87"
+  },
+  {
+    "declaration": "uvec2 packRecordMajor(vec4 sampleColor) {",
+    "sha": "4d4a2bc74d3ee12c024191f4894d14d21715145faabbe3b620faee7b2f1a38c2"
+  },
+  {
+    "declaration": "uint packRecordBlue(vec4 sampleColor) {",
+    "sha": "4d082a942b05d521a548e79cc72f225dcb88c209566c9367831b8d67d81daa30"
+  },
+  {
+    "declaration": "vec3 unpackRecordRgb(uvec2 major, uint blue) {",
+    "sha": "0fab9c2fadd3ecbf8fa7bbe01269936e0098f37728f933349bb41edd2619ea08"
+  },
+  {
+    "declaration": "vec4 readRecord(ivec2 center, ivec2 dimensions, int x, int y) {",
+    "sha": "aec4bd949e7b9ed2f958a698b57e8feba6d70237ecdb22402d732c595ed678f9"
+  }
+]) verifyFunction(helper)
   const previous = `    int left = 0;
     int right = REAL_COUNT - 1;
     while (left < right) {
@@ -227,24 +373,25 @@ function adaptShaderSource (source, key) {
         if (scanRight < medianIndex) { left = scanLeft; }
         if (medianIndex < scanLeft) { right = scanRight; }
     }`
-  const replacement = `    for (int i = 1; i < REAL_COUNT; i++) {
-        uvec2 selectedMajor = majorRecords[i];
-        uint selectedBlue = blueRecords[i];
-        int insertAt = i;
-        while (insertAt > 0) {
-            if (!lessRecord(selectedMajor, selectedBlue,
-                            majorRecords[insertAt - 1], blueRecords[insertAt - 1])) {
-                break;
+  const replacement = `    for (int i = 0; i < REAL_COUNT - 1; i++) {
+        int minimum = i;
+        for (int j = i + 1; j < REAL_COUNT; j++) {
+            if (lessRecord(majorRecords[j], blueRecords[j],
+                           majorRecords[minimum], blueRecords[minimum])) {
+                minimum = j;
             }
-            majorRecords[insertAt] = majorRecords[insertAt - 1];
-            blueRecords[insertAt] = blueRecords[insertAt - 1];
-            insertAt--;
         }
-        majorRecords[insertAt] = selectedMajor;
-        blueRecords[insertAt] = selectedBlue;
+        if (minimum != i) {
+            uvec2 temporaryMajor = majorRecords[i];
+            uint temporaryBlue = blueRecords[i];
+            majorRecords[i] = majorRecords[minimum];
+            blueRecords[i] = blueRecords[minimum];
+            majorRecords[minimum] = temporaryMajor;
+            blueRecords[minimum] = temporaryBlue;
+        }
     }`
   if (!body.includes(previous)) fail()
-  return source.slice(0, start) + body.replace(previous, replacement) + source.slice(end)
+  return source.slice(0, start) + body.replace(previous, () => replacement) + source.slice(end)
 }
 
 function main () {

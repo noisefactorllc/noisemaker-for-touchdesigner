@@ -141,7 +141,7 @@ echo "reference checked out at $GOT_SHA"
 # set alone exceeds it when run sequentially after the unit phase.
 (
   set +e
-  "$VPY" - <<'PY'
+  env -u NM_REFERENCE_SHA -u NM_REFERENCE_OBJECT_STORE "$VPY" - <<'PY'
 import glob
 import os
 import sys

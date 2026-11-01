@@ -435,6 +435,28 @@ def verify_ledger_binding(ledger):
         raise SystemExit("parity-summary: the ledger is bound to source %s at pin %s, "
                          "but this checkout is %s at pin %s"
                          % (binding.get("source"), binding.get("pin"), head, pin))
+    authority = binding.get("authority")
+    if (not isinstance(authority, dict)
+            or authority.get("kind") not in ("clean-git", "verified-archive")
+            or authority.get("commit") != pin):
+        raise SystemExit("parity-summary: the authority receipt does not match the requested pin")
+    if authority["kind"] == "verified-archive":
+        if (not re.fullmatch(r"[0-9a-f]{40}", str(authority.get("tree", "")))
+                or not re.fullmatch(r"[0-9a-f]{64}", str(authority.get("inventory_sha256", "")))
+                or "projection" not in authority):
+            raise SystemExit("parity-summary: the archive authority receipt is incomplete")
+        projection = authority["projection"]
+        if projection is not None and (not isinstance(projection, dict)
+                or projection.get("path") != "shaders/share"
+                or projection.get("target") != "share"
+                or not re.fullmatch(r"[0-9a-f]{40}", str(projection.get("git_blob", "")))):
+            raise SystemExit("parity-summary: the archive authority projection is invalid")
+    if os.environ.get("NM_REFERENCE_OBJECT_STORE"):
+        reference = os.environ.get("NM_REFERENCE_ROOT")
+        if authority["kind"] != "verified-archive" or not reference:
+            raise SystemExit("parity-summary: explicit archive authority requires its verified source")
+        if archive_identity(Path(reference), pin) != authority:
+            raise SystemExit("parity-summary: the authority receipt differs from the verified archive")
     expected = binding.get("ledger_sha256")
     if not expected:
         raise SystemExit("parity-summary: the ledger binding %s does not bind the ledger "

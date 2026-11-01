@@ -63,6 +63,24 @@ uv() {
         self.assertEqual(uv_calls, '')
         self.assertIn('regular', result.stderr)
 
+    def test_unit_phase_isolates_authority_without_changing_parent(self):
+        source = (REPO / 'scripts/test').read_text()
+        launch = next(line for line in source.splitlines() if '"$VPY" - <<' in line)
+        with tempfile.TemporaryDirectory() as directory:
+            executable = Path(directory) / 'python'
+            executable.write_text('#!/bin/sh\n'
+                                  'test -z "${NM_REFERENCE_SHA+x}" && '
+                                  'test -z "${NM_REFERENCE_OBJECT_STORE+x}"\n')
+            executable.chmod(0o755)
+            script = ('set -e\n' + launch + '\nignored\nPY\n'
+                      'test "$NM_REFERENCE_SHA" = requested\n'
+                      'test "$NM_REFERENCE_OBJECT_STORE" = objects\n')
+            result = subprocess.run(['bash', '-c', script], capture_output=True, text=True,
+                                    env={**os.environ, 'VPY': str(executable),
+                                         'NM_REFERENCE_SHA': 'requested',
+                                         'NM_REFERENCE_OBJECT_STORE': 'objects'})
+            self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_reference_checkout_disables_links(self):
         source = (REPO / 'scripts/test').read_text()
         self.assertIn('git -C "$REF" -c core.symlinks=false -c advice.detachedHead=false checkout', source)

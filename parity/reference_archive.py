@@ -78,6 +78,10 @@ def verify_archive(root, git_dir, requested):
         digest = hashlib.sha1(kind.encode() + b' ' + size.encode() + b'\0' + payload).hexdigest()
         if actual_oid != oid or kind != expected_type or digest != oid:
             raise ValueError('Reference commit or tree object failed content authentication.')
+        if kind == 'commit':
+            headers = payload.split(b'\n\n', 1)[0].splitlines()
+            if [line[5:] for line in headers if line.startswith(b'tree ')] != [tree.encode()]:
+                raise ValueError('Reference tree differs from the authenticated commit tree.')
         offset = end + 2 + int(size)
     expected, alias = {}, None
     for entry in entries.split(b'\0'):

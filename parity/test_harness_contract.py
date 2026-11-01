@@ -476,8 +476,16 @@ class HarnessContractTests(unittest.TestCase):
                 later_pin = json.loads(json.dumps(evidence))
                 later_pin["reference_sha"] = "b" * 40
                 report.write_text(json.dumps(later_pin))
-                rejected_pin = subprocess.run(written.args, capture_output=True, text=True, env=environment)
+                later_environment = dict(environment)
+                later_environment.pop("NM_REFERENCE_SHA", None)
+                later_environment["TEST_REFERENCE_HEAD"] = "b" * 40
+                rejected_pin = subprocess.run(written.args, capture_output=True, text=True, env=later_environment)
                 self.assertNotEqual(rejected_pin.returncode, 0, rejected_pin.stdout + rejected_pin.stderr)
+                later_binding = json.loads((out / "ledger.tsv.binding.json").read_text())
+                self.assertEqual(later_binding["pin"], "b" * 40)
+                with mock.patch.dict(os.environ, later_environment, clear=True):
+                    with self.assertRaisesRegex(ValueError, "hero authority does not match the visual policy"):
+                        load_write_ledger().hero_protocol(root)
                 (root / "scripts" / "test").write_text('NM_REFERENCE_SHA_PINNED="' + reference_sha + '"\n')
                 report.write_text(json.dumps(evidence))
                 restored = subprocess.run(written.args, capture_output=True, text=True, env=environment)
