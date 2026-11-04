@@ -204,11 +204,6 @@ if shard_index is not None or shard_count is not None:
                 flat.append(t)
     flatten(suite)
     selected = [t for i, t in enumerate(flat) if i % count == index]
-    # A changed-path selection can hold fewer tests than shards, leaving some
-    # shards empty. An empty shard drops no coverage: the flat i % count
-    # assignment gives every test to exactly one shard, so the other shards run
-    # it. Failing an empty shard would make the changed-path gate impossible to
-    # satisfy, so an empty shard passes with a note.
     empty_shard = not selected and bool(flat)
     print('shard: running test shard %d of %d (%d of %d tests)' % (index, count, len(selected), len(flat)))
     suite = unittest.TestSuite(selected)
