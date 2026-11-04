@@ -176,6 +176,36 @@ if CHANGED_FILES:
 else:
     suite = loader.discover(start_dir='parity', pattern='test_*.py')
 
+# Sharded changed-path runs: the changed paths can route to test modules whose
+# full run exceeds one 300-second invocation. .nm-test-shards at the repository
+# root declares the shard count; when the caller passes NM_SHARD_INDEX and
+# NM_SHARD_COUNT, only that shard's individual tests run, and together the
+# shards run every selected test. With the variables unset nothing changes:
+# the selected suite runs whole, exactly as before. Failing loudly on a
+# malformed or out-of-range shard selection keeps coverage from being
+# silently dropped.
+shard_index = os.environ.get('NM_SHARD_INDEX')
+shard_count = os.environ.get('NM_SHARD_COUNT')
+if shard_index is not None or shard_count is not None:
+    if not shard_index.isdigit() or not shard_count.isdigit():
+        print('shard: NM_SHARD_INDEX and NM_SHARD_COUNT must be integers')
+        sys.exit(2)
+    index, count = int(shard_index), int(shard_count)
+    if count < 2 or index >= count:
+        print('shard: NM_SHARD_INDEX %d out of range for NM_SHARD_COUNT %d' % (index, count))
+        sys.exit(2)
+    flat = []
+    def flatten(s):
+        for t in s:
+            if isinstance(t, unittest.TestSuite):
+                flatten(t)
+            else:
+                flat.append(t)
+    flatten(suite)
+    selected = [t for i, t in enumerate(flat) if i % count == index]
+    print('shard: running test shard %d of %d (%d of %d tests)' % (index, count, len(selected), len(flat)))
+    suite = unittest.TestSuite(selected)
+
 result = unittest.TextTestRunner(verbosity=1).run(suite)
 skipped = len(result.skipped)
 xfail = len(result.expectedFailures)

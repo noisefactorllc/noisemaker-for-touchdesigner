@@ -30,9 +30,10 @@
 // and the upstream Noisemaker engine reachable via NM_REFERENCE_ROOT (its shaders/, demo/).
 // See parity/README.md.
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { dirname, resolve, basename, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { spawnSync } from 'node:child_process'
 import { referenceRoot } from '../tools/reference-root.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -41,6 +42,56 @@ const REFERENCE_ROOT = referenceRoot()
 
 const HARNESS = join(REFERENCE_ROOT, 'vendor', 'shade-mcp', 'harness', 'index.js')
 const EXPORT_GRAPH = join(__dirname, '..', 'tools', 'export-graph.mjs')
+
+// The reference's harness needs the browser build its own Playwright version pins.
+// A native runner can hold a shared browser cache built for a different Playwright
+// version, so that build is missing and every golden render dies at launch. Probe a
+// launch the way scripts/parity-summary does; when it fails, install the reference's
+// browser into a checkout-local cache (never a shared one) and point Playwright at
+// it. Verification stays strict: this only provisions the same browser, and a probe
+// or install that still cannot launch fails the render.
+const BROWSER_CACHE = join(__dirname, 'out', 'browsers-' + process.platform)
+
+function probeChromium (browsersPath) {
+  const harness = join(REFERENCE_ROOT, 'vendor', 'shade-mcp', 'harness')
+  const env = browsersPath
+    ? { ...process.env, PLAYWRIGHT_BROWSERS_PATH: browsersPath }
+    : process.env
+  const probe = spawnSync(process.execPath, ['-e',
+    "const p=require(require.resolve('playwright',{paths:[process.argv[1]]}));" +
+    "(async()=>{try{const b=await p.chromium.launch({headless:true," +
+    "args:['--disable-gpu-sandbox']});await b.close();" +
+    "process.stdout.write('true')}catch(e){process.stdout.write('false')}})()",
+    harness], { env, encoding: 'utf8', timeout: 300000 })
+  return probe.status === 0 && String(probe.stdout).trim() === 'true'
+}
+
+function installReferenceBrowser () {
+  const cli = join(REFERENCE_ROOT, 'node_modules', 'playwright-core', 'cli.js')
+  if (!existsSync(cli)) {
+    throw new Error('the reference checkout has no playwright CLI to install its browser (run npm ci in ' + REFERENCE_ROOT + ')')
+  }
+  mkdirSync(BROWSER_CACHE, { recursive: true })
+  const caBundles = ['/etc/ssl/cert.pem', '/etc/ssl/certs/ca-certificates.crt']
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const env = { ...process.env, PLAYWRIGHT_BROWSERS_PATH: BROWSER_CACHE }
+    if (attempt === 1) {
+      const bundle = caBundles.find(f => existsSync(f))
+      if (!bundle) break
+      env.NODE_EXTRA_CA_CERTS = bundle
+    }
+    const result = spawnSync(process.execPath, [cli, 'install', 'chromium'], { env, stdio: 'inherit' })
+    if (result.status === 0 && probeChromium(BROWSER_CACHE)) {
+      process.env.PLAYWRIGHT_BROWSERS_PATH = BROWSER_CACHE
+      return
+    }
+  }
+  throw new Error('the reference browser did not install or launch (cache ' + BROWSER_CACHE + ')')
+}
+
+function ensureReferenceBrowser () {
+  if (!probeChromium()) installReferenceBrowser()
+}
 
 // Self-contained PNG encoder (Node built-in zlib only) so the harness has NO
 // external npm dependency (pngjs is a reference devDep that may not be installed).
@@ -155,6 +206,7 @@ async function main () {
   })()
   const { BrowserSession } = harness
 
+  ensureReferenceBrowser()
   const session = new BrowserSession({ backend: opts.backend })
   let pngBuffer
   try {
