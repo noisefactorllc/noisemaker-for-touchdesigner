@@ -117,5 +117,55 @@ class FeedbackHueContract(unittest.TestCase):
                              '%s divRound must not return the unpinned hue-shift sum' % path)
 
 
+class Hsv2RgbLastSectorContract(unittest.TestCase):
+    """Behavioral source contract for the hsv2rgb sector chain.
+
+    The upstream reference gives hsv2rgb's last hue sector to the else branch
+    (the filter/feedback shape): fract() returns 1.0 for a hue just below a
+    whole number, and Mesa folds hsv2rgb's fract() into the fract() that wraps
+    the hue before the call, so the sector chain can receive h = 1.0. A chain
+    whose last test is h < 1.0 leaves h = 1.0 in a black else branch; the else
+    branch must instead take the last sector, vec3(c, 0.0, x), which at
+    h = 1.0 gives the colour of h = 0.0. Every converted program whose
+    hsv2rgb chains six sectors over h in 0..1 must follow it.
+    """
+
+    CHAIN = ('4.0/6.0 <= h', 'h < 5.0/6.0')
+    LAST_SECTOR = re.compile(
+        r'else(?:\s*\{(?:\s*//[^\n]*\n)*\s*|\s+)rgb = vec3\(c, 0\.0, x\);')
+
+    @staticmethod
+    def hsv2rgb_body(source, path):
+        start = re.search(r'^vec3 hsv2rgb\(', source, re.M)
+        if not start:
+            return None
+        depth = 0
+        for i in range(source.index('{', start.start()), len(source)):
+            if source[i] == '{':
+                depth += 1
+            elif source[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    return source[start.start():i + 1]
+        raise AssertionError('%s hsv2rgb has no closing brace' % path)
+
+    def test_hsv2rgb_gives_the_last_sector_to_the_else_branch(self):
+        for path in shader_programs():
+            with self.subTest(program=path):
+                with open(path, encoding='utf-8') as fh:
+                    body = self.hsv2rgb_body(fh.read(), path)
+                if body is None or not any(c in body for c in self.CHAIN):
+                    continue  # not the six-sector chain over h in 0..1
+                self.assertIn('float h = fract(hsv.x);', body,
+                              '%s hsv2rgb must wrap the hue with fract()' % path)
+                self.assertNotRegex(body, r'h < 1\.0\)',
+                                    '%s hsv2rgb must not leave h = 1.0 out of the last sector' % path)
+                match = self.LAST_SECTOR.search(body)
+                self.assertIsNotNone(
+                    match, '%s hsv2rgb must give the last sector to the else branch' % path)
+                self.assertGreater(match.start(), body.index('5.0/6.0'),
+                                   '%s hsv2rgb last-sector else must follow the 5/6 sector' % path)
+
+
 if __name__ == '__main__':
     unittest.main()
