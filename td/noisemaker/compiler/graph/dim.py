@@ -20,13 +20,19 @@ def dim_references_param(d):
     return isinstance(d, dict) and ('param' in d or 'screenDivide' in d)
 
 
-def scope_dim(d, scope_suffix, scoped_map):
+def scope_dim(d, scope_suffix, scoped_map, claim=None):
     """Rewrite a {param}/{screenDivide} dim to a scoped param name and record old->new in
-    scoped_map (reference/03 §6.3 ScopeDimSpec). Other dims pass through unchanged."""
+    scoped_map (reference/03 §6.3 ScopeDimSpec). Other dims pass through unchanged.
+
+    `claim` (optional) is the expander's chainSizeParam: it receives the built scoped name and
+    the dim's inherit flag, and may rename it so a repeated stateful instance's private state
+    sizes from its own parameter (reference cf95f49c expander.js ScopeDimSpec)."""
     if not isinstance(d, dict):
         return d
     if 'param' in d:
         scoped = d['param'] + '_' + scope_suffix
+        if claim is not None:
+            scoped = claim(scoped, bool(d.get('inherit')))
         # An inherited dim ({param, inherit: true}) reads the scope's value; it never
         # writes this effect's own value over it (reference expander.js ScopeDimSpec).
         if not d.get('inherit'):
@@ -36,6 +42,8 @@ def scope_dim(d, scope_suffix, scoped_map):
         return nd
     if 'screenDivide' in d:
         scoped = d['screenDivide'] + '_' + scope_suffix
+        if claim is not None:
+            scoped = claim(scoped, False)
         scoped_map[d['screenDivide']] = scoped
         nd = dict(d)
         nd['screenDivide'] = scoped

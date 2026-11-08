@@ -202,6 +202,13 @@ class _Expander:
         self._written_volumes = {}    # exported volume -> source sizing uniform
         self._read_volumes = {}       # reader sizing scope -> volume and preceding writer
         self._exported_textures = {}  # exported atlas -> source texture
+        # Per-plan / per-step state for per-instance scoping (reference cf95f49c expander.js)
+        self._global_texture_users = {}
+        self._seen_effects = set()
+        self._size_param_owners = {}
+        self._instance_scope_id = None
+        self._owned_textures = set()
+        self._current_node_id = None
 
     def _run(self):
         for plan_index, plan in enumerate(self._plans):
@@ -292,6 +299,13 @@ class _Expander:
         self._current_input_3d = self._current_input_geo = None
 
         chain = plan['chain']
+        # Per-plan state for per-instance scoping (reference cf95f49c expander.js):
+        # globals deliberately shared by different effects keep their chain scope; a
+        # repeated stateful effect's private state textures and the chain-scoped sizing
+        # params its private state reads from get per-instance scopes instead.
+        self._global_texture_users = self._collect_global_texture_users(chain)
+        self._seen_effects = set()
+        self._size_param_owners = {}
         for step_pos, step in enumerate(chain):
             op = step['op']
             builtin = step.get('builtin', False)
@@ -413,6 +427,26 @@ class _Expander:
                 continue
 
             node_id = "node_" + str(temp)
+            # Preserve legacy IDs for the first instance. Repeated private state
+            # gets a node suffix; cooperating effects retain the shared chain scope.
+            if id(effect_def) in self._seen_effects:
+                self._instance_scope_id = chain_scope_id + "_" + node_id
+            else:
+                self._instance_scope_id = chain_scope_id
+            self._seen_effects.add(id(effect_def))
+            # Read-only globals can be external uploads, whose bindings retain chain IDs.
+            owned_textures = set()
+            if isinstance(effect_def.textures, dict):
+                owned_textures.update(effect_def.textures.keys())
+            if isinstance(effect_def.textures3d, dict):
+                owned_textures.update(effect_def.textures3d.keys())
+            if isinstance(effect_def.passes, list):
+                for pass_def in effect_def.passes:
+                    outputs = pass_def.get('outputs')
+                    if isinstance(outputs, dict):
+                        owned_textures.update(outputs.values())
+            self._owned_textures = owned_textures
+            self._current_node_id = node_id
             scoped_param_map = {}
 
             textures = effect_def.textures
@@ -569,7 +603,7 @@ class _Expander:
             if particle_scoped:
                 virtual_tex_id = tex_name + "_" + self._current_particle_pipeline_id
             elif tex_name.startswith("global_"):
-                virtual_tex_id = tex_name + "_" + chain_scope_id
+                virtual_tex_id = self._scope_chain_tex(tex_name, chain_scope_id)
             else:
                 virtual_tex_id = node_id + "_" + tex_name
             spec = _parse_texture_spec(spec_json)
@@ -580,24 +614,34 @@ class _Expander:
                             or has_param_ref)
             scope_suffix = self._current_particle_pipeline_id if particle_scoped else chain_scope_id
             if should_scope:
-                # A `{param: 'stateSize'}` dim on a non-global texture that still references it
-                # (e.g. a non-agent effect reading a particle-pipeline state texture) is scoped to
-                # the PARTICLE PIPELINE, not the chain — a stateSize override further down the same
-                # chain (e.g. pointsEmit's own re-declared stateSize) must not leak backward into
-                # an earlier producer's texture. Reference 0ed489ec expander.js scopeDimSpec.
+                # The sizing params of private state get per-instance scopes; shared chain
+                # state keeps the legacy chain-scoped name (reference cf95f49c expander.js
+                # scopeDimSpec: chainSizeParam + claimSizeParam).
+                is_private_tex = not tex_name.startswith("global_") or self._is_private_global(tex_name)
+
+                def _claim(scoped_param, inherit):
+                    if particle_scoped or inherit:
+                        return scoped_param
+                    return self._claim_size_param(scoped_param, is_private_tex)
+
                 def _dim_scope(d):
                     # Every volumeSize dimension scopes to its chain's volumeSize_<chain> uniform,
                     # the scope write3d/read3d volume handoffs resolve through.
                     if isinstance(d, dict) and d.get('param') == 'volumeSize':
-                        return chain_scope_id
+                        return chain_scope_id, None
                     if (isinstance(d, dict) and d.get('param') == 'stateSize'
                             and self._current_particle_pipeline_id is not None
                             and not tex_name.startswith("global_")):
-                        return self._current_particle_pipeline_id
-                    return scope_suffix
-                spec['width'] = dimmod.scope_dim(spec['width'], _dim_scope(spec['width']), scoped_param_map)
-                spec['height'] = dimmod.scope_dim(spec['height'], _dim_scope(spec['height']), scoped_param_map)
+                        return self._current_particle_pipeline_id, None
+                    return scope_suffix, _claim
+                spec['width'] = self._scope_dim(spec['width'], scoped_param_map, _dim_scope)
+                spec['height'] = self._scope_dim(spec['height'], scoped_param_map, _dim_scope)
             self._texture_specs[virtual_tex_id] = spec
+
+    @staticmethod
+    def _scope_dim(dim, scoped_param_map, dim_scope):
+        scope, claim = dim_scope(dim)
+        return dimmod.scope_dim(dim, scope, scoped_param_map, claim)
 
     def _collect_textures3d(self, effect_def, node_id, chain_scope_id):
         textures3d = effect_def.textures3d
@@ -1069,11 +1113,76 @@ class _Expander:
         return name
 
     def _scope_chain_tex(self, tex_name, chain_scope_id):
+        # Particle scoping takes priority over private state and shared chain state
+        # (reference cf95f49c expander.js scopeChainTex).
         if _is_particle_tex(tex_name):
             return self._scope_particle_tex(tex_name)
         if tex_name.startswith("global_"):
-            return tex_name + "_" + chain_scope_id
+            return tex_name + "_" + self._global_scope(tex_name, chain_scope_id)
         return tex_name
+
+    def _collect_global_texture_users(self, chain):
+        """Find globals deliberately shared by different effects in a chain
+        (reference cf95f49c expander.js collectGlobalTextureUsers)."""
+        users = {}
+        seen = set()
+        for step in chain:
+            if step.get('builtin', False):
+                continue
+            if step['args'].get('_skip') is True:
+                continue
+            eff = self._reg.get_effect(step['op'])
+            if eff is None or id(eff) in seen:
+                continue
+            seen.add(id(eff))
+            refs = []
+            if isinstance(eff.textures, dict):
+                refs.extend(eff.textures.keys())
+            if isinstance(eff.textures3d, dict):
+                refs.extend(eff.textures3d.keys())
+            if isinstance(eff.globals, dict):
+                for spec in eff.globals.values():
+                    dflt = spec.get('default') if isinstance(spec, dict) else None
+                    if dflt is not None:
+                        refs.append(dflt)
+            for attr in ('output_tex', 'output_tex3d', 'output_geo',
+                         'output_xyz', 'output_vel', 'output_rgba'):
+                value = getattr(eff, attr, None)
+                if value is not None:
+                    refs.append(value)
+            if isinstance(eff.passes, list):
+                for pass_def in eff.passes:
+                    for key in ('inputs', 'outputs'):
+                        mapping = pass_def.get(key)
+                        if isinstance(mapping, dict):
+                            refs.extend(mapping.values())
+            for ref in refs:
+                if not isinstance(ref, str) or not ref.startswith('global_'):
+                    continue
+                users.setdefault(ref, set()).add(id(eff))
+        return users
+
+    def _is_private_global(self, tex_name):
+        """A global texture this effect owns and no OTHER effect in the chain touches."""
+        if tex_name not in self._owned_textures:
+            return False
+        users = self._global_texture_users.get(tex_name)
+        return users is not None and len(users) == 1
+
+    def _global_scope(self, tex_name, chain_scope_id):
+        if self._is_private_global(tex_name):
+            return self._instance_scope_id
+        return chain_scope_id
+
+    def _claim_size_param(self, scoped_param, is_private):
+        """The first node to size private state from a param keeps the legacy
+        chain-scoped name; any other node, of the same or another effect, gets its own."""
+        owner = self._size_param_owners.get(scoped_param)
+        if owner is None:
+            self._size_param_owners[scoped_param] = self._current_node_id
+        if is_private and owner is not None and owner != self._current_node_id:
+            return scoped_param + "_" + self._current_node_id
+        return scoped_param
 
     def _apply_agent_passthrough(self, decl, out_key, node_id, chain_scope_id, reuse_keyword, cursor):
         if decl is None or out_key in self._texture_map:
