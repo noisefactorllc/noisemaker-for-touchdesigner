@@ -1,14 +1,3 @@
-"""Per-instance state scoping for repeated stateful effects (reference
-shaders/tests/test_stateful_instances.js, upstream cf95f49c).
-
-The upstream test asserts allocation sizes through Pipeline.createSurfaces and per-instance
-resize through CanvasRenderer.applyStepParameterValues — renderer/runtime layers the TD port
-implements against TouchDesigner surfaces, not against a recording backend. The contract here
-is the expander's graph output: distinct private state textures per instance, distinct sizing
-params per instance, scopedParams/uniform wiring, and the legacy chain-scoped IDs that shared
-state (loop accumulators, mesh buffers) and single instances must keep.
-"""
-
 import sys
 import unittest
 from pathlib import Path
