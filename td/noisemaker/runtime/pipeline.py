@@ -17,12 +17,6 @@ from .surface_manager import SurfaceManager
 
 
 def report_sink_error(error, sink):
-    """Pass an isolated sink failure to the sink that threw it (reference db2173e3).
-
-    A sink opts in with an optional onError(error) method, for example to end an
-    output whose new size it cannot send. Rendering and the other sinks continue
-    either way.
-    """
     on_error = getattr(sink, 'onError', None)
     if callable(on_error):
         on_error(error)

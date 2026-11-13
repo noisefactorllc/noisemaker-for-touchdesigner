@@ -434,7 +434,6 @@ class PipelineAndRendererTests(unittest.TestCase):
                 reported.append(("failed", error))
 
         class SilentSink:
-            # A sink without onError fails exactly as before: counted and isolated.
             def configure(self, descriptor):
                 if state["failing"]:
                     raise RuntimeError("silent configure failed")
@@ -448,7 +447,6 @@ class PipelineAndRendererTests(unittest.TestCase):
                 pass
 
         class ThrowingReporterSink:
-            # A sink whose reporter throws does not stop the frame.
             def __init__(self):
                 self.reports = 0
 
@@ -508,7 +506,6 @@ class PipelineAndRendererTests(unittest.TestCase):
             ("failed", submit_error),
         ])
         self.assertEqual(throwing_reporter.reports, 1)
-        # A sink that does not fail sees the same calls as before and no report.
         self.assertEqual(healthy_sink.calls, [
             ("configure", 256, 256), ("deferRender",), ("submit", 7),
         ])
