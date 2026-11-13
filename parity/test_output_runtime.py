@@ -402,6 +402,122 @@ class PipelineAndRendererTests(unittest.TestCase):
         self.assertEqual(len(sink.submissions), 2)
         self.assertEqual(pipeline.output.saves, [("frame.png", True)])
 
+    def test_pipeline_reports_each_isolated_sink_error_to_the_sink_that_threw_it(self):
+        with mock.patch("noisemaker.runtime.pipeline.TDBackend"), \
+                mock.patch("noisemaker.runtime.pipeline.SurfaceManager"):
+            pipeline = Pipeline(None, None)
+        configure_error = RuntimeError("configure failed")
+        defer_error = RuntimeError("defer probe failed")
+        submit_error = RuntimeError("submit failed")
+        reported = []
+        state = {"failing": False}
+
+        class FailingSink:
+            def configure(self, descriptor):
+                if state["failing"]:
+                    raise configure_error
+
+            def defer_render(self):
+                if state["failing"]:
+                    raise defer_error
+                return False
+
+            def submit(self, texture, timestamp):
+                if state["failing"]:
+                    raise submit_error
+                return True
+
+            def close(self, options=None):
+                pass
+
+            def onError(self, error):
+                reported.append(("failed", error))
+
+        class SilentSink:
+            # A sink without onError fails exactly as before: counted and isolated.
+            def configure(self, descriptor):
+                if state["failing"]:
+                    raise RuntimeError("silent configure failed")
+
+            def submit(self, texture, timestamp):
+                if state["failing"]:
+                    raise RuntimeError("silent submit failed")
+                return True
+
+            def close(self, options=None):
+                pass
+
+        class ThrowingReporterSink:
+            # A sink whose reporter throws does not stop the frame.
+            def __init__(self):
+                self.reports = 0
+
+            def configure(self, descriptor):
+                if state["failing"]:
+                    raise RuntimeError("configure failed again")
+
+            def submit(self, texture, timestamp):
+                return True
+
+            def close(self, options=None):
+                pass
+
+            def onError(self, error):
+                self.reports += 1
+                raise RuntimeError("reporter failed")
+
+        class HealthySink:
+            def __init__(self):
+                self.calls = []
+
+            def configure(self, descriptor):
+                self.calls.append(("configure", descriptor["width"], descriptor["height"]))
+
+            def defer_render(self):
+                self.calls.append(("deferRender",))
+                return False
+
+            def submit(self, texture, timestamp):
+                self.calls.append(("submit", timestamp))
+                return True
+
+            def close(self, options=None):
+                pass
+
+            def onError(self, error):
+                reported.append(("healthy", error))
+
+        pipeline.output = FakeOutput()
+        failing_sink = FailingSink()
+        silent_sink = SilentSink()
+        throwing_reporter = ThrowingReporterSink()
+        healthy_sink = HealthySink()
+        pipeline.add_sink(failing_sink)
+        pipeline.add_sink(silent_sink)
+        pipeline.add_sink(throwing_reporter)
+        pipeline.add_sink(healthy_sink)
+
+        state["failing"] = True
+        pipeline._configure_sinks()
+        self.assertFalse(pipeline.should_defer_render())
+        self.assertTrue(pipeline.submit_frame(7))
+
+        self.assertEqual(reported, [
+            ("failed", configure_error),
+            ("failed", defer_error),
+            ("failed", submit_error),
+        ])
+        self.assertEqual(throwing_reporter.reports, 1)
+        # A sink that does not fail sees the same calls as before and no report.
+        self.assertEqual(healthy_sink.calls, [
+            ("configure", 256, 256), ("deferRender",), ("submit", 7),
+        ])
+        stats = pipeline.sink_manager.stats
+        self.assertEqual(stats[failing_sink], {"accepted": 0, "dropped": 0, "failed": 3})
+        self.assertEqual(stats[silent_sink], {"accepted": 0, "dropped": 0, "failed": 2})
+        self.assertEqual(stats[throwing_reporter], {"accepted": 1, "dropped": 0, "failed": 1})
+        self.assertEqual(stats[healthy_sink], {"accepted": 1, "dropped": 0, "failed": 0})
+
     def test_renderer_delegates_sink_and_frame_export_apis(self):
         renderer = NMRenderer.__new__(NMRenderer)
         renderer.pipeline = None

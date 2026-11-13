@@ -16,6 +16,18 @@ from .td_backend import TDBackend
 from .surface_manager import SurfaceManager
 
 
+def report_sink_error(error, sink):
+    """Pass an isolated sink failure to the sink that threw it (reference db2173e3).
+
+    A sink opts in with an optional onError(error) method, for example to end an
+    output whose new size it cannot send. Rendering and the other sinks continue
+    either way.
+    """
+    on_error = getattr(sink, 'onError', None)
+    if callable(on_error):
+        on_error(error)
+
+
 class Pipeline:
     def __init__(self, parent_comp, shaders_root, *, width=256, height=256, time=0.25,
                  midi_state=None, audio_state=None):
@@ -32,7 +44,7 @@ class Pipeline:
                                  external_state=self._external_state)
         self.output = None      # the TOP presented (renderSurface)
         self._effect_tops = []
-        self.sink_manager = SinkManager()
+        self.sink_manager = SinkManager(on_error=report_sink_error)
 
     def build(self, graph):
         self._graph = graph
