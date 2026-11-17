@@ -57,6 +57,19 @@ class AuthorityBindingTests(unittest.TestCase):
             self.assertEqual(ledger.hero_protocol(self.root), old)
         with mock.patch.dict(os.environ, {'NM_REFERENCE_SHA': current}, clear=True):
             self.assertEqual(ledger.hero_protocol(self.root), dict(old, reference_sha=current))
-        with mock.patch.dict(os.environ, {'NM_REFERENCE_SHA': 'b' * 40}, clear=True):
-            with self.assertRaisesRegex(ValueError, 'hero authority'):
+
+    def test_hero_protocol_follows_a_pin_move(self):
+        old = ledger.PRESENT_HERO_PROTOCOL
+        with mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(ledger.hero_protocol(self.root), dict(old, reference_sha='a' * 40))
+            (self.root / 'scripts/test').write_text('NM_REFERENCE_SHA_PINNED="' + 'd' * 40 + '"\n')
+            self.assertEqual(ledger.hero_protocol(self.root), dict(old, reference_sha='d' * 40))
+
+    def test_hero_protocol_rejects_a_malformed_authority(self):
+        with mock.patch.dict(os.environ, {'NM_REFERENCE_SHA': 'main'}, clear=True):
+            with self.assertRaisesRegex(ValueError, 'full commit SHA'):
+                ledger.hero_protocol(self.root)
+        (self.root / 'scripts/test').write_text('no pin here\n')
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(ValueError, 'full commit SHA'):
                 ledger.hero_protocol(self.root)

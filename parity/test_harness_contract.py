@@ -488,8 +488,20 @@ class HarnessContractTests(unittest.TestCase):
                 later_binding = json.loads((out / "ledger.tsv.binding.json").read_text())
                 self.assertEqual(later_binding["pin"], "b" * 40)
                 with mock.patch.dict(os.environ, later_environment, clear=True):
-                    with self.assertRaisesRegex(ValueError, "hero authority does not match the visual policy"):
-                        load_write_ledger().hero_protocol(root)
+                    self.assertEqual(load_write_ledger().hero_protocol(root),
+                                     dict(evidence["protocol"], reference_sha="b" * 40))
+                # A pin move keeps present_hero passing once it is measured again at the new pin.
+                moved = subprocess.run(result.args, cwd=root, capture_output=True, text=True, env=later_environment)
+                self.assertEqual(moved.returncode, 0, moved.stdout + moved.stderr)
+                moved_evidence = json.loads(report.read_text())
+                self.assertEqual(moved_evidence["reference_sha"], "b" * 40)
+                self.assertEqual(moved_evidence["protocol"], dict(evidence["protocol"], reference_sha="b" * 40))
+                moved_ledger = subprocess.run(written.args, capture_output=True, text=True, env=later_environment)
+                self.assertEqual(moved_ledger.returncode, 0, moved_ledger.stdout + moved_ledger.stderr)
+                moved_rows = [line.split("\t") for line in (out / "ledger.tsv").read_text().splitlines()]
+                moved_row = next(row for row in moved_rows if row[0] == "present_hero")
+                self.assertNotEqual(moved_row[1], "FAIL")
+                self.assertEqual(moved_row[4:7], [str(tolerance), str(aggregate_ssim), "accumulate"])
                 (root / "scripts" / "test").write_text('NM_REFERENCE_SHA_PINNED="' + reference_sha + '"\n')
                 report.write_text(json.dumps(evidence))
                 restored = subprocess.run(written.args, capture_output=True, text=True, env=environment)

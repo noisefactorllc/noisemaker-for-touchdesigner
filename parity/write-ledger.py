@@ -28,18 +28,6 @@ PRESENT_HERO_PROTOCOL = {
     "native_frames": 8, "native_samples": [1, 2, 8], "initial_state": "zeroed",
     "fixture_sha256": "e0c083445a843a137e76fbba4572c897a6a0b034956253910dd61b9638493e08",
 }
-PRESENT_HERO_PROTOCOLS = {
-    "67d6e44c750e4f9bebb34f88645b934e3b933a84": {**PRESENT_HERO_PROTOCOL, "reference_sha": "67d6e44c750e4f9bebb34f88645b934e3b933a84"},
-    PRESENT_HERO_PROTOCOL["reference_sha"]: PRESENT_HERO_PROTOCOL,
-    "32d8d3e6a6dbb3dee2dfbcc8d31bd1c52342eca3": {
-        **PRESENT_HERO_PROTOCOL,
-        "reference_sha": "32d8d3e6a6dbb3dee2dfbcc8d31bd1c52342eca3",
-    },
-    "06070900e506b6c8ff6eb7b12d33e6c1bf285108": {
-        **PRESENT_HERO_PROTOCOL,
-        "reference_sha": "06070900e506b6c8ff6eb7b12d33e6c1bf285108",
-    },
-}
 
 
 def requested_authority(root):
@@ -77,10 +65,11 @@ def verified_authority(root, provenance=False):
 
 
 def hero_protocol(root):
-    protocol = PRESENT_HERO_PROTOCOLS.get(requested_authority(root))
-    if protocol is None:
-        raise ValueError("The hero authority does not match the visual policy.")
-    return protocol
+    # The hero capture protocol is fixed; only its authority moves, and it follows the
+    # pin in scripts/test (or the explicit NM_REFERENCE_SHA). verified_authority() proves
+    # the reference is at that commit before hero evidence is produced or graded, and
+    # accumulate_row() rejects evidence whose recorded protocol names another authority.
+    return {**PRESENT_HERO_PROTOCOL, "reference_sha": requested_authority(root)}
 
 
 # Multi-frame cases graded by parity/accumulate.sh at frames 1, 2 and 8 from a zeroed start.
