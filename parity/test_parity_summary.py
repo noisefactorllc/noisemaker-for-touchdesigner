@@ -249,7 +249,10 @@ class InstallReferenceDependenciesTests(unittest.TestCase):
 
     def test_a_missing_tls_root_retries_with_the_system_ca_bundle(self):
         commands = []
-        with tempfile.TemporaryDirectory() as temp:
+        # The retry is skipped when the caller already set NODE_EXTRA_CA_CERTS, so the
+        # test runs without it whatever the host shell exports.
+        environment = {k: v for k, v in os.environ.items() if k != "NODE_EXTRA_CA_CERTS"}
+        with tempfile.TemporaryDirectory() as temp, mock.patch.dict(os.environ, environment, clear=True):
             root = Path(temp)
             (root / "package.json").write_text("{}\n")
             bundles = [b for b in parity_summary.CA_BUNDLES if Path(b).is_file()]
