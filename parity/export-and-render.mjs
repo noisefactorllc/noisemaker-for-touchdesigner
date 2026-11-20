@@ -47,12 +47,13 @@ const EXPORT_GRAPH = join(__dirname, '..', 'tools', 'export-graph.mjs')
 // The reference's harness needs the browser build its own Playwright version
 // pins. A native runner can resolve a different Playwright (a stale tree above
 // the reference) or hold a browser cache entry whose real binary is missing, so
-// the golden render dies at launch with an opaque exec error. Always launch from
-// a checkout-local cache this script verified itself: probe a launch from the
+// the golden render dies at launch with an opaque exec error. A checkout reference
+// launches from a checkout-local cache this script verified itself: probe a launch from the
 // managed cache, install the reference's browser into it when needed, and point
 // Playwright at it before the harness imports Playwright (the cache resolves at
 // import time). Verification stays strict: this only provisions the same pinned
 // browser, and a probe or install that still cannot launch fails the render.
+// A verified archive does not use this cache (see ensureReferenceBrowser).
 const BROWSER_CACHE = join(__dirname, 'out', 'browsers-' + process.platform)
 
 function probeChromium (browsersPath) {
@@ -86,19 +87,8 @@ function runInstaller (argv, env) {
   return false
 }
 
-// The Playwright CLI that installs the reference's browser. A verified archive
-// (NM_REFERENCE_OBJECT_STORE) is checked again after the render, so nothing may be
-// installed into it: its dependencies live outside it in NM_REFERENCE_DEPENDENCIES,
-// as scripts/parity-summary requires.
+// The Playwright CLI that installs a checkout reference's browser.
 function referencePlaywrightCli () {
-  if (process.env.NM_REFERENCE_OBJECT_STORE) {
-    const dependencies = process.env.NM_REFERENCE_DEPENDENCIES
-    const cli = dependencies ? join(dependencies, 'node_modules', 'playwright-core', 'cli.js') : null
-    if (!cli || !existsSync(cli)) {
-      throw new Error('verified archives require ready external dependencies: NM_REFERENCE_DEPENDENCIES has no playwright CLI to install the reference browser')
-    }
-    return cli
-  }
   let cli = join(REFERENCE_ROOT, 'node_modules', 'playwright-core', 'cli.js')
   if (!existsSync(cli)) {
     // The reference's dependencies are missing; the harness cannot resolve its
@@ -199,7 +189,19 @@ function wrapBrowserForProxy (cache) {
   }
 }
 
+// A verified archive (NM_REFERENCE_OBJECT_STORE) is checked again after the render,
+// so nothing may be installed into it, and nothing is downloaded into the checkout:
+// its dependencies and browser must already be available outside both, as
+// scripts/parity-summary requires. Launch that browser from the cache the
+// environment names (the default cache when PLAYWRIGHT_BROWSERS_PATH is unset),
+// and fail before any download when it does not launch.
 export function ensureReferenceBrowser (cache = BROWSER_CACHE) {
+  if (process.env.NM_REFERENCE_OBJECT_STORE) {
+    if (!probeChromium(process.env.PLAYWRIGHT_BROWSERS_PATH)) {
+      throw new Error('verified archives require ready external dependencies and browser: the reference browser does not launch, and nothing is downloaded for a verified archive')
+    }
+    return
+  }
   if (probeChromium(cache)) {
     process.env.PLAYWRIGHT_BROWSERS_PATH = cache
     return
