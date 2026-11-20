@@ -30,7 +30,7 @@
 // and the upstream Noisemaker engine reachable via NM_REFERENCE_ROOT (its shaders/, demo/).
 // See parity/README.md.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, renameSync, chmodSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, renameSync, chmodSync, realpathSync } from 'node:fs'
 import { dirname, resolve, basename, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { spawnSync } from 'node:child_process'
@@ -86,7 +86,19 @@ function runInstaller (argv, env) {
   return false
 }
 
-function installReferenceBrowser () {
+// The Playwright CLI that installs the reference's browser. A verified archive
+// (NM_REFERENCE_OBJECT_STORE) is checked again after the render, so nothing may be
+// installed into it: its dependencies live outside it in NM_REFERENCE_DEPENDENCIES,
+// as scripts/parity-summary requires.
+function referencePlaywrightCli () {
+  if (process.env.NM_REFERENCE_OBJECT_STORE) {
+    const dependencies = process.env.NM_REFERENCE_DEPENDENCIES
+    const cli = dependencies ? join(dependencies, 'node_modules', 'playwright-core', 'cli.js') : null
+    if (!cli || !existsSync(cli)) {
+      throw new Error('verified archives require ready external dependencies: NM_REFERENCE_DEPENDENCIES has no playwright CLI to install the reference browser')
+    }
+    return cli
+  }
   let cli = join(REFERENCE_ROOT, 'node_modules', 'playwright-core', 'cli.js')
   if (!existsSync(cli)) {
     // The reference's dependencies are missing; the harness cannot resolve its
@@ -99,15 +111,20 @@ function installReferenceBrowser () {
       throw new Error('the reference checkout has no playwright CLI to install its browser (' + REFERENCE_ROOT + ')')
     }
   }
-  mkdirSync(BROWSER_CACHE, { recursive: true })
-  if (!runInstaller([process.execPath, cli, 'install', 'chromium'], { ...process.env, PLAYWRIGHT_BROWSERS_PATH: BROWSER_CACHE })) {
-    throw new Error('the reference browser install failed (cache ' + BROWSER_CACHE + ')')
+  return cli
+}
+
+function installReferenceBrowser (cache) {
+  const cli = referencePlaywrightCli()
+  mkdirSync(cache, { recursive: true })
+  if (!runInstaller([process.execPath, cli, 'install', 'chromium'], { ...process.env, PLAYWRIGHT_BROWSERS_PATH: cache })) {
+    throw new Error('the reference browser install failed (cache ' + cache + ')')
   }
-  wrapBrowserForProxy()
-  if (!probeChromium(BROWSER_CACHE)) {
-    throw new Error('the reference browser did not launch from the managed cache (cache ' + BROWSER_CACHE + ')')
+  wrapBrowserForProxy(cache)
+  if (!probeChromium(cache)) {
+    throw new Error('the reference browser did not launch from the managed cache (cache ' + cache + ')')
   }
-  process.env.PLAYWRIGHT_BROWSERS_PATH = BROWSER_CACHE
+  process.env.PLAYWRIGHT_BROWSERS_PATH = cache
 }
 
 // A sandboxed browser cache launches its browsers through the filtering proxy
@@ -161,15 +178,15 @@ function findFile (dir, name, depth) {
   return null
 }
 
-function wrapBrowserForProxy () {
+function wrapBrowserForProxy (cache) {
   const proxy = proxyArgumentFromShims()
   if (!proxy) return
   let entries
-  try { entries = readdirSync(BROWSER_CACHE, { withFileTypes: true }) } catch { return }
+  try { entries = readdirSync(cache, { withFileTypes: true }) } catch { return }
   for (const entry of entries) {
     if (!entry.isDirectory() || !entry.name.startsWith('chromium')) continue
     for (const name of BROWSER_BINARIES) {
-      const binary = findFile(join(BROWSER_CACHE, entry.name), name, 3)
+      const binary = findFile(join(cache, entry.name), name, 3)
       if (!binary) continue
       const stats = statSync(binary)
       if (stats.size < 4096) continue // already a wrapper
@@ -182,12 +199,12 @@ function wrapBrowserForProxy () {
   }
 }
 
-function ensureReferenceBrowser () {
-  if (probeChromium(BROWSER_CACHE)) {
-    process.env.PLAYWRIGHT_BROWSERS_PATH = BROWSER_CACHE
+export function ensureReferenceBrowser (cache = BROWSER_CACHE) {
+  if (probeChromium(cache)) {
+    process.env.PLAYWRIGHT_BROWSERS_PATH = cache
     return
   }
-  installReferenceBrowser()
+  installReferenceBrowser(cache)
 }
 
 // Self-contained PNG encoder (Node built-in zlib only) so the harness has NO
@@ -581,7 +598,13 @@ async function main () {
   process.stderr.write(`[parity] wrote ${pngPath} (${opts.size}x${opts.size}, time=${opts.time}, backend=${opts.backend})\n`)
 }
 
-main().catch(err => {
-  process.stderr.write(`[parity] FAILED: ${err?.stack || err?.message || JSON.stringify(err)}\n`)
-  process.exit(1)
-})
+// Render only when run as a script: the unit tests import this module for ensureReferenceBrowser.
+function runAsScript () {
+  try { return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)) } catch { return false }
+}
+if (runAsScript()) {
+  main().catch(err => {
+    process.stderr.write(`[parity] FAILED: ${err?.stack || err?.message || JSON.stringify(err)}\n`)
+    process.exit(1)
+  })
+}
