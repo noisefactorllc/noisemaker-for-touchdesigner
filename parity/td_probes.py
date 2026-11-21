@@ -83,13 +83,13 @@ def _signal(pid, sig):
         os.kill(pid, sig)
 
 
-# The holder leads the run's process group. When its launcher is gone without having stopped the
-# run (a SIGKILL nothing can catch), it stops every other process left in its own group, each by its
-# exact PID, and exits, so not even a killed launcher leaves TouchDesigner behind.
-HOLDER = '''import os, signal, subprocess, time
-parent, group = os.getppid(), os.getpgrp()
-while os.getppid() == parent:
-    time.sleep(1)
+# The holder leads the run's process group and blocks reading a pipe from its launcher. The read
+# returns when the launcher closes the pipe or is gone, however it ended (a second interrupt during
+# cleanup, a SIGKILL nothing can catch); the holder then stops every other process left in its own
+# group, each by its exact PID, and exits, so no ending of the launcher leaves TouchDesigner behind.
+HOLDER = '''import os, signal, subprocess, sys, time
+group = os.getpgrp()
+sys.stdin.buffer.read()
 def members():
     ps = subprocess.Popen(['ps', '-A', '-o', 'pid=', '-o', 'pgid='], stdout=subprocess.PIPE, text=True)
     listing = ps.communicate()[0]
@@ -115,13 +115,18 @@ def held_process_group():
     member found later is a process this run started or one of its children.
     """
     holder = subprocess.Popen([sys.executable, '-c', HOLDER],
-                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                              stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
                               stderr=subprocess.DEVNULL, process_group=0)
     try:
         yield holder.pid
     finally:
-        holder.kill()
-        holder.wait()
+        # Closing the pipe lets the holder stop anything left in its group and exit.
+        holder.stdin.close()
+        try:
+            holder.wait(timeout=60)
+        except subprocess.TimeoutExpired:
+            holder.kill()
+            holder.wait()
 
 
 def stop_members(pgid, grace):
@@ -183,6 +188,17 @@ def exit_on_signal(signum, _frame):
     raise SystemExit(128 + signum)
 
 
+def install_signal_handlers():
+    """Ctrl-C, SIGTERM and SIGHUP unwind a run, so it stops what it started.
+
+    SIGINT is set explicitly: a launcher started in the background of a shell
+    without job control inherits SIGINT ignored.
+    """
+    signal.signal(signal.SIGINT, signal.default_int_handler)
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, exit_on_signal)
+
+
 # --- report checks -----------------------------------------------------------
 
 def _short(value, limit=200):
@@ -239,9 +255,16 @@ class Checks:
     def present(self, name, field, wanted):
         return self.check(name, field, bool, wanted)
 
+    def no_errors(self, name, field):
+        """The step records field, and it holds no error."""
+        row = self.step(name)
+        if row is not None and (field not in row or row[field] is not None):
+            self.fail('%s: %s is %s, expected a recorded None' % (name, field, _short(row.get(field, 'not recorded'))))
+        return row
+
     def render(self, name):
         self.equals(name, 'meaningful', True)
-        return self.equals(name, 'top_errors', None)
+        return self.no_errors(name, 'top_errors')
 
     def folder(self, expected):
         self.check('project-opened', 'project.folder',
@@ -258,8 +281,9 @@ def check_workflow_build(report):
     # connect; the probe then connects a display TOP inside the consumer COMP.
     c.equals('connect-top', 'connected', True)
     c.render('cook-1280')
-    c.equals('cook-1280', 'shader_errors', None)
-    c.render('resize-320x240')
+    c.no_errors('cook-1280', 'shader_errors')
+    # The probe records no TOP errors for the resize; the resized image is checked below.
+    c.equals('resize-320x240', 'meaningful', True)
     c.equals('resize-320x240', 'width', 320)
     c.equals('resize-320x240', 'height', 240)
     # The documented example draws solid(color: [0.9, 0.3, 0.5]) at alpha 1: a mean of 0.675.
@@ -269,7 +293,7 @@ def check_workflow_build(report):
     c.check('invalid-dsl', 'raised', lambda value: isinstance(value, str) and bool(value),
             'the error set_dsl raises for an invalid program')
     c.equals('recover-valid-dsl', 'recovered', True)
-    c.equals('recover-valid-dsl', 'top_errors', None)
+    c.no_errors('recover-valid-dsl', 'top_errors')
     resized = c.step('resize-320x240')
     if resized is not None:
         c.check('recover-valid-dsl', 'sha256', lambda value: bool(value) and value == resized.get('sha256'),
@@ -345,6 +369,9 @@ def check_kit(phase, report, folder):
             expected = len(enumeration['customPars'])
             if driven.get('count') != expected or len(driven.get('driven') or []) != expected:
                 c.fail('custom-parameters-driven: drove %s of %d enumerated parameters' % (_short(driven.get('count')), expected))
+            names = sorted(str((entry or {}).get('name')) for entry in enumeration['customPars'])
+            if sorted(str((entry or {}).get('par')) for entry in driven.get('driven') or []) != names:
+                c.fail('custom-parameters-driven: the driven parameters are not the enumerated ones')
         for entry in (driven or {}).get('driven') or []:
             name = entry.get('par')
             if 'error' in entry or 'restore_error' in entry:
@@ -595,7 +622,5 @@ def main(env=None, argv=()):
 
 
 if __name__ == '__main__':
-    # SIGTERM and SIGHUP unwind the run as Ctrl-C does, so it stops what it started.
-    for sig in (signal.SIGTERM, signal.SIGHUP):
-        signal.signal(sig, exit_on_signal)
+    install_signal_handlers()
     sys.exit(main(argv=sys.argv[1:]))

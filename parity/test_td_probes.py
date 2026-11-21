@@ -179,6 +179,7 @@ class ProcessTests(unittest.TestCase):
 
     def test_it_signals_processes_only_by_their_exact_pid(self):
         source = Path(td_probes.__file__).read_text()
+        self.assertIn('install_signal_handlers()\n    sys.exit(main(', source, 'the command line installs the signal handlers')
         self.assertNotRegex(source, r"killpg|os\.kill\(\s*-|_signal\(\s*-")
         self.assertNotIn('pkill', source)
         self.assertNotIn('killall', source)
@@ -212,44 +213,61 @@ class ProcessTests(unittest.TestCase):
             outsider.wait()
 
 
-LAUNCHER = '''import signal, sys
+LAUNCHER = '''import sys
 sys.path.insert(0, sys.argv[1])
 import td_probes
-for sig in (signal.SIGTERM, signal.SIGHUP):
-    signal.signal(sig, td_probes.exit_on_signal)
+td_probes.install_signal_handlers()
 td_probes.run_touchdesigner(sys.argv[2], sys.argv[3], None, sys.argv[4], timeout=300, grace=2)
+'''
+
+# A stand-in TouchDesigner that starts a child of its own, records the PIDs of
+# itself, its group's holder and that child, and waits; IGNORE_TERM makes it
+# ignore the launcher's stop request.
+INTERRUPTIBLE = '''import os, signal, subprocess, sys, time
+if os.environ.get('IGNORE_TERM'):
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+child = subprocess.Popen(['sleep', '600'])
+open(%r, 'w').write('%%d %%d %%d' %% (os.getpid(), os.getpgrp(), child.pid))
+time.sleep(600)
 '''
 
 
 class InterruptedLauncherTests(unittest.TestCase):
-    """A launcher stopped by Ctrl-C, SIGTERM or SIGHUP leaves no process of its run behind."""
+    """However the launcher ends, it leaves no process of its run behind."""
 
-    def run_and_interrupt(self, sig):
+    def run_and_interrupt(self, *signals, ignore_term=False):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             pids = tmp / 'pids'
-            td = executable(tmp, 'touchdesigner', 'import os, time\n'
-                            'open(%r, "w").write("%%d %%d" %% (os.getpid(), os.getpgrp()))\n'
-                            'time.sleep(600)\n' % str(pids))
+            td = executable(tmp, 'touchdesigner', INTERRUPTIBLE % str(pids))
+            env = dict(os.environ, IGNORE_TERM='1' if ignore_term else '')
             launcher = subprocess.Popen([sys.executable, '-c', LAUNCHER, str(Path(td_probes.__file__).parent),
-                                         str(td), str(tmp / 'probe.toe'), str(tmp / 'td.log')])
+                                         str(td), str(tmp / 'probe.toe'), str(tmp / 'td.log')],
+                                        env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            started = []
             try:
                 deadline = time.monotonic() + 30
-                while not (pids.exists() and pids.read_text()) and time.monotonic() < deadline:
+                while not (pids.exists() and len(pids.read_text().split()) == 3) and time.monotonic() < deadline:
                     time.sleep(0.1)
-                child, holder = map(int, pids.read_text().split())
-                launcher.send_signal(sig)
-                launcher.wait(timeout=30)
-                deadline = time.monotonic() + 30
-                while (alive(child) or alive(holder)) and time.monotonic() < deadline:
+                started = [int(pid) for pid in pids.read_text().split()]
+                for index, sig in enumerate(signals):
+                    if index:
+                        time.sleep(1)
+                    launcher.send_signal(sig)
+                launcher.communicate(timeout=60)
+                deadline = time.monotonic() + 40
+                while any(alive(pid) for pid in started) and time.monotonic() < deadline:
                     time.sleep(0.2)
-                self.assertFalse(alive(child), 'TouchDesigner outlived the interrupted launcher')
-                self.assertFalse(alive(holder), 'the holder outlived the interrupted launcher')
-                self.assertEqual(live_members(holder), [])
+                for name, pid in zip(('TouchDesigner', 'the holder', "TouchDesigner's own child"), started):
+                    self.assertFalse(alive(pid), '%s outlived the launcher' % name)
+                self.assertEqual(live_members(started[1]), [])
             finally:
                 if launcher.poll() is None:
                     launcher.kill()
-                    launcher.wait()
+                    launcher.communicate()
+                for pid in started:
+                    if alive(pid):
+                        os.kill(pid, signal.SIGKILL)
 
     def test_ctrl_c(self):
         self.run_and_interrupt(signal.SIGINT)
@@ -262,6 +280,9 @@ class InterruptedLauncherTests(unittest.TestCase):
 
     def test_a_killed_launcher_leaves_its_holder_to_stop_the_run(self):
         self.run_and_interrupt(signal.SIGKILL)
+
+    def test_a_second_interrupt_during_cleanup_still_stops_the_run(self):
+        self.run_and_interrupt(signal.SIGINT, signal.SIGINT, ignore_term=True)
 
 
 class ReportCheckTests(unittest.TestCase):
@@ -280,6 +301,20 @@ class ReportCheckTests(unittest.TestCase):
         self.assertEqual(td_probes.check_workflow_build(RECORDED['workflow-build']), [])
         self.assertEqual(td_probes.check_workflow_reopen(RECORDED['workflow-reopen']), [])
         self.assertEqual(td_probes.check_kit('recover', RECORDED['kit-recover'], '<work>/kit-moved'), [])
+
+    def test_an_error_field_must_be_recorded_to_count_as_clean(self):
+        report = workflow_report('build')
+        del step(report, 'cook-1280')['top_errors']
+        self.assert_fails(td_probes.check_workflow_build(report), 'expected a recorded None')
+
+    def test_the_driven_parameters_are_the_enumerated_ones(self):
+        report = kit_report('parameters', self.FOLDER)
+        step(report, 'enumeration')['customPars'] = [{'name': 'Speed'}]
+        driven = {'par': 'Speed', 'render': {'meaningful': True}, 'rebuild_returned': True}
+        step(report, 'custom-parameters-driven').update(count=1, driven=[driven])
+        self.assertEqual(td_probes.check_kit('parameters', report, self.FOLDER), [])
+        step(report, 'custom-parameters-driven').update(driven=[dict(driven, par='Other')])
+        self.assert_fails(td_probes.check_kit('parameters', report, self.FOLDER), 'not the enumerated ones')
 
     def test_a_wired_out_passes_as_well_as_a_recorded_refusal(self):
         report = kit_report('build', self.FOLDER)
@@ -301,6 +336,7 @@ class ReportCheckTests(unittest.TestCase):
             ('recover', 'recovery-render', {'rebuild_returned': False}, 'rebuild_returned'),
             ('parameters', 'enumeration', {'customPars': 'error: enumeration failed'}, 'customPars'),
             ('parameters', 'custom-parameters-driven', {'count': 1, 'driven': []}, 'drove 1 of 0'),
+            ('parameters', 'enumeration', {'customPars': [{'name': 'Speed'}]}, 'drove 0 of 1'),
             ('parameters', 'custom-parameters-driven',
              {'count': 1, 'driven': [{'par': 'Speed', 'render': {'meaningful': True}, 'rebuild_returned': False}]},
              'custom parameter Speed: rebuild() did not return'),
@@ -337,11 +373,12 @@ class ReportCheckTests(unittest.TestCase):
             ('build', 'cook-1280', {'shader_errors': ['x']}, 'shader_errors'),
             ('build', 'resize-320x240', {'width': 1280}, 'width'),
             ('build', 'resize-320x240', {'meaningful': False}, 'meaningful'),
-            ('build', 'resize-320x240', {'top_errors': 'GLSL error'}, 'top_errors'),
+            ('build', 'cook-1280', {'top_errors': 'GLSL error'}, 'top_errors'),
             ('build', 'cook-1280', {'stats': {'all_black': False, 'unique_bytes': -1, 'mean': 1.0}}, 'documented solid colour'),
             ('build', 'resize-320x240', {'stats': {'all_black': False, 'unique_bytes': 7}}, 'documented solid colour'),
             ('build', 'recover-valid-dsl', {'sha256': 'cd'}, 'the resized render again'),
             ('build', 'recover-valid-dsl', {'top_errors': 'GLSL error'}, 'top_errors'),
+            ('build', 'cook-1280', {'shader_errors': 'Metal compile error'}, 'shader_errors'),
             ('build', 'invalid-dsl', {'raised': None}, 'raised'),
             ('build', 'recover-valid-dsl', {'recovered': False}, 'recovered'),
             ('build', 'save-project', {'size': 0}, 'size'),
