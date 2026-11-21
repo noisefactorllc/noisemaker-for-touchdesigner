@@ -60,8 +60,9 @@ RENDER_HEIGHT = 1280
 #: 3D-volume atlas cap. A synth3d volume is a `size x size^2` atlas, so 32
 #: gives 32x1024 -- under the 1280 cook cap. The port's own default is 64: it
 #: stores a larger atlas folded into bands under the cook cap, and keeps a graph
-#: that reads a volume with texture() or textureSize() at 32. Raise this on a
-#: Commercial or Educational license, which has no cap.
+#: that reads a volume with texture() or textureSize() at 32. A Commercial or
+#: Educational license has no cook cap, so raise this there; a graph the port
+#: keeps at 32 stays at 32 or below on every license, however high this is set.
 #:
 #: The engine reads this from the environment when its backend module is first
 #: imported, so :func:`apply_volume_cap` must run before that import and a

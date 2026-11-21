@@ -71,8 +71,9 @@ it. A `synth3d` volume is a `size × size²` atlas, so
 bands under the cook cap, and keeps a graph that reads a volume with `texture()` or `textureSize()`
 at 32.
 
-On a Commercial or Educational license there is no cap: raise `RENDER_WIDTH` / `RENDER_HEIGHT` and
-`MAX_VOLUME_SIZE`, all three at the top of `integrate.py`.
+On a Commercial or Educational license there is no cook cap: raise `RENDER_WIDTH` /
+`RENDER_HEIGHT` and `MAX_VOLUME_SIZE`, all three at the top of `integrate.py`. A graph that the port
+keeps at 32 stays at 32 or below on every license, however high `MAX_VOLUME_SIZE` is set.
 
 One catch on `MAX_VOLUME_SIZE`: the engine reads it out of the environment (`NM_MAX_VOLUME_SIZE`)
 the first time its backend is imported, and Python caches that import for the life of the process.
