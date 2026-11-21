@@ -151,7 +151,9 @@ texture); `render3d` / `renderLit3d` then raymarch it. Two TD-specific fixes (bo
    when a pass reads a volume with a call the fold does not remap (`texture()`, `textureSize()`, …:
    palette3d, the flow3d trail) or draws one with a point deposit (flow3d). A reader's fold comes from
    its input's texture spec, so a read built before its writer (through a Feedback TOP) still folds. heightmap3d_landscape (default volumeSize 64) matches
-   its reference with max-diff 1. Raise `NM_MAX_VOLUME_SIZE` on a Commercial/Educational license.
+   its reference with max-diff 1. A Commercial/Educational license has no cook cap, so raise
+   `NM_MAX_VOLUME_SIZE` there; a graph kept at 32 stays at 32 or below on every license, however
+   high `NM_MAX_VOLUME_SIZE` is set.
    - The **orbit-camera** gens (noise3d/fractal3d/cell3d/shape3d/renderLit3d) view the volume from
      *outside* at a distance, so the raymarch averages the 64→32 cap away and their default-`volumeSize:64`
      parity DSLs still hit max-diff 1 against a 64 golden. **flythrough3d is the one exception**: its
