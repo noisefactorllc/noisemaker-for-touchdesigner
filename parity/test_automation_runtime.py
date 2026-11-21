@@ -78,6 +78,26 @@ class AutomationRuntimeTests(unittest.TestCase):
         self.assertEqual(0, resolve_uniform_value(midi, 0.5, external_state=external_state))
         self.assertEqual(0.25, resolve_uniform_value(audio, 0.5, external_state=external_state))
 
+    def test_midi_and_audio_automation_take_their_minimum_without_host_state(self):
+        midi = {"type": "Midi", "channel": 1, "mode": 2, "min": 0.25, "max": 1, "sensitivity": 1}
+        audio = {"type": "Audio", "band": 3, "min": 0.25, "max": 0.75}
+
+        for external_state in (None, {}, {"midi": None, "audio": None}):
+            self.assertEqual(0.25, resolve_uniform_value(midi, 0.5, external_state=external_state))
+            self.assertEqual(0.25, resolve_uniform_value(audio, 0.5, external_state=external_state))
+        self.assertEqual(0.25, resolve_uniform_value(
+            dict(midi, name="Missing"), 0.5, external_state={"midi": {"ports": {}}}))
+        self.assertEqual(0.25, resolve_uniform_value(
+            dict(audio, name="Missing", channel=1), 0.5, external_state={"audio": {"devices": {}}}))
+        self.assertEqual(0.25, resolve_uniform_value(
+            dict(audio, channel=2), 0.5,
+            external_state={"audio": {"defaultChannels": {"1": {"vol": 1}}}}))
+
+    def test_a_midi_channel_the_state_lacks_falls_back_to_channel_1(self):
+        midi = {"type": "Midi", "channel": 5, "mode": 0, "min": 0, "max": 1}
+        state = {"midi": {"channels": {"1": {"key": 127}}}}
+        self.assertEqual(1, resolve_uniform_value(midi, 0.5, external_state=state))
+
     def test_runtime_cycle_guard_fails_closed(self):
         cyclic = oscillator(2)
         cyclic["speed"] = cyclic

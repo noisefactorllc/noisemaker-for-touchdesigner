@@ -127,9 +127,30 @@ def onStart():
 | `Output` | The terminal TOP of the built network — wire it into your own network. |
 | `resize(width, height)` | Re-cook at a new resolution. |
 | `render_to(path, time=0.25)` | Cook one frame and save a PNG. |
+| `set_midi_state(state)` / `set_audio_state(state)` | Pass your host's MIDI or audio state to `midi()` and `audio()` parameter automation. |
+| `get_audio_input_requirements()` | Report the audio captures the built graph requires (`needsLegacy`, `needsLegacyRaw`, `selected`). |
 
 Integration constraints:
 
+- **Inputs.** Your host owns MIDI and audio capture. Pass a dict, or an object with the same
+  attributes, to `set_midi_state` and `set_audio_state`, before or after a build; the renderer keeps
+  it across `set_dsl`, `set_graph` and `resize`.
+  - MIDI state holds `channels`, keyed by channel number or as a list in channel order, each with
+    `key`, `velocity`, `gate`, `time` (note-on time in Unix epoch milliseconds, as
+    `time.time() * 1000`), `cc`, `cc14`, `nrpn`, `pitchBend`, `pressure` and `polyPressure`. A channel the state lacks falls back to channel 1,
+    or to the first entry of a list. A program that selects a port reads `ports`, keyed by port id,
+    each entry with `name`, `connected` and its MIDI state in `state`. An MPE zone reads only
+    through a `get_zone_voice(config)` method.
+  - Audio state holds `low`, `mid`, `high` and `vol` from 0 to 1, and `raw` from -1 to 1, read only
+    when `rawReady` is true. A program that selects an audio channel reads `defaultChannels` (keyed by
+    channel number or as a list in channel order, each entry with these fields), or `devices` (keyed by device id, each entry with `name`, `connected` and `channels`) when it names
+    a device.
+  - With no state, or without the port, zone, device or audio channel a program selects, the
+    parameter takes the `min` of its `midi()` or `audio()` call, scaled from 0 to 1 onto the
+    parameter's range.
+  - The image of `media`, the text overlay of `text`, the note grid of `roll` and the mesh of
+    `meshLoader` have no host binding: each reads a 1×1 transparent black TOP, and the build records
+    a warning. Nothing binds the waveform of `scope` or the spectrum of `spectrum`.
 - **3D-volume effects** are clamped by `NM_MAX_VOLUME_SIZE` (default **64**). A volume atlas taller
   than the free tier's 1280×1280 cook limit is stored folded into bands, which reaches 64. Graphs
   that read a volume with `texture()` or `textureSize()` (flow3d, palette3d) stay clamped to 32 on every license. The clamp is applied when the network is built.

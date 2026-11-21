@@ -46,6 +46,24 @@ Right-click ▸ **Run Script** on the DAT is not a rebuild. It re-executes the m
 defines these functions — nothing is built and nothing changes on screen. Use it after editing
 `integrate.py` itself, to load the new definitions, then call `rebuild()`.
 
+## Inputs
+
+`integrate.py` connects no inputs. Until you pass state, a parameter automated with `midi()` or
+`audio()` takes the `min` of that call, scaled from 0 to 1 onto the parameter's range. Pass your
+own MIDI or audio state to the renderer from Python:
+
+```python
+nm = op('execute1').parent().op('noisemaker').fetch('nm')
+nm.set_midi_state(midi_state)
+nm.set_audio_state(audio_state)
+```
+
+Each build makes a new renderer, so pass the state again after every `rebuild()`. The state shapes
+are described in the port's
+[README](https://github.com/noisefactorllc/noisemaker-for-touchdesigner#use-it-in-your-own-touchdesigner-project).
+The text overlay of `text`, the note grid of `roll` and the mesh of `meshLoader` have no way in: each reads a 1×1
+transparent black TOP, and the build records a warning.
+
 ## What's inside
 
 | Path | What it is |
