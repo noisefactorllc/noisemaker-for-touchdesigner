@@ -485,16 +485,22 @@ class TDBackend:
         reads a volume another way: the flow3d trail is drawn by a point deposit, and e.g.
         palette3d samples its volume with `texture()` / `textureSize()`."""
         cap = _MAX_VOLUME_SIZE
+        fixed = False
         if any(p.is_scatter and 'stateTex1' in p.inputs for p in graph.passes) or any(
                 self._reads_volume_unfoldably(p, graph) for p in graph.passes):
             cap = min(cap, _UNFOLDED_VOLUME_SIZE)
+            fixed = _MAX_VOLUME_SIZE >= _UNFOLDED_VOLUME_SIZE
         capped = False
         for p in graph.passes:
             for k, v in list(p.uniforms.items()):
                 if 'volumeSize' in k and isinstance(v, (int, float)) and not isinstance(v, bool) and v > cap:
                     p.uniforms[k] = cap
                     capped = True
-        if capped:
+        if capped and fixed:
+            self._warn('3D volume atlas clamped to volumeSize<=%d (this graph reads or draws a volume '
+                       'in a way the fold cannot remap, so it stays at %d on every license)'
+                       % (cap, cap))
+        elif capped:
             self._warn('3D volume atlas clamped to volumeSize<=%d (TD cook-resolution cap; raise '
                        'NM_MAX_VOLUME_SIZE on a Commercial license)' % cap)
 

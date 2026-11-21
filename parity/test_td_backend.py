@@ -409,6 +409,49 @@ class VolumeFoldTests(unittest.TestCase):
         self.assertEqual(effect.uniforms["volumeSize"], 64)
 
 
+class VolumeCapWarningTests(unittest.TestCase):
+    LICENSE = ("3D volume atlas clamped to volumeSize<=%d (TD cook-resolution cap; raise "
+               "NM_MAX_VOLUME_SIZE on a Commercial license)")
+    FIXED = ("3D volume atlas clamped to volumeSize<=32 (this graph reads or draws a volume in a "
+             "way the fold cannot remap, so it stays at 32 on every license)")
+
+    @staticmethod
+    def _passes(size, unfoldable):
+        from noisemaker.runtime.render_graph import Pass
+
+        effect = Pass.from_dict({"id": "fx", "uniforms": {"volumeSize": size}, "outputs": {}})
+        if not unfoldable:
+            return effect, [effect]
+        deposit = Pass.from_dict({"id": "dep", "drawMode": "points", "uniforms": {},
+                                  "inputs": {"stateTex1": "s1", "stateTex2": "s2"},
+                                  "outputs": {"fragColor": "trail"}})
+        return effect, [deposit, effect]
+
+    def _warnings(self, limit, size, unfoldable):
+        effect, passes = self._passes(size, unfoldable)
+        backend = td_backend.TDBackend(SimpleNamespace(), "/unused")
+        with mock.patch.object(td_backend, "_MAX_VOLUME_SIZE", limit):
+            backend._cap_volume_size(SimpleNamespace(passes=passes))
+        return effect.uniforms["volumeSize"], backend.warnings
+
+    def test_license_cap_keeps_the_raise_advice(self):
+        self.assertEqual(self._warnings(64, 128, False), (64, [self.LICENSE % 64]))
+
+    def test_fixed_cap_says_the_graph_stays_at_32_on_every_license(self):
+        size, warnings = self._warnings(64, 64, True)
+        self.assertEqual((size, warnings), (32, [self.FIXED]))
+        self.assertNotIn("raise", warnings[0])
+
+    def test_unfoldable_graph_under_a_lower_variable_gets_the_license_text(self):
+        self.assertEqual(self._warnings(16, 64, True), (16, [self.LICENSE % 16]))
+
+    def test_unfoldable_graph_with_the_variable_at_32_gets_the_fixed_text(self):
+        self.assertEqual(self._warnings(32, 64, True), (32, [self.FIXED]))
+
+    def test_no_warning_without_a_clamp(self):
+        self.assertEqual(self._warnings(64, 32, True), (32, []))
+
+
 class DepositShaderSourceTests(unittest.TestCase):
     """The hand-written deposit shaders keep the reference's expressions."""
 
