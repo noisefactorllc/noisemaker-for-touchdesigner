@@ -2,12 +2,12 @@
 
 TouchDesigner is not needed: stand-in executables play its part. They check
 that the launcher stops only the processes it started, by exact PID, and
-leaves none behind; that every report check fails on the field it guards and
-passes the values the probes record on a licensed host; and that the phases
-run in order, stop at the first failure and never pass on a stale report.
+leaves none behind, even when the launcher itself is interrupted; that the
+report checks pass the reports recorded on a licensed host and fail on the
+fields they guard; and that the phases run in order, stop at the first failure
+and never pass on a stale report.
 """
 import contextlib
-import copy
 import io
 import json
 import os
@@ -40,6 +40,9 @@ def executable(directory, name, body):
 
 
 # --- reports as the probes record them on a licensed host -------------------
+
+DOC_STATS = {'all_black': False, 'unique_bytes': -1, 'mean': 0.674927}
+
 
 def render(**extra):
     row = {'png': 'x.png', 'sha256': 'ab', 'stats': {'all_black': False, 'unique_bytes': -1},
@@ -84,7 +87,7 @@ def kit_report(phase, folder):
     elif phase == 'parameters':
         steps = [
             {'step': 'project-opened', 'project.folder': folder},
-            {'step': 'enumeration', 'custom_pars': []},
+            {'step': 'enumeration', 'customPars': []},
             dict(render(), step='baseline-render'),
             {'step': 'custom-parameters-driven', 'count': 0, 'driven': []},
             dict(render(byte_identical_to_baseline=True), step='rebuild-control-render'),
@@ -111,10 +114,10 @@ def workflow_report(phase):
             {'step': 'documented-example-set-dsl', 'output_top': '/nm_workflow_consumer/out1'},
             {'step': 'connect-top', 'connected': True, 'readme_cross_network_form_connected': False,
              'display_top': '/nm_workflow_consumer/out'},
-            dict(render(shader_errors=None), step='cook-1280'),
-            dict(render(width=320, height=240), step='resize-320x240'),
+            dict(render(shader_errors=None, stats=DOC_STATS), step='cook-1280'),
+            dict(render(width=320, height=240, stats=DOC_STATS), step='resize-320x240'),
             {'step': 'invalid-dsl', 'raised': 'DslSyntaxError', 'message': 'Unexpected character'},
-            {'step': 'recover-valid-dsl', 'recovered': True},
+            {'step': 'recover-valid-dsl', 'recovered': True, 'sha256': 'ab', 'stats': DOC_STATS, 'top_errors': None},
             {'step': 'save-project', 'size': 4096, 'sha256': 's1'},
         ]}
     return {'phase': 'reopen', 'steps': [
@@ -124,6 +127,10 @@ def workflow_report(phase):
         {'step': 'recook-after-reopen', 'bytes_match_build_render': True},
         {'step': 'cleanup', 'destroyed': True, 'remaining_ops': [], 'clean': True},
     ]}
+
+
+# Reports recorded on a licensed host (TouchDesigner 2025.32820, macOS on an Apple M4).
+RECORDED = json.loads('{"kit-recover": {"log": [], "phase": "recover", "steps": [{"phase": "recover", "program_sha256": "b09d2ea89baf79a3e1f45eecff588fb027c9d4098f4edefd39914ac2b308326c", "project.folder": "<work>/kit-moved", "step": "project-opened"}, {"failure": {"message": "Unexpected character \'!\' at line 2 col 29", "raised": true, "type": "DslSyntaxError"}, "host_present": true, "renderer_after_failure": true, "step": "rebuild-failure"}, {"sha256": "b09d2ea89baf79a3e1f45eecff588fb027c9d4098f4edefd39914ac2b308326c", "step": "program-restored"}, {"meaningful": true, "png": "kit.recover.png", "rebuild_returned": true, "rendered_top": "/project1/noisemaker/node_8_write_blit_17", "sha256": "3214fac46d107e9d6cfc3f1eed2658abab08503fafa252ee274d3a9baab2ba38", "stats": {"all_black": false, "mean": 0.020253, "shape": [1280, 1280, 4], "std": 0.061809, "unique_bytes": -1}, "step": "recovery-render", "top_errors": null}, {"build_png_sha256": "3214fac46d107e9d6cfc3f1eed2658abab08503fafa252ee274d3a9baab2ba38", "byte_identical": true, "recovered_png_sha256": "3214fac46d107e9d6cfc3f1eed2658abab08503fafa252ee274d3a9baab2ba38", "step": "recovery-byte-compare"}]}, "workflow-build": {"output_path": "/nm_workflow_consumer/node_1_write_blit_2", "phase": "build", "steps": [{"phase": "build", "repo": "td", "step": "host-environment", "td": {"build": "2025.32820", "osName": "macOS", "osVersion": "26.5"}}, {"consumer": "/nm_workflow_consumer", "pre_existing_children": ["ui", "sys", "local", "perform", "project1"], "step": "create-isolated-base-comp"}, {"dsl": "search synth\\nsolid(color: [0.9, 0.3, 0.5]).write(o0)\\nrender(o0)", "height": 1280, "output_top": "/nm_workflow_consumer/node_1_write_blit_2", "step": "documented-example-set-dsl", "width": 1280}, {"connected": true, "consumer_out": "null", "consumer_output": "/nm_workflow_consumer/node_1_write_blit_2", "display_top": "/nm_workflow_consumer/out", "display_top_inputs": ["/nm_workflow_consumer/node_1_write_blit_2"], "form": "in-comp out (cross-network form silently refused): inputConnectors[0].connect(nm.Output)", "readme_cross_network_form_connected": false, "step": "connect-top"}, {"meaningful": true, "png": "workflow.example-1280.png", "sha256": "93af6b3c70088499e863c01bfd3d22072eba9327ba73c5286ca7ce479067543a", "shader_errors": null, "stats": {"all_black": false, "mean": 0.674927, "shape": [1280, 1280, 4], "std": 0.286184, "unique_bytes": -1}, "step": "cook-1280", "top_errors": null}, {"height": 240, "meaningful": true, "png": "workflow.resized-320x240.png", "sha256": "88d7c715d241a7a089e7895bf9ed2112e6556678e55c5d18e59256e16cc8792a", "stats": {"all_black": false, "mean": 0.674927, "shape": [240, 320, 4], "std": 0.286183, "unique_bytes": 7}, "step": "resize-320x240", "width": 320}, {"diagnostic": {"code": "L001", "message": "Unexpected character \'!\' at line 1 col 42", "severity": "error", "stage": "lexer"}, "message": "Unexpected character \'!\' at line 1 col 42", "raised": "DslSyntaxError", "step": "invalid-dsl"}, {"png": "workflow.recovered.png", "recovered": true, "sha256": "88d7c715d241a7a089e7895bf9ed2112e6556678e55c5d18e59256e16cc8792a", "stats": {"all_black": false, "mean": 0.674927, "shape": [240, 320, 4], "std": 0.286183, "unique_bytes": 7}, "step": "recover-valid-dsl", "top_errors": null}, {"path": "parity/out/workflow/nm_workflow_saved.toe", "sha256": "f6019083c8f0ea66df3427eb63a0d0c95b16459a8f60e7b5e04586e583fd915b", "size": 6898, "step": "save-project"}], "td": {"build": "2025.32820", "osName": "macOS", "osVersion": "26.5"}, "verdict": "complete"}, "workflow-reopen": {"phase": "reopen", "steps": [{"phase": "reopen", "project_file": null, "step": "host-environment", "td": {"build": "2025.32820", "osName": "macOS", "osVersion": "26.5"}}, {"build_saved_sha256": "f6019083c8f0ea66df3427eb63a0d0c95b16459a8f60e7b5e04586e583fd915b", "consumer_present": true, "saved_toe_sha256": "f6019083c8f0ea66df3427eb63a0d0c95b16459a8f60e7b5e04586e583fd915b", "step": "reopen-project"}, {"consumer_output": "/nm_workflow_consumer/node_1_write_blit_2", "consumer_output_present": true, "display_top": "/nm_workflow_consumer/out", "step": "top-connected"}, {"bytes_match_build_render": true, "png": "workflow.reopened.png", "sha256": "88d7c715d241a7a089e7895bf9ed2112e6556678e55c5d18e59256e16cc8792a", "stats": {"all_black": false, "mean": 0.674927, "shape": [240, 320, 4], "std": 0.286183, "unique_bytes": 7}, "step": "recook-after-reopen"}, {"clean": true, "destroyed": true, "remaining_ops": [], "step": "cleanup"}], "td": {"build": "2025.32820", "osName": "macOS", "osVersion": "26.5"}}}')
 
 
 def step(report, name):
@@ -165,7 +172,7 @@ class ProcessTests(unittest.TestCase):
         marker = self.dir / 'asked'
         run = self.run_td('import signal, sys, time\n'
                           'def quit(*_):\n    open(%r, "w").write("term")\n    sys.exit(0)\n'
-                          'signal.signal(signal.SIGTERM, quit)\ntime.sleep(600)\n' % str(marker), timeout=1)
+                          'signal.signal(signal.SIGTERM, quit)\ntime.sleep(600)\n' % str(marker), timeout=3)
         self.assertTrue(run.timed_out)
         self.assertEqual(marker.read_text(), 'term')
         self.assertEqual(run.returncode, 0)
@@ -205,6 +212,58 @@ class ProcessTests(unittest.TestCase):
             outsider.wait()
 
 
+LAUNCHER = '''import signal, sys
+sys.path.insert(0, sys.argv[1])
+import td_probes
+for sig in (signal.SIGTERM, signal.SIGHUP):
+    signal.signal(sig, td_probes.exit_on_signal)
+td_probes.run_touchdesigner(sys.argv[2], sys.argv[3], None, sys.argv[4], timeout=300, grace=2)
+'''
+
+
+class InterruptedLauncherTests(unittest.TestCase):
+    """A launcher stopped by Ctrl-C, SIGTERM or SIGHUP leaves no process of its run behind."""
+
+    def run_and_interrupt(self, sig):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            pids = tmp / 'pids'
+            td = executable(tmp, 'touchdesigner', 'import os, time\n'
+                            'open(%r, "w").write("%%d %%d" %% (os.getpid(), os.getpgrp()))\n'
+                            'time.sleep(600)\n' % str(pids))
+            launcher = subprocess.Popen([sys.executable, '-c', LAUNCHER, str(Path(td_probes.__file__).parent),
+                                         str(td), str(tmp / 'probe.toe'), str(tmp / 'td.log')])
+            try:
+                deadline = time.monotonic() + 30
+                while not (pids.exists() and pids.read_text()) and time.monotonic() < deadline:
+                    time.sleep(0.1)
+                child, holder = map(int, pids.read_text().split())
+                launcher.send_signal(sig)
+                launcher.wait(timeout=30)
+                deadline = time.monotonic() + 30
+                while (alive(child) or alive(holder)) and time.monotonic() < deadline:
+                    time.sleep(0.2)
+                self.assertFalse(alive(child), 'TouchDesigner outlived the interrupted launcher')
+                self.assertFalse(alive(holder), 'the holder outlived the interrupted launcher')
+                self.assertEqual(live_members(holder), [])
+            finally:
+                if launcher.poll() is None:
+                    launcher.kill()
+                    launcher.wait()
+
+    def test_ctrl_c(self):
+        self.run_and_interrupt(signal.SIGINT)
+
+    def test_sigterm(self):
+        self.run_and_interrupt(signal.SIGTERM)
+
+    def test_sighup(self):
+        self.run_and_interrupt(signal.SIGHUP)
+
+    def test_a_killed_launcher_leaves_its_holder_to_stop_the_run(self):
+        self.run_and_interrupt(signal.SIGKILL)
+
+
 class ReportCheckTests(unittest.TestCase):
     FOLDER = '/kit-moved'
 
@@ -216,6 +275,11 @@ class ReportCheckTests(unittest.TestCase):
         self.assertEqual(td_probes.check_workflow_reopen(workflow_report('reopen')), [])
         for phase in td_probes.KIT_PHASES:
             self.assertEqual(td_probes.check_kit(phase, kit_report(phase, self.FOLDER), self.FOLDER), [], phase)
+
+    def test_the_reports_recorded_on_a_licensed_host_pass(self):
+        self.assertEqual(td_probes.check_workflow_build(RECORDED['workflow-build']), [])
+        self.assertEqual(td_probes.check_workflow_reopen(RECORDED['workflow-reopen']), [])
+        self.assertEqual(td_probes.check_kit('recover', RECORDED['kit-recover'], '<work>/kit-moved'), [])
 
     def test_a_wired_out_passes_as_well_as_a_recorded_refusal(self):
         report = kit_report('build', self.FOLDER)
@@ -233,6 +297,13 @@ class ReportCheckTests(unittest.TestCase):
              'no silent refusal'),
             ('build', 'kit-tree', {'checks': {'program.dsl': {'present': False}}}, 'kit-tree: missing'),
             ('build', 'project-opened', {'project.folder': '/kit'}, 'project.folder'),
+            ('build', 'kit-tree', {'checks': {'engine/noisemaker/shaders': {'present': True, 'frag_count': 0}}}, 'no shaders'),
+            ('recover', 'recovery-render', {'rebuild_returned': False}, 'rebuild_returned'),
+            ('parameters', 'enumeration', {'customPars': 'error: enumeration failed'}, 'customPars'),
+            ('parameters', 'custom-parameters-driven', {'count': 1, 'driven': []}, 'drove 1 of 0'),
+            ('parameters', 'custom-parameters-driven',
+             {'count': 1, 'driven': [{'par': 'Speed', 'render': {'meaningful': True}, 'rebuild_returned': False}]},
+             'custom parameter Speed: rebuild() did not return'),
             ('relocate', 'relocation-byte-compare', {'byte_identical': False}, 'byte_identical'),
             ('reinstall', 'reinstall-byte-compare', {'byte_identical_vs_build': False}, 'byte_identical_vs_build'),
             ('recover', 'rebuild-failure', {'failure': {'raised': False}}, 'did not raise'),
@@ -266,6 +337,11 @@ class ReportCheckTests(unittest.TestCase):
             ('build', 'cook-1280', {'shader_errors': ['x']}, 'shader_errors'),
             ('build', 'resize-320x240', {'width': 1280}, 'width'),
             ('build', 'resize-320x240', {'meaningful': False}, 'meaningful'),
+            ('build', 'resize-320x240', {'top_errors': 'GLSL error'}, 'top_errors'),
+            ('build', 'cook-1280', {'stats': {'all_black': False, 'unique_bytes': -1, 'mean': 1.0}}, 'documented solid colour'),
+            ('build', 'resize-320x240', {'stats': {'all_black': False, 'unique_bytes': 7}}, 'documented solid colour'),
+            ('build', 'recover-valid-dsl', {'sha256': 'cd'}, 'the resized render again'),
+            ('build', 'recover-valid-dsl', {'top_errors': 'GLSL error'}, 'top_errors'),
             ('build', 'invalid-dsl', {'raised': None}, 'raised'),
             ('build', 'recover-valid-dsl', {'recovered': False}, 'recovered'),
             ('build', 'save-project', {'size': 0}, 'size'),
@@ -275,6 +351,7 @@ class ReportCheckTests(unittest.TestCase):
             ('reopen', 'top-connected', {'consumer_output_present': False}, 'consumer_output_present'),
             ('reopen', 'recook-after-reopen', {'bytes_match_build_render': False}, 'bytes_match_build_render'),
             ('reopen', 'cleanup', {'clean': False}, 'clean'),
+            ('reopen', 'cleanup', {'remaining_ops': ['out']}, 'remaining_ops'),
         ]
         for phase, name, change, text in cases:
             with self.subTest(phase=phase, step=name, change=change):
@@ -295,6 +372,9 @@ class ReportCheckTests(unittest.TestCase):
         report = kit_report('remove', self.FOLDER)
         report['steps'] = [row for row in report['steps'] if row['step'] != 'uninstall']
         self.assert_fails(td_probes.check_kit('remove', report, self.FOLDER), 'uninstall: recorded 0 times')
+        report = kit_report('remove', self.FOLDER)
+        report['steps'].append(dict(step(report, 'uninstall')))
+        self.assert_fails(td_probes.check_kit('remove', report, self.FOLDER), 'uninstall: recorded 2 times')
 
     def test_a_fatal_or_failed_step_fails_the_report(self):
         report = kit_report('recover', self.FOLDER)
@@ -324,10 +404,14 @@ class FakeProbes(td_probes.Probes):
                 str(dest)]
 
 
-FAKE_TD = '''import json, os, sys
+FAKE_TD = '''import json, os, sys, time
 toe = sys.argv[1]
+if not os.path.isfile(toe):
+    sys.exit(2)
 kit = 'NM_KIT_PHASE' in os.environ
 phase = os.environ['NM_KIT_PHASE' if kit else 'NM_WORKFLOW_PHASE']
+if os.environ.get('FAKE_TD_SLEEP') == phase:
+    time.sleep(600)
 with open(os.environ['FAKE_TD_LOG'], 'a') as log:
     log.write(json.dumps({'kind': 'kit' if kit else 'workflow', 'phase': phase, 'toe': toe,
                           'from': os.environ.get('NM_PARAM_DSL_FROM'),
@@ -341,6 +425,8 @@ if phase not in os.environ.get('FAKE_TD_SILENT', '').split(','):
     open(os.path.join(out, 'report.%s.json' % phase), 'w').write(text)
 if not kit and phase == 'build':
     open(os.path.join(out, 'nm_workflow_saved.toe'), 'w').write('saved')
+if os.environ.get('FAKE_TD_CRASH') == phase:
+    open(os.path.join(out, 'report.%s.crash.json' % phase), 'w').write(json.dumps({'phase': phase, 'fatal': 'Traceback\\nRuntimeError: boom'}))
 sys.exit(int(os.environ.get('FAKE_TD_EXIT_' + phase.upper(), '0')))
 '''
 
@@ -363,10 +449,10 @@ class OrchestrationTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def run_probes(self, **env):
+    def run_probes(self, timeout=20, **env):
         (Path(self.tmp.name) / 'reports.json').write_text(json.dumps(self.reports))
         probes = FakeProbes(self.repo, self.td, '/reference', '1.0.0', '0' * 40, self.work,
-                            dict(self.env, **env), timeout=20, grace=2)
+                            dict(self.env, **env), timeout=timeout, grace=2)
         with contextlib.redirect_stdout(io.StringIO()) as out:
             code = probes.run_all()
         calls = [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
@@ -412,6 +498,21 @@ class OrchestrationTests(unittest.TestCase):
             self.assertEqual(probes.run_all(), 1)
         self.assertIn('FAILED: kit build', out.getvalue())
 
+    def test_a_phase_that_does_not_quit_in_time_fails(self):
+        code, probes, calls, out = self.run_probes(timeout=2, FAKE_TD_SLEEP='recover')
+        self.assertEqual(code, 1)
+        self.assertTrue(any('did not quit within 2 s' in failure for failure in probes.results['kit recover']))
+        self.assertEqual(probes.results['kit parameters'], ['not run: the recover phase failed'])
+
+    def test_a_crash_report_fails_the_phase(self):
+        for phase, label in (('reopen', 'workflow reopen'), ('license', 'kit license')):
+            with self.subTest(phase):
+                self.work = Path(self.tmp.name) / ('work-%s' % phase)
+                self.work.mkdir()
+                code, probes, calls, out = self.run_probes(FAKE_TD_CRASH=phase)
+                self.assertEqual(code, 1)
+                self.assertTrue(any('crash report: RuntimeError: boom' in failure for failure in probes.results[label]))
+
     def test_a_non_zero_exit_fails_the_phase(self):
         code, probes, calls, out = self.run_probes(FAKE_TD_EXIT_BUILD='1')
         self.assertEqual(code, 1)
@@ -441,6 +542,12 @@ class MainTests(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()) as err:
             code = td_probes.main(env)
         return code, err.getvalue()
+
+    def test_arguments_are_refused_rather_than_ignored(self):
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            code = td_probes.main({}, argv=['--only', 'workflow'])
+        self.assertEqual(code, 1)
+        self.assertIn('takes no arguments', err.getvalue())
 
     def test_a_missing_touchdesigner_fails_by_name(self):
         code, err = self.run_main({'TD_BIN': '/no/such/TouchDesigner', 'NM_REFERENCE_ROOT': '/'})

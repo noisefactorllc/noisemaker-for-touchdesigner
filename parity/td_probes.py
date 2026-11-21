@@ -51,6 +51,8 @@ KIT_PROGRAM = Path('parity') / 'programs' / 'heightGrid_billboard.dsl'
 PARAM_DSL_FROM = 'heightScale: 25'
 PARAM_DSL_TO = 'heightScale: 45'
 WORKFLOW_PHASES = ('build', 'reopen')
+DOC_MEAN = (0.9 + 0.3 + 0.5 + 1.0) / 4
+DOC_MEAN_TOLERANCE = 0.01
 KIT_PHASES = ('build', 'relocate', 'reinstall', 'recover', 'parameters', 'license', 'remove')
 
 
@@ -81,6 +83,30 @@ def _signal(pid, sig):
         os.kill(pid, sig)
 
 
+# The holder leads the run's process group. When its launcher is gone without having stopped the
+# run (a SIGKILL nothing can catch), it stops every other process left in its own group, each by its
+# exact PID, and exits, so not even a killed launcher leaves TouchDesigner behind.
+HOLDER = '''import os, signal, subprocess, time
+parent, group = os.getppid(), os.getpgrp()
+while os.getppid() == parent:
+    time.sleep(1)
+def members():
+    ps = subprocess.Popen(['ps', '-A', '-o', 'pid=', '-o', 'pgid='], stdout=subprocess.PIPE, text=True)
+    listing = ps.communicate()[0]
+    rows = [line.split() for line in listing.splitlines()]
+    return [int(row[0]) for row in rows if len(row) == 2 and row[1] == str(group) and int(row[0]) not in (group, ps.pid)]
+for sig in (signal.SIGTERM, signal.SIGKILL):
+    for pid in members():
+        try:
+            os.kill(pid, sig)
+        except ProcessLookupError:
+            pass
+    deadline = time.monotonic() + 10
+    while members() and time.monotonic() < deadline:
+        time.sleep(0.2)
+'''
+
+
 @contextlib.contextmanager
 def held_process_group():
     """A new process group led by a holder process; yields the group's ID.
@@ -88,7 +114,7 @@ def held_process_group():
     While the holder lives, no other process can take the group's ID, so every
     member found later is a process this run started or one of its children.
     """
-    holder = subprocess.Popen([sys.executable, '-c', 'import time\nwhile True: time.sleep(3600)'],
+    holder = subprocess.Popen([sys.executable, '-c', HOLDER],
                               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                               stderr=subprocess.DEVNULL, process_group=0)
     try:
@@ -127,17 +153,34 @@ def run_touchdesigner(td_bin, toe, env, log_path, timeout=RUN_TIMEOUT, grace=STO
                                      stdout=log, stderr=subprocess.STDOUT, process_group=pgid)
         timed_out = False
         try:
-            child.wait(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            child.terminate()
             try:
-                child.wait(timeout=grace)
+                child.wait(timeout=timeout)
             except subprocess.TimeoutExpired:
-                child.kill()
-                child.wait()
+                timed_out = True
+                stop_child(child, grace)
+        except BaseException:
+            # An interrupted launcher (Ctrl-C, SIGTERM, SIGHUP) still stops what it started.
+            stop_child(child, grace)
+            stop_members(pgid, grace)
+            raise
         leftovers = stop_members(pgid, grace)
     return Run(child.returncode, timed_out, leftovers, pgid)
+
+
+def stop_child(child, grace):
+    """Ask the TouchDesigner process to quit, then kill it, by its exact PID."""
+    if child.poll() is not None:
+        return
+    child.terminate()
+    try:
+        child.wait(timeout=grace)
+    except subprocess.TimeoutExpired:
+        child.kill()
+        child.wait()
+
+
+def exit_on_signal(signum, _frame):
+    raise SystemExit(128 + signum)
 
 
 # --- report checks -----------------------------------------------------------
@@ -216,12 +259,21 @@ def check_workflow_build(report):
     c.equals('connect-top', 'connected', True)
     c.render('cook-1280')
     c.equals('cook-1280', 'shader_errors', None)
-    c.equals('resize-320x240', 'meaningful', True)
+    c.render('resize-320x240')
     c.equals('resize-320x240', 'width', 320)
     c.equals('resize-320x240', 'height', 240)
+    # The documented example draws solid(color: [0.9, 0.3, 0.5]) at alpha 1: a mean of 0.675.
+    for name in ('cook-1280', 'resize-320x240', 'recover-valid-dsl'):
+        c.check(name, 'stats', lambda stats: isinstance(stats, dict) and isinstance(stats.get('mean'), (int, float))
+                and abs(stats['mean'] - DOC_MEAN) <= DOC_MEAN_TOLERANCE, 'the documented solid colour')
     c.check('invalid-dsl', 'raised', lambda value: isinstance(value, str) and bool(value),
             'the error set_dsl raises for an invalid program')
     c.equals('recover-valid-dsl', 'recovered', True)
+    c.equals('recover-valid-dsl', 'top_errors', None)
+    resized = c.step('resize-320x240')
+    if resized is not None:
+        c.check('recover-valid-dsl', 'sha256', lambda value: bool(value) and value == resized.get('sha256'),
+                'the resized render again')
     c.check('save-project', 'size', lambda value: isinstance(value, int) and value > 0, 'a saved project')
     if report.get('verdict') != 'complete':
         c.fail('verdict is %s, expected complete' % _short(report.get('verdict')))
@@ -286,9 +338,13 @@ def check_kit(phase, report, folder):
         c.equals('recovery-byte-compare', 'byte_identical', True)
     elif phase == 'parameters':
         c.folder(folder)
-        c.step('enumeration')
+        enumeration = c.check('enumeration', 'customPars', lambda value: isinstance(value, list), 'the enumerated custom parameters')
         c.render('baseline-render')
         driven = c.step('custom-parameters-driven')
+        if driven is not None and enumeration is not None and isinstance(enumeration.get('customPars'), list):
+            expected = len(enumeration['customPars'])
+            if driven.get('count') != expected or len(driven.get('driven') or []) != expected:
+                c.fail('custom-parameters-driven: drove %s of %d enumerated parameters' % (_short(driven.get('count')), expected))
         for entry in (driven or {}).get('driven') or []:
             name = entry.get('par')
             if 'error' in entry or 'restore_error' in entry:
@@ -485,7 +541,9 @@ class Probes:
                 phase_env.update(NM_PARAM_DSL_FROM=PARAM_DSL_FROM, NM_PARAM_DSL_TO=PARAM_DSL_TO)
             ok = self.phase(labels[index], folder / 'kit.toe', phase_env,
                             self.kit_out / ('report.%s.json' % phase),
-                            lambda report, phase=phase, folder=folder: check_kit(phase, report, folder))
+                            lambda report, phase=phase, folder=folder: check_kit(phase, report, folder),
+                            crash_path=self.kit_out / ('report.%s.crash.json' % phase),
+                            logs=[self.kit_out / ('_kit_log.%s.txt' % phase)])
             if not ok:
                 self.not_run(labels[index + 1:], 'the %s phase failed' % phase)
                 return
@@ -506,9 +564,12 @@ class Probes:
         return 0
 
 
-def main(env=None):
+def main(env=None, argv=()):
     env = dict(os.environ if env is None else env)
     redact = Redactor([(REPO, '<repo>'), (env.get('HOME'), '<home>')])
+    if argv:
+        print('td-probes: takes no arguments; it always runs every phase (got %s)' % ' '.join(argv), file=sys.stderr)
+        return 1
     td_bin = env.get('TD_BIN') or DEFAULT_TD_BIN
     if not (os.path.isfile(td_bin) and os.access(td_bin, os.X_OK)):
         print('td-probes: no TouchDesigner binary at %s (set TD_BIN)' % redact(td_bin), file=sys.stderr)
@@ -534,4 +595,7 @@ def main(env=None):
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    # SIGTERM and SIGHUP unwind the run as Ctrl-C does, so it stops what it started.
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, exit_on_signal)
+    sys.exit(main(argv=sys.argv[1:]))
