@@ -85,6 +85,13 @@ jobs:
       - name: Run full rendered parity
         run: NODE_OPTIONS="--import $GITHUB_WORKSPACE/tools/reference-dependencies.mjs" parity/.venv/bin/python scripts/parity-summary
 
+      # The in-host probes: the installed developer workflow and the export kit
+      # reproduced from this commit, one TouchDesigner process per phase. Each
+      # process quits itself; the launcher stops only a process it started.
+      - name: Run the in-host probes
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: parity/.venv/bin/python parity/td_probes.py
+
   dispatch:
     needs: parity
     if: github.ref == 'refs/heads/main'
