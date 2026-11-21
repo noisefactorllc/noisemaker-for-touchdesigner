@@ -64,10 +64,12 @@ caps cook resolution at **1280×1280**, and going over does not raise an error �
 quietly cooks smaller. Non-square textures suffer worst, because they scale down along their long
 edge, which is what breaks the 3D volume atlas.
 
-For the same reason, 3D-volume effects are clamped to `MAX_VOLUME_SIZE` in `integrate.py`, default
-**32**. A `synth3d` volume is a `size × size²` atlas, so 32 gives 32×1024 — inside the cap. The next
-step up, 64, would need 64×4096, which the free license quietly cooks at 20×1280 and the 3D render
-breaks.
+For the same reason, `integrate.py` passes `MAX_VOLUME_SIZE`, default **32**, to the port as
+`NM_MAX_VOLUME_SIZE` unless that variable is already set, and the port clamps 3D-volume effects to
+it. A `synth3d` volume is a `size × size²` atlas, so
+32 gives 32×1024, inside the cap. The port's own default is 64: it stores a larger atlas folded into
+bands under the cook cap, and keeps a graph that reads a volume with `texture()` or `textureSize()`
+at 32.
 
 On a Commercial or Educational license there is no cap: raise `RENDER_WIDTH` / `RENDER_HEIGHT` and
 `MAX_VOLUME_SIZE`, all three at the top of `integrate.py`.

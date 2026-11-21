@@ -57,10 +57,10 @@ OUTPUT_OP_NAME = 'out'
 RENDER_WIDTH = 1280
 RENDER_HEIGHT = 1280
 
-#: 3D-volume atlas cap. A synth3d volume is a `size x size^2` atlas, so the
-#: port's default 32 gives 32x1024 -- under the 1280 cook cap. 64 would give
-#: 64x4096, which a Non-Commercial license silently downscales to 20x1280,
-#: breaking the atlas indexing and the whole 3D render with it. Raise this on a
+#: 3D-volume atlas cap. A synth3d volume is a `size x size^2` atlas, so 32
+#: gives 32x1024 -- under the 1280 cook cap. The port's own default is 64: it
+#: stores a larger atlas folded into bands under the cook cap, and keeps a graph
+#: that reads a volume with texture() or textureSize() at 32. Raise this on a
 #: Commercial or Educational license, which has no cap.
 #:
 #: The engine reads this from the environment when its backend module is first
