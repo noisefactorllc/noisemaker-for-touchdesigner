@@ -77,6 +77,9 @@ tol_for() { case "$1" in
   relief_mode_plaster) echo "8 0.98" ;;  # plaster paper threshold. Measured 2026-10-07: byte-exact at
                                    # every pass on a testPattern() input; the fixture's 4-pixel one-step
                                    # noise difference crosses the threshold (max 7).
+  # --- discrete voxel-pick class: the DDA's face/cell pick flips on 1-LSB input noise ---
+  renderLandscape3d_perspective) echo "255 0.98";;  # voxel DDA face and colorBars palette picks flip
+                                   # at isolated texels (10 px, mean 0.047, ssim 0.99996)
   *)          echo "2.001 0.98" ;;
 esac; }
 
