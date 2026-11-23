@@ -267,16 +267,20 @@ const GLOBALS_PREFIX = '__noisemaker'
 const STATUS_TIMEOUT = 300000
 
 function parseArgs (argv) {
-  const opts = { time: 0.25, size: 256, backend: 'webgl2', cubemap: false }
+  const opts = { time: 0.25, width: 256, height: 256, backend: 'webgl2', cubemap: false }
   const pos = []
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a === '--time') opts.time = parseFloat(argv[++i])
-    else if (a === '--size') opts.size = parseInt(argv[++i], 10)
-    else if (a === '--backend') opts.backend = argv[++i]
+    else if (a === '--size') {
+      const m = /^(\d+)x(\d+)$/.exec(argv[++i])
+      if (m) { opts.width = parseInt(m[1], 10); opts.height = parseInt(m[2], 10) }
+      else opts.width = opts.height = parseInt(argv[i], 10)
+    } else if (a === '--backend') opts.backend = argv[++i]
     else if (a === '--cubemap') opts.cubemap = true   // bake 6 cube faces via pipeline.renderCubemap
     else pos.push(a)
   }
+  opts.size = opts.width
   opts.programPath = pos[0]
   opts.outDir = pos[1]
   return opts
@@ -334,7 +338,7 @@ async function main () {
     await session.setBackend(opts.backend)
     const globals = session.globals
 
-    await page.setViewportSize({ width: opts.size, height: opts.size })
+    await page.setViewportSize({ width: opts.width, height: opts.height })
 
     // Wait for the demo's initial pipeline + DSL editor to be ready (the demo
     // boots with a default effect; __noisemakerRenderingPipeline is set then).
@@ -390,7 +394,7 @@ async function main () {
     // deterministic we PIN the canvas width/height setters to our target before
     // resizing, so any late layout-driven write is a no-op, then we poll until the
     // o0 surface texture is stably at the requested size before rendering.
-    await page.evaluate((size) => {
+    await page.evaluate(({ w, h }) => {
       const r = window.__noisemakerCanvasRenderer
       const p = window.__noisemakerRenderingPipeline
       const canvas = r && r.canvas
@@ -398,11 +402,11 @@ async function main () {
         // Pin width/height: the real backing store is set to `size`; any later
         // assignment (e.g. the demo's handleResize) is swallowed. configurable so
         // this is reversible and overrides the renderer's own interceptor.
-        const pin = (prop) => {
+        const pin = (prop, v) => {
           Object.defineProperty(canvas, prop, {
             configurable: true,
             enumerable: true,
-            get () { return size },
+            get () { return v },
             set () { /* locked to `size` for deterministic capture */ }
           })
         }
@@ -410,33 +414,33 @@ async function main () {
         const proto = Object.getPrototypeOf(canvas)
         const wd = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'width')
         const hd = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'height')
-        if (wd && wd.set) wd.set.call(canvas, size)
-        if (hd && hd.set) hd.set.call(canvas, size)
+        if (wd && wd.set) wd.set.call(canvas, w)
+        if (hd && hd.set) hd.set.call(canvas, h)
         void proto
-        pin('width'); pin('height')
-        if (canvas.style) { canvas.style.width = size + 'px'; canvas.style.height = size + 'px' }
+        pin('width', w); pin('height', h)
+        if (canvas.style) { canvas.style.width = w + 'px'; canvas.style.height = h + 'px' }
       }
-      if (p && typeof p.resize === 'function') p.resize(size, size)
-    }, opts.size)
+      if (p && typeof p.resize === 'function') p.resize(w, h)
+    }, { w: opts.width, h: opts.height })
 
     // Poll until the presented o0 surface texture is stably at the requested size.
     // This drains any pending layout `resize` event and re-asserts the pipeline
     // size, guaranteeing the readback below sees a `size`x`size` surface.
     // NOTE: Playwright's signature is waitForFunction(fn, arg, options) — the
     // single page-function ARG comes BEFORE the options object.
-    await page.waitForFunction((size) => {
+    await page.waitForFunction(({ w, h }) => {
       const p = window.__noisemakerRenderingPipeline
       if (!p || typeof p.resize !== 'function') return false
       const surf = p.surfaces && p.surfaces.get(p.graph?.renderSurface || 'o0')
       const info = surf && p.backend?.textures?.get(surf.read)
       if (!info) return false
-      if (info.width !== size || info.height !== size) {
+      if (info.width !== w || info.height !== h) {
         // Re-assert (cheap no-op when already correct) and keep waiting.
-        p.resize(size, size)
+        p.resize(w, h)
         return false
       }
       return true
-    }, opts.size, { timeout: STATUS_TIMEOUT })
+    }, { w: opts.width, h: opts.height }, { timeout: STATUS_TIMEOUT })
 
     // ROOT-CAUSE FIX: the demo's CanvasRenderer owns an always-on
     // requestAnimationFrame loop (shaders/src/renderer/canvas.js _renderLoop),
@@ -597,7 +601,7 @@ async function main () {
 
   const pngPath = join(opts.outDir, `${programName}.golden.png`)
   writeFileSync(pngPath, pngBuffer)
-  process.stderr.write(`[parity] wrote ${pngPath} (${opts.size}x${opts.size}, time=${opts.time}, backend=${opts.backend})\n`)
+  process.stderr.write(`[parity] wrote ${pngPath} (${opts.width}x${opts.height}, time=${opts.time}, backend=${opts.backend})\n`)
 }
 
 // Render only when run as a script: the unit tests import this module for ensureReferenceBrowser.

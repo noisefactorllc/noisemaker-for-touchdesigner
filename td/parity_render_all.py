@@ -11,6 +11,7 @@ It builds each Tier-1 graph via the noisemaker runtime, renders one deterministi
 line after any fix.
 """
 import os
+import re
 import sys
 import traceback
 
@@ -32,7 +33,10 @@ OUT = os.path.join(REPO, 'parity', 'out')
 LOG = os.path.join(OUT, '_render_log.txt')
 TIER1 = (os.environ.get('NM_PROGRAMS')
          or 'solid,noise,cell,gradient,shape,osc2d,blur,blendMode').split(',')
-SIZE = int(os.environ.get('NM_SIZE', '256'))
+SIZE = os.environ.get('NM_SIZE', '256')
+_size_pair = re.match(r'^(\d+)x(\d+)$', SIZE)
+WIDTH, HEIGHT = ((int(_size_pair.group(1)), int(_size_pair.group(2))) if _size_pair
+                 else (int(SIZE), int(SIZE)))
 TIME = float(os.environ.get('NM_TIME', '0.25'))
 
 if TD_DIR not in sys.path:
@@ -137,7 +141,7 @@ def render_all():
             sub.destroy()
         sub = holder.create(baseCOMP, safe)
         try:
-            nm = NMRenderer(sub, width=SIZE, height=SIZE)
+            nm = NMRenderer(sub, width=WIDTH, height=HEIGHT)
             if live:
                 with open(dsl) as _f:
                     nm.set_dsl(_f.read())
