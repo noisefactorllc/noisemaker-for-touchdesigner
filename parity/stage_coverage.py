@@ -47,7 +47,7 @@ ACCUM_EFFECTS = {'cellularAutomata', 'reactionDiffusion', 'motionBlur', 'convolu
 STATIC_3D_EFFECTS = {
     '_vs32probe', 'filter3d_palette3d', 'synth3d_cell3d', 'synth3d_flythrough3d',
     'synth3d_fractal3d', 'synth3d_noise', 'synth3d_renderLit3d', 'synth3d_shape3d',
-    'heightmap3d_landscape',
+    'heightmap3d_landscape', 'renderLandscape3d_cliff_center', 'renderLandscape3d_cliff_diagonal',
 }
 CUBEMAP_EFFECTS = {'synth3d_renderCubemap3d', 'synth3d_renderCubemapSurface'}
 # Programs excluded from the canonical sweep. Every in-repo program is graded: the agent and 3D
