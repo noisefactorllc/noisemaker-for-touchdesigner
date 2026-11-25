@@ -1,6 +1,6 @@
 name: Tests
 
-# Runs the repository's engine-free test entrypoint on every push to main:
+# Runs the repository's engine-free test entrypoint on every push to main or 2.x:
 # scripts/test runs the Python unit tests and the lexer/parser/validator parity
 # gates against the pinned upstream Noisemaker reference (no TouchDesigner, no GPU).
 # Rendered parity needs a licensed TouchDesigner host and does not run here.
@@ -21,7 +21,7 @@ on:
       - '.github/FUNDING.yml'
       - '.github/dependabot.yml'
       - '.editorconfig'
-    branches: [main]
+    branches: [main, 2.x]
   workflow_dispatch:
 
 permissions:

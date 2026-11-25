@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   parity:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/2.x'
     runs-on:
       group: noisemaker-gpu
       labels: [noisemaker-gpu]
