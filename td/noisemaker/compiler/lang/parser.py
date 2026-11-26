@@ -461,8 +461,12 @@ class _Parser:
                     "write() requires an explicit surface reference (e.g., o0, o1, xyz0, vel0, rgba0, mesh0, none)",
                     p,
                 )
+            element_id = self._parse_write_id()
             self._expect(T.RPAREN, "Expect ')'")
-            return {'type': K.Write, 'surface': surface, 'loc': ast.loc(token_line, token_col)}
+            node = {'type': K.Write, 'surface': surface, 'loc': ast.loc(token_line, token_col)}
+            if element_id is not None:
+                node['_id'] = element_id
+            return node
 
         # WRITE3D
         self._advance()
@@ -488,8 +492,22 @@ class _Parser:
         else:
             p = self._peek()
             raise self._parser_error_at("P005", "Expected geo reference in write3d()", p)
+        element_id = self._parse_write_id()
         self._expect(T.RPAREN, "Expect ')'")
-        return {'type': K.Write3D, 'tex3d': tex3d, 'geo': geo, 'loc': ast.loc(token_line, token_col)}
+        node = {'type': K.Write3D, 'tex3d': tex3d, 'geo': geo, 'loc': ast.loc(token_line, token_col)}
+        if element_id is not None:
+            node['_id'] = element_id
+        return node
+
+    def _parse_write_id(self):
+        key = self._token_at(self._current + 1)
+        if (self._peek().type != T.COMMA or key is None or key.type != T.IDENT
+                or key.lexeme != '_id' or not self._kw_colon(self._current + 2)):
+            return None
+        self._advance()
+        kwargs = {}
+        self._parse_kwarg(kwargs)
+        return kwargs['_id']
 
     def _parse_subchain_call(self):
         tok = self._peek()
@@ -654,8 +672,10 @@ class _Parser:
         keyword = False
         positional = False
         allow_mixed = name_token.lexeme in ("midi", "audio")
+        self._collect_comments()
         if self._peek().type != T.RPAREN:
             while True:
+                self._collect_comments()
                 if self._peek().type == T.IDENT and self._kw_colon(self._current + 1):
                     if positional and not allow_mixed:
                         t = self._peek()
@@ -668,14 +688,17 @@ class _Parser:
                         raise self._parser_error_at("P007", "Cannot mix positional and keyword arguments", t)
                     positional = True
                     args.append(self._parse_arg())
+                self._collect_comments()
                 if self._peek().type != T.COMMA:
                     break
                 self._advance()
+                self._collect_comments()
                 if self._peek().type == T.RPAREN:
                     break
         self._expect(T.RPAREN, "Expect ')'")
 
-        call = {'type': K.Call, 'name': name_token.lexeme, 'args': args}
+        call = {'type': K.Call, 'name': name_token.lexeme, 'args': args,
+                'loc': ast.loc(name_token.line, name_token.col)}
         if keyword:
             call['kwargs'] = kwargs
 
@@ -703,6 +726,8 @@ class _Parser:
             skip = kwargs.get('_skip') if kwargs is not None else None
             if skip is not None and skip.get('type') == K.Boolean and skip.get('value') is True:
                 node['_skip'] = True
+            if '_id' in kwargs:
+                node['_id'] = kwargs['_id']
             return node
         if nm == "read3d":
             tex3d = args[0] if len(args) > 0 else (kwargs.get('tex3d') if kwargs is not None else None)
@@ -711,6 +736,8 @@ class _Parser:
             skip = kwargs.get('_skip') if kwargs is not None else None
             if skip is not None and skip.get('type') == K.Boolean and skip.get('value') is True:
                 node['_skip'] = True
+            if '_id' in kwargs:
+                node['_id'] = kwargs['_id']
             return node
         return call
 
@@ -727,6 +754,7 @@ class _Parser:
     def _parse_kwarg(self, obj):
         key = self._expect(T.IDENT, "Expected identifier").lexeme
         self._expect(T.COLON, "Expect ':'")
+        self._collect_comments()
         if self._peek().type not in _EXPR_START:
             t = self._peek()
             raise self._parser_error_at("P001", "Expected expression after '='", t)
@@ -954,7 +982,7 @@ class _Parser:
             right = self._parse_multiplicative()
             l = self._to_number(node)
             r = self._to_number(right)
-            node = ast.number(l + r if op == T.PLUS else l - r)
+            node = ast.number(l + r if op == T.PLUS else l - r, node.get('loc'))
         return node
 
     def _parse_multiplicative(self):
@@ -964,7 +992,7 @@ class _Parser:
             right = self._parse_unary()
             l = self._to_number(node)
             r = self._to_number(right)
-            node = ast.number(l * r if op == T.STAR else l / r)
+            node = ast.number(l * r if op == T.STAR else l / r, node.get('loc'))
         return node
 
     def _parse_unary(self):
@@ -974,7 +1002,7 @@ class _Parser:
         if self._peek().type == T.MINUS:
             self._advance()
             val = self._parse_unary()
-            return ast.number(-self._to_number(val))
+            return ast.number(-self._to_number(val), val.get('loc'))
         return self._parse_primary()
 
     def _to_number(self, node):
@@ -997,23 +1025,29 @@ class _Parser:
         tt = token.type
         if tt == T.NUMBER:
             self._advance()
-            return ast.number(_parse_float_js(token.lexeme))
+            return ast.number(_parse_float_js(token.lexeme), ast.loc(token.line, token.col))
         if tt == T.STRING:
             self._advance()
-            return {'type': K.String, 'value': token.lexeme}
+            return {'type': K.String, 'value': token.lexeme, 'loc': ast.loc(token.line, token.col)}
         if tt == T.HEX:
             self._advance()
-            return _parse_hex(token.lexeme)
+            return dict(_parse_hex(token.lexeme), loc=ast.loc(token.line, token.col))
         if tt == T.LBRACKET:
             sl = token.line
             sc = token.col
             self._advance()
             elements = []
+            self._collect_comments()
             if self._peek().type != T.RBRACKET:
                 elements.append(self._parse_arg())
+                self._collect_comments()
                 while self._peek().type == T.COMMA:
                     self._advance()
+                    self._collect_comments()
+                    if self._peek().type == T.RBRACKET:
+                        break
                     elements.append(self._parse_arg())
+                    self._collect_comments()
             if self._peek().type != T.RBRACKET:
                 t = self._peek()
                 raise self._parser_error_at("P001", "Expected ']'", t)
@@ -1024,10 +1058,10 @@ class _Parser:
             return {'type': K.Func, 'src': token.lexeme}
         if tt == T.TRUE:
             self._advance()
-            return {'type': K.Boolean, 'value': True}
+            return {'type': K.Boolean, 'value': True, 'loc': ast.loc(token.line, token.col)}
         if tt == T.FALSE:
             self._advance()
-            return {'type': K.Boolean, 'value': False}
+            return {'type': K.Boolean, 'value': False, 'loc': ast.loc(token.line, token.col)}
         if tt == T.IDENT:
             # Math.PI
             nxt = self._token_at(self._current + 1)
@@ -1037,7 +1071,7 @@ class _Parser:
                 self._advance()
                 self._advance()
                 self._advance()
-                return ast.number(3.141592653589793)
+                return ast.number(3.141592653589793, ast.loc(token.line, token.col))
             # member-then-call OR direct call -> parse as chain (expression context)
             if (nxt is not None and nxt.type == T.LPAREN) or self._has_call_after_dot(self._current):
                 chain = self._parse_chain("expression")

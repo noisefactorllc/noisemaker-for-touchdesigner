@@ -7,10 +7,38 @@ order of pass.outputs values) happens BEFORE input release (pass.inputs values) 
 the free-slot search picks the FIRST freeList entry with availableAfter < i; only 'global_' ids
 are excluded (infinite-lived). Fully deterministic, no float math.
 """
+import re
+
+
+def _build_input_aliases(passes):
+    written = {tex_id for pass_ in passes for tex_id in (pass_.get('outputs') or {}).values()
+               if isinstance(tex_id, str)}
+    aliases = {}
+    for index, pass_ in enumerate(passes):
+        node_id = pass_.get('nodeId')
+        if not node_id:
+            continue
+        for tex_id in (pass_.get('inputs') or {}).values():
+            if (not isinstance(tex_id, str) or tex_id in written or tex_id in aliases
+                    or tex_id not in (node_id + '_inputTex', node_id + '_inputColor')):
+                continue
+            upstream = None
+            for previous in reversed(passes[:index]):
+                for output in (previous.get('outputs') or {}).values():
+                    if (isinstance(output, str) and output != node_id + '_out'
+                            and re.fullmatch(r'node_\d+_out', output)):
+                        upstream = output
+                        break
+                if upstream is not None:
+                    break
+            if upstream is not None:
+                aliases[tex_id] = upstream
+    return aliases
 
 
 def _analyze_liveness(passes):
     lifetime = {}  # texId -> [start, end]
+    aliases = _build_input_aliases(passes)
 
     def touch(tex_id, index):
         if not tex_id:
@@ -28,7 +56,7 @@ def _analyze_liveness(passes):
 
     for index, pass_ in enumerate(passes):
         for tex in (pass_.get('inputs') or {}).values():
-            touch(tex, index)
+            touch(aliases.get(tex, tex), index)
         for tex in (pass_.get('outputs') or {}).values():
             touch(tex, index)
     return lifetime
@@ -36,6 +64,7 @@ def _analyze_liveness(passes):
 
 def allocate_resources(passes):
     lifetime = _analyze_liveness(passes)
+    aliases = _build_input_aliases(passes)
     allocations = {}            # texId -> "phys_N" (insertion-ordered)
     free_list = []              # list of [phys_id, available_after]
     physical_count = 0
@@ -64,7 +93,8 @@ def allocate_resources(passes):
         # 2. release inputs (last uses). A pass may read one texture under several names
         # (lighting's inputTex and heightMap); release it once, or its slot is handed to two
         # textures that are live together.
-        for tex_id in dict.fromkeys((pass_.get('inputs') or {}).values()):
+        for tex_id in dict.fromkeys(aliases.get(tex, tex)
+                                    for tex in (pass_.get('inputs') or {}).values()):
             if tex_id is None:
                 continue
             if tex_id.startswith('global_'):

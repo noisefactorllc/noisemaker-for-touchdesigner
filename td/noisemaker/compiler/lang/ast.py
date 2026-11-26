@@ -50,9 +50,12 @@ class NodeKind:
     Audio = 'Audio'
 
 
-def number(value):
+def number(value, location=None):
     """{type:'Number', value:double} — the parse-time constant-folded literal."""
-    return {'type': NodeKind.Number, 'value': value}
+    node = {'type': NodeKind.Number, 'value': value}
+    if location is not None:
+        node['loc'] = location
+    return node
 
 
 def member_of(a, b):

@@ -363,17 +363,15 @@ class FakeOutput:
 
 class PipelineAndRendererTests(unittest.TestCase):
     def test_pipeline_rebinds_in_place_when_automated_repeat_changes(self):
-        pipeline = Pipeline.__new__(Pipeline)
-        pipeline._time = 0
-        pipeline._external_state = {"midi": None, "audio": None}
+        pipeline = Pipeline(None, '/unused', time=0)
         pipeline.backend = mock.Mock()
 
         pipeline.set_time(0.25)
         pipeline.set_time(0.5)
 
         self.assertEqual([
-            mock.call(0.25, pipeline._external_state),
-            mock.call(0.5, pipeline._external_state),
+            mock.call(0.25, pipeline._external_state, delta_time=0.0),
+            mock.call(0.5, pipeline._external_state, delta_time=0.25),
         ], pipeline.backend.refresh_uniforms.call_args_list)
 
     def test_pipeline_configures_and_submits_output_and_render_to_preserves_save(self):

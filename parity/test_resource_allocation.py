@@ -16,6 +16,33 @@ from noisemaker.compiler.graph.resources import allocate_resources  # noqa: E402
 
 
 class AllocateResourcesTests(unittest.TestCase):
+    def test_unwritten_pipeline_input_alias_releases_the_upstream_texture(self):
+        for name in ('inputColor', 'inputTex'):
+            with self.subTest(name=name):
+                allocations = allocate_resources([
+                    {'nodeId': 'node_0', 'outputs': {'color': 'node_0_out'}},
+                    {'nodeId': 'node_1', 'inputs': {'tex': 'node_1_' + name},
+                     'outputs': {'color': 'node_1_out'}},
+                    {'nodeId': 'node_2', 'inputs': {'tex': 'node_1_out'},
+                     'outputs': {'color': 'node_2_out'}},
+                ])
+                self.assertEqual(allocations['node_0_out'], allocations['node_2_out'])
+                self.assertNotEqual(allocations['node_0_out'], allocations['node_1_out'])
+
+    def test_written_local_input_is_not_treated_as_a_pipeline_alias(self):
+        allocations = allocate_resources([
+            {'nodeId': 'node_0', 'outputs': {'color': 'node_0_out'}},
+            {'nodeId': 'node_1', 'outputs': {'local': 'node_1_inputColor'}},
+            {'nodeId': 'node_1', 'inputs': {'tex': 'node_1_inputColor'},
+             'outputs': {'color': 'node_1_out'}},
+            {'nodeId': 'node_2', 'inputs': {'tex': 'node_1_out'},
+             'outputs': {'color': 'node_2_out'}},
+            {'nodeId': 'node_3', 'inputs': {'tex': 'node_0_out'},
+             'outputs': {'color': 'global_o0'}},
+        ])
+        self.assertEqual(allocations['node_1_inputColor'], allocations['node_2_out'])
+        self.assertNotEqual(allocations['node_0_out'], allocations['node_2_out'])
+
     def test_a_texture_read_under_two_names_in_one_pass_is_released_once(self):
         allocations = allocate_resources([
             {"outputs": {"out": "A"}},

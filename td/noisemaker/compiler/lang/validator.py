@@ -22,6 +22,7 @@ Unimplemented paths raise UnsupportedDsl (mirrors hlsl NotImplementedException) 
 import copy
 import json
 import math
+import re
 
 from . import enum_paths
 from . import enums
@@ -308,22 +309,15 @@ class _Validator:
                     mapped[field_name] = self._substitute(node[field_name], resolving)
             return mapped
         if t == K.Chain:
-            new_chain = []
-            for e in node['chain']:
-                if e.get('type') == K.Call:
-                    mapped = {'type': K.Call, 'name': e['name'],
-                              'args': [self._substitute(a, resolving) for a in e['args']]}
-                    if e.get('kwargs') is not None:
-                        mapped['kwargs'] = {
-                            k: self._substitute(val, resolving) for k, val in e['kwargs'].items()
-                        }
-                    new_chain.append(self._resolve_call(mapped))
-                else:
-                    new_chain.append(e)
-            return {'type': K.Chain, 'chain': new_chain}
+            return {'type': K.Chain, 'chain': [
+                self._substitute(entry, resolving) for entry in node['chain']]}
         if t == K.Call:
             mapped = {'type': K.Call, 'name': node['name'],
                       'args': [self._substitute(a, resolving) for a in node['args']]}
+            if node.get('loc') is not None:
+                mapped['loc'] = node['loc']
+            if node.get('positionalsByIndex') is not None:
+                mapped['positionalsByIndex'] = node['positionalsByIndex']
             if node.get('namespace') is not None:
                 mapped['namespace'] = node['namespace']
             if node.get('kwargs') is not None:
@@ -335,8 +329,7 @@ class _Validator:
 
     @staticmethod
     def _set_var_ref(n, name):
-        if n.get('type') in (K.Number, K.Ident, K.Member, K.Oscillator, K.Midi, K.Audio):
-            n['_varRef'] = name
+        n['_varRef'] = name
 
     def _resolve_call(self, call):
         name = call['name']
@@ -344,12 +337,7 @@ class _Validator:
             val = self._symbols[name]
             vt = val.get('type')
             if vt == K.Ident:
-                out = {'type': K.Call, 'name': val['name'], 'args': call['args']}
-                if call.get('kwargs') is not None:
-                    out['kwargs'] = call['kwargs']
-                if call.get('namespace') is not None:
-                    out['namespace'] = call['namespace']
-                return out
+                return dict(call, name=val['name'])
             if vt == K.Call:
                 merged_args = list(val.get('args') or [])
                 if call.get('args'):
@@ -362,6 +350,16 @@ class _Validator:
                         merged_kw = {}
                     merged_kw.update(call['kwargs'])  # call-site wins
                 merged = {'type': K.Call, 'name': val['name'], 'args': merged_args}
+                if merged_kw is not None and merged_args:
+                    has_bound_keyword = any(key not in ('_skip', '_id')
+                                            for key in (val.get('kwargs') or {}))
+                    merged['positionalsByIndex'] = {
+                        'colorSplatLimit': (val.get('positionalsByIndex', {}).get(
+                            'colorSplatLimit', len(val['args']))
+                            if has_bound_keyword else len(merged_args))}
+                location = call.get('loc') or val.get('loc')
+                if location is not None:
+                    merged['loc'] = location
                 if merged_kw is not None:
                     merged['kwargs'] = merged_kw
                 nsv = call.get('namespace') or val.get('namespace')
@@ -369,6 +367,13 @@ class _Validator:
                     merged['namespace'] = nsv
                 return merged
         return call
+
+    @staticmethod
+    def _keep_element_id(node, args):
+        if (isinstance(node, dict) and node.get('type') == K.String
+                and '_varRef' not in node
+                and re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', node['value'])):
+            args['_id'] = node['value']
 
     # --- starter helpers (reference/02 §2.9) ----------------------------
 
@@ -473,6 +478,7 @@ class _Validator:
                 rd_idx = self._temp_index
                 self._temp_index += 1
                 rd_args = {'tex': surface}
+                self._keep_element_id(original.get('_id'), rd_args)
                 if original.get('_skip'):
                     rd_args['_skip'] = True
                 chain.append(self._step('_read', rd_args, None, rd_idx, builtin=True,
@@ -494,6 +500,7 @@ class _Validator:
                 rd3_idx = self._temp_index
                 self._temp_index += 1
                 rd3_args = {'tex3d': tex3d, 'geo': geo}
+                self._keep_element_id(original.get('_id'), rd3_args)
                 if original.get('_skip'):
                     rd3_args['_skip'] = True
                 chain.append(self._step('_read3d', rd3_args, None, rd3_idx, builtin=True,
@@ -512,7 +519,9 @@ class _Validator:
                     continue
                 wr_idx = self._temp_index
                 self._temp_index += 1
-                chain.append(self._step('_write', {'tex': surface}, current, wr_idx, builtin=True,
+                wr_args = {'tex': surface}
+                self._keep_element_id(original.get('_id'), wr_args)
+                chain.append(self._step('_write', wr_args, current, wr_idx, builtin=True,
                                         comments=original.get('leadingComments')))
                 current = wr_idx
                 continue
@@ -529,7 +538,9 @@ class _Validator:
                     continue
                 wr3_idx = self._temp_index
                 self._temp_index += 1
-                chain.append(self._step('_write3d', {'tex3d': tex3d, 'geo': geo}, current, wr3_idx,
+                wr3_args = {'tex3d': tex3d, 'geo': geo}
+                self._keep_element_id(original.get('_id'), wr3_args)
+                chain.append(self._step('_write3d', wr3_args, current, wr3_idx,
                                         builtin=True, comments=original.get('leadingComments')))
                 current = wr3_idx
                 continue
@@ -669,11 +680,23 @@ class _Validator:
         # round-trip `[…]` literals.
         arg_sources = None
 
+        color_splat_limit = call.get('positionalsByIndex', {}).get('colorSplatLimit', math.inf)
+        splat_values = {}
         i = 0
         while i < len(spec_args):
             d = spec_args[i]
+            if (i < color_splat_limit and d.type != 'color' and d.name == 'r'
+                    and i + 2 < len(spec_args) and spec_args[i + 1].name == 'g'
+                    and spec_args[i + 2].name == 'b'):
+                positional = self._substitute(call['args'][i]) if i < len(call['args']) else None
+                if positional is not None and positional.get('type') == K.Color:
+                    splat_values = dict(zip(('r', 'g', 'b'), positional['value'][:3]))
             if kw is not None and d.name in kw:
                 node = kw[d.name]
+            elif d.name in splat_values:
+                args[d.name] = splat_values[d.name]
+                i += 1
+                continue
             elif i < len(call['args']):
                 node = call['args'][i]
             else:
@@ -681,17 +704,17 @@ class _Validator:
             node = self._substitute(node)
             arg_key = d.name
 
-            # color-splat special case (reference/02 §6)
-            if (kw is None and node is not None and node.get('type') == K.Color and d.type != "color"
-                    and d.name == "r" and i + 2 < len(spec_args)
-                    and spec_args[i + 1].name == "g" and spec_args[i + 2].name == "b"):
-                args["r"] = node['value'][0]
-                args[spec_args[i + 1].name] = node['value'][1]
-                args[spec_args[i + 2].name] = node['value'][2]
-                i += 3
-                continue
             if kw is not None and d.name in kw:
                 seen.add(d.name)
+
+            if (node is not None and node.get('type') == K.Chain
+                    and any(entry.get('type') != K.Call for entry in node['chain'])):
+                self._push_diag('S001', node['chain'][0],
+                                "Chain for argument '%s' in %s() may contain only effect calls" % (
+                                    d.name, call['name']))
+                args[arg_key] = None
+                i += 1
+                continue
 
             # array literal (reference/02 §6)
             if node is not None and node.get('type') == K.ArrayLiteral:
@@ -744,6 +767,10 @@ class _Validator:
                 self._resolve_numeric_arg(d, node, call, args, arg_key)
             i += 1
 
+        if kw is not None and '_id' in kw:
+            self._keep_element_id(kw['_id'], args)
+            seen.add('_id')
+
         # _skip meta-arg (reference/02 §6.14)
         if kw is not None and "_skip" in kw:
             skip_node = kw["_skip"]
@@ -754,6 +781,10 @@ class _Validator:
             for key in kw:
                 if key not in seen:
                     self._push_diag("S001", kw[key], "Unknown argument '" + key + "' for " + call['name'] + "()")
+        if len(call['args']) > len(spec_args):
+            self._push_diag('S009', call['args'][len(spec_args)],
+                            "Too many positional arguments for %s(): '%s' takes %d" % (
+                                call['name'], call['name'], len(spec_args)))
         return arg_sources
 
     # 6.1 surface

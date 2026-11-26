@@ -315,10 +315,16 @@ class ValidatorContractTests(unittest.TestCase):
         self.assertEqual(res2['diagnostics'][0].get('column'), 9)
         self.assertEqual(res2['diagnostics'][0].get('location'), {'line': 2, 'column': 9})
 
-        # unlocated AST node does not invent location
         missing_res = validate_dsl('search synth\n  missing().write(o0)')
         missing_diag = next(d for d in missing_res.get('diagnostics', []) if d.get('identifier') == 'missing')
         self.assertEqual(missing_diag.get('code'), 'S001')
+        self.assertEqual(missing_diag.get('location'), {'line': 2, 'column': 3})
+
+        # A caller-supplied unlocated AST node still does not invent a location.
+        missing_ast = parse(lex('search synth\n  missing().write(o0)'), registry)
+        del missing_ast['plans'][0]['chain'][0]['loc']
+        missing_res = validate(missing_ast, registry)
+        missing_diag = next(d for d in missing_res['diagnostics'] if d.get('identifier') == 'missing')
         self.assertNotIn('location', missing_diag)
         self.assertNotIn('line', missing_diag)
         self.assertNotIn('column', missing_diag)
@@ -1215,8 +1221,11 @@ class ValidatorContractTests(unittest.TestCase):
                     },
                 )
 
-    def test_number_coercion_diagnostics_represent_unavailable_locations_explicitly(self):
-        for source in ["search synth\nlet x = 1 + o0", "search synth\nlet x = diagProbe() + 1"]:
+    def test_number_coercion_diagnostics_preserve_call_locations_and_missing_reference_locations(self):
+        for source, location in [
+            ("search synth\nlet x = 1 + o0", None),
+            ("search synth\nlet x = diagProbe() + 1", {'line': 2, 'column': 9}),
+        ]:
             for entry_point in (lambda s: parse(lex(s)), compile_dsl):
                 with self.assertRaises(DslSyntaxError) as cm:
                     entry_point(source)
@@ -1229,7 +1238,7 @@ class ValidatorContractTests(unittest.TestCase):
                         "stage": "parser",
                         "severity": "error",
                         "message": "Expected number",
-                        "location": None,
+                        "location": location,
                         "span": None,
                     },
                 )

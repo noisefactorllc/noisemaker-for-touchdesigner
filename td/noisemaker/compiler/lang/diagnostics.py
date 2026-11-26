@@ -37,6 +37,7 @@ _TABLE = {
     'S006': ("Starter chain missing write() call", SEVERITY_ERROR, STAGE_SEMANTIC),
     'S007': ("Deprecated parameter alias", SEVERITY_WARNING, STAGE_SEMANTIC),
     'S008': ("Deprecated effect", SEVERITY_WARNING, STAGE_SEMANTIC),
+    'S009': ("Too many positional arguments", SEVERITY_WARNING, STAGE_SEMANTIC),
     'R001': ("Runtime error", SEVERITY_ERROR, STAGE_RUNTIME),
 }
 

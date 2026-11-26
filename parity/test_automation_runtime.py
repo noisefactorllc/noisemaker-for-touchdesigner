@@ -17,6 +17,7 @@ from noisemaker.runtime.automation import (  # noqa: E402
     resolve_uniform_value,
 )
 from noisemaker.runtime.td_backend import TDBackend  # noqa: E402
+from noisemaker.runtime.pipeline import Pipeline  # noqa: E402
 
 
 def oscillator(osc_type=0, **overrides):
@@ -34,6 +35,25 @@ def oscillator(osc_type=0, **overrides):
 
 
 class AutomationRuntimeTests(unittest.TestCase):
+    def test_normalized_frame_delta_tracks_zero_and_loop_wrap(self):
+        pipeline = Pipeline(None, '/unused', time=0)
+        pipeline._graph = {'passes': []}
+        bound = {}
+        pipeline.backend._dynamic_uniforms.append({
+            'pass': SimpleNamespace(uniforms={}, uniform_specs={}),
+            'op': None, 'bound': bound, 'declared': {'time', 'deltaTime'}, 'engine': True,
+        })
+        with mock.patch('noisemaker.runtime.uniform_binder.bind_uniforms'):
+            for time, expected in ((0, 0), (0.25, 0.25), (0.99, 0.74), (0.01, 0.02)):
+                pipeline.set_time(time)
+                self.assertEqual(time, bound['time'])
+                self.assertAlmostEqual(expected, bound['deltaTime'])
+            bound['deltaTime'] = None
+            pipeline.set_audio_state({})
+            self.assertAlmostEqual(0.02, bound['deltaTime'])
+            pipeline.set_time(0.01)
+            self.assertEqual(0, bound['deltaTime'])
+
     def test_nested_oscillator_rate_is_seekable_and_deterministic(self):
         carrier = oscillator(2, speed=oscillator(0))
 

@@ -30,6 +30,7 @@ class Pipeline:
         self.width = width
         self.height = height
         self._time = time
+        self._has_time_reference = False
         self._external_state = {'midi': midi_state, 'audio': audio_state}
         self._graph = None
         self.surfaces = SurfaceManager(parent_comp)
@@ -83,8 +84,13 @@ class Pipeline:
         Re-binding engine-uniforms-ONLY would reset the Vectors slot count and wipe each effect's
         own uniforms (speed/dyeDecay/zoom/...). Instead we refresh the engine values WITHIN each
         TOP's full declared binding and re-bind the whole set (same slot count, stable order)."""
-        self._time = float(t)
-        self.backend.refresh_uniforms(self._time, self._external_state)
+        next_time = float(t)
+        delta_time = next_time - self._time if self._has_time_reference else 0.0
+        if delta_time < 0:
+            delta_time += 1.0
+        self._time = next_time
+        self._has_time_reference = True
+        self.backend.refresh_uniforms(self._time, self._external_state, delta_time=delta_time)
 
     def set_midi_state(self, state):
         self._external_state['midi'] = state

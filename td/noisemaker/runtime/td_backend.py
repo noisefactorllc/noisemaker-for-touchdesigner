@@ -146,6 +146,7 @@ class TDBackend:
         self.width = width
         self.height = height
         self.time = time                           # normalized 0..1 baked into engine uniforms
+        self.delta_time = 0.0
         self.external_state = external_state or {}
         self.surfaces = surface_manager            # optional SurfaceManager for feedback
         self.tex_top = {}                          # texId -> producing TOP (LAST writer so far)
@@ -328,12 +329,15 @@ class TDBackend:
                 'op': selector, 'pass': p, 'stage_count': len(stages),
             })
 
-    def refresh_uniforms(self, normalized_time, external_state=None):
+    def refresh_uniforms(self, normalized_time, external_state=None, *, delta_time=None):
         """Re-evaluate descriptor uniforms and bind the complete declared uniform sets."""
         self.time = float(normalized_time)
         if external_state is not None:
             self.external_state = external_state
-        engine = engine_uniforms(self.width, self.height, self.time)
+        if delta_time is not None:
+            self.delta_time = float(delta_time)
+        engine = engine_uniforms(self.width, self.height, self.time,
+                                 delta_time=self.delta_time)
         resolved_cache = {}
 
         def resolved_for(record):

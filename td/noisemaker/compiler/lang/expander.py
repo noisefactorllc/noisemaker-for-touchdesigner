@@ -690,7 +690,7 @@ class _Expander:
         for arg_name, arg in step['args'].items():
             if _is_surface(arg) and _is_colormode_surface_kind(arg['kind']):
                 continue
-            if arg_name == "_skip":
+            if arg_name in ('_skip', '_id'):
                 continue
             uniform_name = self._global_uniform_name(effect_def, arg_name) or arg_name
             if uniform_name in colormode_controlled:
@@ -842,7 +842,7 @@ class _Expander:
             for arg_name, arg in step['args'].items():
                 if _is_surface(arg) and _is_colormode_surface_kind(arg['kind']):
                     continue
-                if arg_name == "_skip":
+                if arg_name in ('_skip', '_id'):
                     continue
                 uniform_name = self._global_uniform_name(effect_def, arg_name) or arg_name
                 if self._is_colormode_controlled(effect_def, uniform_name):

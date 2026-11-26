@@ -77,8 +77,7 @@
       "name": "render",
       "program": "renderCubemapSurface",
       "inputs": {
-        "volumeCache": "inputTex3d",
-        "analyticalGeo": "inputGeo"
+        "volumeCache": "inputTex3d"
       },
       "outputs": {
         "color": "outputTex",
