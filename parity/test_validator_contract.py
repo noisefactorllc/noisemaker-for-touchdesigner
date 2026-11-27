@@ -1262,6 +1262,35 @@ class ValidatorContractTests(unittest.TestCase):
                 },
             )
 
+    def test_color_constructors_preserve_supplied_components(self):
+        # Upstream tests/test-unparser.mjs: vec3()/vec4() on a color parameter
+        # resolves like its array literal, independently of the parameter's
+        # default length; malformed constructors give S002 and keep the default.
+        cases = (
+            ('search synth\nsolid(color: %s).write(o0)\nrender(o0)', 0, [0.5, 0.5, 0.5]),
+            ('search synth, filter\nsolid().tint(color: %s).write(o0)\nrender(o0)', 1, [1, 1, 1]),
+        )
+        constructors = (
+            ('vec3(0.3, 0.2, 0.25)', [0.3, 0.2, 0.25]),
+            ('vec4(0.3, 0.2, 0.25, 0.4)', [0.3, 0.2, 0.25, 0.4]),
+        )
+        for program, chain_index, default in cases:
+            for form, expected in constructors:
+                for input in ('[%s]' % ', '.join(repr(v) for v in expected), form):
+                    result = validate_dsl(program % input)
+                    self.assertEqual([], result['diagnostics'], input)
+                    self.assertEqual(
+                        expected, result['plans'][0]['chain'][chain_index]['args']['color'], input)
+            # This port's parser rejects mixed positional and keyword
+            # arguments (P007), so the kwargs-guard inputs stay kwarg-only.
+            for input in ('vec2(0.3, 0.2)', 'vec3(0.3, 0.2)', 'vec3(0.3, 0.2, 0.25, 0.4)',
+                          'vec4(0.3, 0.2, 0.25)', 'vec4(0.3, 0.2, 0.25, 0.4, 1)',
+                          'vec3(x: 1, y: 2, z: 3)', 'vec4(x: 1, y: 2, z: 3, w: 4)'):
+                result = validate_dsl(program % input)
+                self.assertEqual(['S002'], [d['code'] for d in result['diagnostics']], input)
+                self.assertEqual(
+                    default, result['plans'][0]['chain'][chain_index]['args']['color'], input)
+
     def test_valid_call_forms_retain_from_override_namespaces_and_mixed_automation_arguments(self):
         ast = parse(lex("search synth\nlet x = from(synth, probe())"))
         self.assertEqual(

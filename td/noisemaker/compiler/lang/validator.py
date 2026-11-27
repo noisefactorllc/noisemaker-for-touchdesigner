@@ -737,15 +737,13 @@ class _Validator:
             if ty == "surface":
                 self._resolve_surface_arg(chain, d, node, call, args, arg_key, write_name)
             elif (node is not None and node.get('type') == K.Call
-                  and len(node.get('args') or []) == (2 if node.get('name') == 'vec2' else 4)
+                  and len(node.get('args') or []) == (2 if node.get('name') == 'vec2' else 3 if node.get('name') == 'vec3' else 4)
                   and ((ty == "vec2" and node.get('name') == 'vec2')
-                       or (ty == "color" and node.get('name') == 'vec4'
-                           and isinstance(d.default, list) and len(d.default) == 4))):
-                # vec2(x, y) on a vec2 parameter, and vec4(x, y, z, w) on a
-                # vec4 parameter. The loader registers vec4 parameters as
-                # `color`; their default keeps its four components. Any
-                # other form, including a wrong component count, takes
-                # the branches below.
+                       or (ty == "color" and not node.get('kwargs')
+                           and node.get('name') in ("vec3", "vec4")))):
+                # Color constructors preserve the supplied components,
+                # independently of the parameter's default length.
+                # Invalid constructor arity takes the branches below.
                 self._resolve_vec_components_arg(d, node, call, args, arg_key)
             elif ty == "color":
                 self._resolve_color_arg(d, node, call, args, arg_key)
