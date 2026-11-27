@@ -183,6 +183,9 @@
       "format": "rgba16f"
     }
   },
+  "outputXyz": "global_xyz",
+  "outputVel": "global_vel",
+  "outputRgba": "global_rgba",
   "paramAliases": {
     "fieldTex": "heightTex"
   }

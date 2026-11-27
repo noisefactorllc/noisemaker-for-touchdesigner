@@ -125,6 +125,20 @@ class TestEffectValidator(unittest.TestCase):
     def test_valid_plain_object_definition_returns_no_errors(self):
         self.assertEqual(validate_effect_definition(valid_definition()), [])
 
+    def test_handed_on_texture_names_accept_strings_and_reject_blank_values(self):
+        for field in ('outputTex', 'outputTex3d', 'outputGeo',
+                      'outputXyz', 'outputVel', 'outputRgba'):
+            with self.subTest(field=field):
+                definition = valid_definition()
+                for value in (' sharedTexture ', '\x1c'):
+                    definition[field] = value
+                    self.assertEqual(validate_effect_definition(definition), [])
+                for value in ('', ' ', '\t\n', '\ufeff', '\u00a0\u2028', None, 0, False, [], {}):
+                    with self.subTest(value=value):
+                        definition[field] = value
+                        self.assertEqual(validate_effect_definition(definition), [
+                            '"%s" must be a non-empty string' % field])
+
     def test_unknown_top_level_field_is_diagnosed(self):
         d = valid_definition()
         d['globalz'] = d['globals']

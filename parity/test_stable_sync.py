@@ -126,6 +126,32 @@ class StableSyncTests(unittest.TestCase):
         self.assertEqual({'line': 2, 'column': 12}, result['diagnostics'][0]['location'])
         self.assertIsNone(result['plans'][0]['chain'][0]['args']['tex'])
 
+    def test_particle_outputs_reach_reader_in_each_emitter_scope(self):
+        registry = EffectRegistry.load_from_directory()
+        registry.register({
+            'name': 'Reader', 'namespace': 'test', 'func': 'reader', 'globals': {},
+            'passes': [{'program': 'reader',
+                        'inputs': {'xyzTex': 'inputXyz', 'velTex': 'inputVel',
+                                   'rgbaTex': 'inputRgba'},
+                        'outputs': {'color': 'outputTex'}}],
+        })
+        graph = compile_dsl(
+            'search synth, render, points, test\n'
+            'noise().pointsEmit().attractor().reader()'
+            '.pointsEmit().attractor().reader().write(o0)', registry)
+        producers = [p for p in graph['passes']
+                     if p.get('func') == 'attractor' and 'outXYZ' in p['outputs']]
+        readers = [p for p in graph['passes'] if p.get('func') == 'reader']
+        self.assertEqual(len(producers), 2)
+        self.assertEqual(len(readers), 2)
+        for producer, reader in zip(producers, readers):
+            for input_name, output_name in (('xyzTex', 'outXYZ'),
+                                            ('velTex', 'outVel'),
+                                            ('rgbaTex', 'outRGBA')):
+                self.assertEqual(reader['inputs'][input_name], producer['outputs'][output_name])
+                self.assertIn(reader['inputs'][input_name], graph['textures'])
+        self.assertNotEqual(readers[0]['inputs'], readers[1]['inputs'])
+
 
 if __name__ == '__main__':
     unittest.main()

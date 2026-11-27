@@ -254,6 +254,15 @@ class DepositRenderSettingsTests(unittest.TestCase):
         mat = self._one(created, "_mat")
         self.assertEqual((mat.par.srcblend, mat.par.destblend), ("one", "omsa"))
 
+    def test_zero_deposit_blend_factor_preserves_zero_in_either_slot(self):
+        for zero in ('ZERO', 'zero'):
+            for factors, expected in (([zero, 'ONE'], ('zero', 'one')),
+                                      (['ONE', zero], ('one', 'zero'))):
+                with self.subTest(factors=factors):
+                    created = self._build(self._billboard('zero', factors, 0, 1))
+                    mat = self._one(created, '_mat')
+                    self.assertEqual((mat.par.srcblend, mat.par.destblend), expected)
+
     def test_deposit_render_disables_multisampling(self):
         created = self._build({
             "id": "points", "drawMode": "points", "blend": True,

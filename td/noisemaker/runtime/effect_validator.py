@@ -94,11 +94,16 @@ TOP_LEVEL_KEYS = {
     'name', 'namespace', 'func', 'description', 'tags', 'globals', 'passes',
     'textures', 'textures3d', 'shaders', 'uniformLayout', 'uniformLayouts',
     'paramAliases', 'openCategories', 'defaultProgram', 'hidden', 'deprecatedBy',
-    'externalTexture', 'externalMesh', 'builtinMeshes', 'outputTex3d', 'outputGeo',
+    'externalTexture', 'externalMesh', 'builtinMeshes', 'outputTex', 'outputTex3d',
+    'outputGeo', 'outputXyz', 'outputVel', 'outputRgba',
     'state', 'uniforms', 'onInit', 'onUpdate', 'onDestroy', 'asyncInit',
     # Port deviation: see module docstring (converter-stamped starter flag).
     'starter',
 }
+
+# Match JavaScript String.trim, including BOM but excluding control separators.
+_JS_TRIM_CHARS = ('\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004'
+                  '\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff')
 
 PIPELINE_INPUTS = {
     'inputTex', 'inputTex3d', 'inputGeo', 'inputXyz', 'inputVel', 'inputRgba',
@@ -896,10 +901,11 @@ def validate_effect_definition(defn):
             for key, value in builtin_meshes.items():
                 if not isinstance(value, str) or not value:
                     errors.append(f"builtinMeshes['{key}'] must be a non-empty string")
-    if 'outputTex3d' in source and (not isinstance(source['outputTex3d'], str) or not source['outputTex3d']):
-        errors.append('"outputTex3d" must be a non-empty string')
-    if 'outputGeo' in source and (not isinstance(source['outputGeo'], str) or not source['outputGeo']):
-        errors.append('"outputGeo" must be a non-empty string')
+    for field in ('outputTex', 'outputTex3d', 'outputGeo',
+                  'outputXyz', 'outputVel', 'outputRgba'):
+        if field in source and (not isinstance(source[field], str) or
+                                not source[field].strip(_JS_TRIM_CHARS)):
+            errors.append('"%s" must be a non-empty string' % field)
 
     # --- lifecycle hooks must be functions ---
     # (Definitions arriving through this port's registry are JSON dicts; a
