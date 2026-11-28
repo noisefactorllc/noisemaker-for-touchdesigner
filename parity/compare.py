@@ -20,6 +20,7 @@ Exit code 0 = within tolerance, 1 = divergence, 2 = bad input.
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -31,6 +32,14 @@ def load_rgba(path: Path) -> np.ndarray:
     """Load a PNG as a float32 HxWx4 array in [0,1]."""
     img = Image.open(path).convert("RGBA")
     return np.asarray(img, dtype=np.float32) / 255.0
+
+
+def parse_expect_pixel(spec: str):
+    """Parse an X,Y:R,G,B pixel pin; raise ValueError on a malformed spec."""
+    m = re.match(r"^(\d+),(\d+):(\d+),(\d+),(\d+)$", spec)
+    if not m:
+        raise ValueError(spec)
+    return (int(m.group(1)), int(m.group(2))), tuple(int(m.group(i)) for i in (3, 4, 5))
 
 
 def max_abs_diff(a: np.ndarray, b: np.ndarray) -> float:
@@ -77,6 +86,9 @@ def main() -> int:
                         help="Max allowed max-abs-diff in 8-bit units (default 2)")
     parser.add_argument("--ssim-min", type=float, default=0.98,
                         help="Minimum acceptable global SSIM (default 0.98)")
+    parser.add_argument("--expect-pixel", action="append", default=[], metavar="X,Y:R,G,B",
+                        help="The golden's pixel at X,Y must sit within the tolerance of R,G,B "
+                             "(8-bit units; repeatable)")
     parser.add_argument("--report", type=Path, default=None, help="Write JSON report here")
     args = parser.parse_args()
 
@@ -85,6 +97,12 @@ def main() -> int:
         return 2
     if not args.candidate.exists():
         print(f"error: candidate not found: {args.candidate}", file=sys.stderr)
+        return 2
+
+    try:
+        pins = [parse_expect_pixel(spec) for spec in args.expect_pixel]
+    except ValueError as exc:
+        print(f"error: malformed --expect-pixel spec: {exc}", file=sys.stderr)
         return 2
 
     a = load_rgba(args.golden)
@@ -106,7 +124,22 @@ def main() -> int:
     mean_diff = mean_abs_diff(a, b)
     ssim = global_ssim(a, b)
 
-    passed = (max_diff <= args.tolerance) and (ssim >= args.ssim_min)
+    height, width = a.shape[:2]
+    expected_pixels = []
+    for (x, y), expected in pins:
+        if not (0 <= x < width and 0 <= y < height):
+            print(f"error: --expect-pixel {x},{y} is outside the golden ({width}x{height})",
+                  file=sys.stderr)
+            return 2
+        observed = tuple(int(round(v * 255)) for v in a[y, x, :3])
+        diffs = [abs(o - e) for o, e in zip(observed, expected)]
+        expected_pixels.append({
+            "x": x, "y": y, "expected": list(expected), "observed": list(observed),
+            "passed": max(diffs) <= args.tolerance,
+        })
+    pixel_failures = [p for p in expected_pixels if not p["passed"]]
+
+    passed = (max_diff <= args.tolerance) and (ssim >= args.ssim_min) and not pixel_failures
 
     report = {
         "name": args.name or args.golden.stem,
@@ -118,8 +151,14 @@ def main() -> int:
         "ssim": ssim,
         "tolerance": args.tolerance,
         "ssim_min": args.ssim_min,
+        "expected_pixels": expected_pixels,
         "passed": passed,
     }
+
+    for p in pixel_failures:
+        print(f"[FAIL] {report['name']}: golden pixel {p['x']},{p['y']} is "
+              f"{','.join(map(str, p['observed']))}, expected {','.join(map(str, p['expected']))} "
+              f"within {args.tolerance}")
 
     status = "PASS" if passed else "FAIL"
     print(f"[{status}] {report['name']}: max-abs-diff={max_diff:.3f} "

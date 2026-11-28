@@ -118,6 +118,20 @@ case "${NM_CASES:-}" in
     printf '%s\n' $SET > "$EXPECTED_SET" ;;
 esac
 
+# The edge-tie cases from stage_coverage.py: each renders at its own frame size (run.sh's
+# dedicated invocation) and its grading pins the reference golden's measured pixel value.
+EDGE_TIES="$("$PY" "$REPO/parity/stage_coverage.py" --edge-tie-cases)" || exit 2
+edge_tie_spec() {
+  local line
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    case "$line" in "$1 "*) printf '%s\n' "${line#* }"; return 0 ;; esac
+  done <<TIES
+$EDGE_TIES
+TIES
+  return 1
+}
+
 # 1. render all candidates (chunked TD sessions). Permissive tol so the render step always emits a
 #    candidate; the authoritative verdict is the per-effect compare in step 2.
 render_failed=""
@@ -125,7 +139,9 @@ if [ "$render" = 1 ]; then
   ALL=()
   for name in $SET; do
     is_accum "$name" && continue
-    case "$name" in synth3d_renderCubemap3d|synth3d_renderCubemapSurface) ;; *) ALL+=("$name") ;; esac
+    case "$name" in synth3d_renderCubemap3d|synth3d_renderCubemapSurface) continue ;; esac
+    if [ -n "$(edge_tie_spec "$name")" ]; then continue; fi
+    ALL+=("$name")
   done
   n=${#ALL[@]}; i=0
   while [ $i -lt $n ]; do
@@ -138,6 +154,20 @@ if [ "$render" = 1 ]; then
     fi
     i=$((i + CHUNK))
   done
+  while IFS= read -r tie_line; do
+    [ -n "$tie_line" ] || continue
+    case " $SET " in *" ${tie_line%% *} "*) ;; *) continue ;; esac
+    tie_rest="${tie_line#* }"; tie_size="${tie_rest%% *}"; tie_pin="${tie_rest#* }"
+    tie_log="$OUT/_edge_tie_render.log"
+    rm -f "$OUT/${tie_line%% *}.golden.png" "$OUT/${tie_line%% *}.candidate.png"
+    if ! SIZE="$tie_size" TOL=255 SSIM=0 bash "$REPO/parity/run.sh" "${tie_line%% *}" >"$tie_log" 2>&1 </dev/null; then
+      reason="$(sed -n '/[^[:space:]]/{p;q;}' "$tie_log" 2>/dev/null | tr -d '\t')"
+      render_failed="$render_failed ${tie_line%% *}"
+      render_reason="${reason:-run.sh exited without a message}"
+    fi
+  done <<TIES
+$EDGE_TIES
+TIES
 fi
 
 # 2. per-effect compare with the tolerance table.
@@ -188,8 +218,14 @@ for name in $SET; do
     fail=$((fail + 1)); failed="$failed $name"; continue
   fi
   report="$REPORTS/$name.json"
+  tie_args=()
+  tie_grading_spec="$(edge_tie_spec "$name")"
+  if [ -n "$tie_grading_spec" ]; then
+    tie_args=(--expect-pixel "${tie_grading_spec#* }")
+  fi
   if "$PY" "$REPO/parity/compare.py" "$OUT/$name.golden.png" "$OUT/$name.candidate.png" \
-       --name "$name" --tolerance "$TOL" --ssim-min "$SSIM" --report "$report"; then
+       --name "$name" --tolerance "$TOL" --ssim-min "$SSIM" --report "$report" \
+       ${tie_args[@]+"${tie_args[@]}"}; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1)); failed="$failed $name"

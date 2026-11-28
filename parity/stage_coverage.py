@@ -51,6 +51,13 @@ STATIC_3D_EFFECTS = {
     'renderLandscape3d_voxel', 'renderLandscape3d_perspective',
 }
 CUBEMAP_EFFECTS = {'synth3d_renderCubemap3d', 'synth3d_renderCubemapSurface'}
+EDGE_TIE_CASES = {
+    'heightmap3d_landscape': {
+        'size': '257x129',
+        'pixel': (128, 82),
+        'shows': (179, 205, 168),
+    },
+}
 # Programs excluded from the canonical sweep. Every in-repo program is graded: the agent and 3D
 # cases that were deferred here are graded by parity/accumulate.sh (ACCUM_EFFECTS) or the single-
 # frame sweep (STATIC_3D_EFFECTS).
@@ -168,6 +175,13 @@ def main():
         path = sys.argv[sys.argv.index('--validate-set') + 1]
         if not validate_render_set(path):
             sys.exit(2)
+        return
+    if '--edge-tie-cases' in sys.argv:
+        for name in sorted(EDGE_TIE_CASES):
+            case = EDGE_TIE_CASES[name]
+            x, y = case['pixel']
+            r, g, b = case['shows']
+            print('%s %s %d,%d:%d,%d,%d' % (name, case['size'], x, y, r, g, b))
         return
     reference_root()
     os.makedirs(OUT, exist_ok=True)
