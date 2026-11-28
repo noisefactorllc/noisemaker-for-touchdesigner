@@ -390,12 +390,6 @@ class ValidatorContractTests(unittest.TestCase):
                 self.assertEqual(diag['span'], span)
 
     def test_prototype_property_names_lex_as_identifiers_and_bind(self):
-        # Upstream shaders/tests/test_reserved_choice_names.mjs (the keyword-table
-        # own-properties fix): a name the keyword table does not own lexes as
-        # IDENT, never as an inherited prototype property, and binds like any
-        # other let variable. The if-condition reachability case of that upstream
-        # test stays unported: this first-cut frontend rejects if/elif/else
-        # wholesale (UnsupportedDsl, reference/02 §4.1).
         for name in ('toString', 'valueOf', 'constructor', 'hasOwnProperty', '__proto__'):
             with self.subTest(name=name):
                 self.assertEqual('IDENT', lex(name)[0].type)
